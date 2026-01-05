@@ -1,6 +1,10 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -32,6 +36,10 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private static readonly Color BackgroundColor = new Color(0.85f, 0.85f, 0.85f, 1f);
     private Camera _previewCamera;
     private RenderTexture _previewTexture;
+    private Process _runningProc;
+    private CancellationTokenSource _pythonCts;
+    private readonly StringBuilder _liveLogBuffer = new StringBuilder();
+    private DateTime _lastOutputAt = DateTime.MinValue;
 
     private const string ViewsFolderName = "views";
     private static readonly ViewDirection[] ViewDirections =

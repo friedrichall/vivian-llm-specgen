@@ -74,8 +74,19 @@ public partial class GenerateInteractionsWindow
         if (GUILayout.Button("Create Interaction Objects"))
         {
             CreateInteractionObjects();
-            _currentStep = Step.SelectObjects;
         }
+
+        EditorGUILayout.Space();
+        bool isPythonRunning = _runningProc != null && !_runningProc.HasExited;
+        EditorGUI.BeginDisabledGroup(!isPythonRunning);
+        var previousColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.9f, 0.45f, 0.45f, 1f);
+        if (GUILayout.Button("Kill Python Process", EditorStyles.miniButton, GUILayout.Width(150), GUILayout.Height(18)))
+        {
+            TryKillRunningPython();
+        }
+        GUI.backgroundColor = previousColor;
+        EditorGUI.EndDisabledGroup();
     }
 
     private void PrepareInteractionDefinition()
