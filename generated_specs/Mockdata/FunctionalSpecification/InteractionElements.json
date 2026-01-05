@@ -1,0 +1,141 @@
+{
+    "Elements": [
+        {
+            "Name": "Handle",
+            "Type": "Rotatable",
+            "MinRotation": 0.0,
+            "MaxRotation": 360.0,
+            "RotationAxis": {
+                "Origin": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "Direction": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                }
+            },
+            "InitialAttributeValues": [
+                {
+                    "Attribute": "VALUE",
+                    "Value": "0.0"
+                }
+            ],
+            "PositionResolution": 2,
+            "AllowsForInfiniteRotation": true,
+            "TransitionTimeInMs": 0
+        },
+        {
+            "Name": "RotaryButton",
+            "Type": "Rotatable",
+            "MinRotation": 0.0,
+            "MaxRotation": 360.0,
+            "RotationAxis": {
+                "Origin": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "Direction": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                }
+            },
+            "InitialAttributeValues": [
+                {
+                    "Attribute": "VALUE",
+                    "Value": "0.0"
+                }
+            ],
+            "PositionResolution": 12,
+            "AllowsForInfiniteRotation": true,
+            "TransitionTimeInMs": 0
+        },
+        {
+            "Name": "FunctionButton",
+            "Type": "Button"
+        },
+        {
+            "Name": "StopButton",
+            "Type": "Button"
+        },
+        {
+            "Name": "Toast1",
+            "Type": "Movable",
+            "InitialAttributeValues": [
+                {
+                    "Attribute": "POSITION",
+                    "Value": "(0, 0, 0)"
+                },
+                {
+                    "Attribute": "ROTATION",
+                    "Value": "(0, 0, 0)"
+                }
+            ],
+            "SnapPoses": [
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                },
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                }
+            ],
+            "TransitionTimeInMs": 0
+        },
+        {
+            "Name": "Toast2",
+            "Type": "Movable",
+            "InitialAttributeValues": [
+                {
+                    "Attribute": "POSITION",
+                    "Value": "(0, 0, 0)"
+                },
+                {
+                    "Attribute": "ROTATION",
+                    "Value": "(0, 0, 0)"
+                }
+            ],
+            "SnapPoses": [
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                },
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                }
+            ],
+            "TransitionTimeInMs": 0
+        },
+        {
+            "Name": "Toast3",
+            "Type": "Movable",
+            "InitialAttributeValues": [
+                {
+                    "Attribute": "POSITION",
+                    "Value": "(0, 0, 0)"
+                },
+                {
+                    "Attribute": "ROTATION",
+                    "Value": "(0, 0, 0)"
+                }
+            ],
+            "SnapPoses": [
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                },
+                {
+                    "Position": "(0, 0, 0)",
+                    "Rotation": "(0, 0, 0)"
+                }
+            ],
+            "TransitionTimeInMs": 0
+        }
+    ]
+}
