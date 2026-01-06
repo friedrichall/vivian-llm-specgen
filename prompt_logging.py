@@ -1,7 +1,6 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 from typing import Dict, Any, Optional
 
 from constants.agent_instructions import (
@@ -15,7 +14,6 @@ from constants.agent_instructions import (
 
 PROMPT_LOG_DIR = Path("logs")
 PROMPT_ERROR_LOG = PROMPT_LOG_DIR / "prompt_errors.log"
-BERLIN_TZ = ZoneInfo("Europe/Berlin")
 
 AGENT_INSTRUCTIONS_BY_NAME = {
     "manager_agent": MANAGER_INSTRUCTIONS,
@@ -124,8 +122,9 @@ def _write_prompt_error_log(
     model: str,
 ) -> None:
     PROMPT_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    #TODO correct timezone to UTC+2
     payload = {
-        "timestamp": datetime.now(BERLIN_TZ).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "error_type": type(error).__name__,
         "error": str(error),
         "agent": agent_name,

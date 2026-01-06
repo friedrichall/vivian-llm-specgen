@@ -48,6 +48,7 @@ ORDERED_VIEW_NAMES = [
 ]
 RGB_SUFFIX_BLACKLIST = ("_seg", "_depth", "_normal")
 MAX_OBJECTS_PER_RUN = 2
+SEND_IMAGES_TO_AGENT = False
 IMAGE_ANALYSIS_TASK = (
     "Analyze object/parts using the images; use JSON files as structure; do NOT guess measurements."
 )
@@ -390,7 +391,12 @@ def _build_uploaded_image_items(images: List[ImagePayload]) -> Tuple[List[Dict[s
     return items, failed
 
 
-def _build_input_items(task_text: str, bundle: InputBundle, use_uploads: bool = True) -> List[Dict[str, Any]]:
+def _build_input_items(
+    task_text: str,
+    bundle: InputBundle,
+    use_uploads: bool = True,
+    include_images: bool = True,
+) -> List[Dict[str, Any]]:
     """Create the message payload with scene JSON, manifest, and images."""
     content: List[Dict[str, Any]] = [
         {"type": "input_text", "text": task_text},
@@ -399,7 +405,7 @@ def _build_input_items(task_text: str, bundle: InputBundle, use_uploads: bool = 
     if bundle.views_manifest_text:
         content.append({"type": "input_text", "text": f"VIEWS_MANIFEST_JSON:\n{bundle.views_manifest_text}"})
 
-    if bundle.images:
+    if include_images and bundle.images:
         if use_uploads:
             uploaded_items, failed = _build_uploaded_image_items(bundle.images)
             content.extend(uploaded_items)
@@ -602,9 +608,14 @@ def main() -> None:
             interaction_description=description,
             scene_json_text=scene_json_text,
             views_manifest_text=views_manifest_text,
-            images=batch_images,
+            images=batch_images
         )
-        content = _build_input_items(task_text, input_bundle, use_uploads=True)
+        content = _build_input_items(
+            task_text,
+            input_bundle,
+            use_uploads=True,
+            include_images=SEND_IMAGES_TO_AGENT,
+        )
 
         if len(batches) > 1:
             batch_label = "_".join(_safe_dir_name(selection.object_name) for selection in batch)
