@@ -19,10 +19,30 @@ public partial class GenerateInteractionsWindow
         }
 
         var allObjects = new List<GameObject>();
-        foreach (var root in scene.GetRootGameObjects())
+        if (_showChildObjects)
         {
-            CollectChildren(root, allObjects);
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                CollectChildren(root, allObjects);
+            }
         }
+        else
+        {
+            allObjects.AddRange(scene.GetRootGameObjects());
+        }
+
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField("Selection Scope", GUILayout.Width(120));
+        string toggleLabel = _showChildObjects ? "Show Top-Level Only" : "Show Children";
+        if (GUILayout.Button(toggleLabel, GUILayout.Width(160)))
+        {
+            _showChildObjects = !_showChildObjects;
+            if (!_showChildObjects)
+            {
+                PruneSelectionToRootObjects(scene);
+            }
+        }
+        EditorGUILayout.EndHorizontal();
 
         _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
 
@@ -115,6 +135,19 @@ public partial class GenerateInteractionsWindow
         for (int i = 0; i < go.transform.childCount; i++)
         {
             CollectChildren(go.transform.GetChild(i).gameObject, list);
+        }
+    }
+
+    private void PruneSelectionToRootObjects(Scene scene)
+    {
+        var rootObjects = new HashSet<GameObject>(scene.GetRootGameObjects());
+        var keys = new List<GameObject>(_selection.Keys);
+        foreach (var key in keys)
+        {
+            if (key == null || !rootObjects.Contains(key))
+            {
+                _selection.Remove(key);
+            }
         }
     }
 

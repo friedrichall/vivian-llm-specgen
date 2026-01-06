@@ -27,12 +27,13 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private Vector2 _scrollPos;
     private readonly Dictionary<GameObject, bool> _selection = new Dictionary<GameObject, bool>();
     private readonly List<GameObject> _selectedObjects = new List<GameObject>();
+    private bool _showChildObjects = false;
     private string _groupName = string.Empty;
     private string _interactionDescription = string.Empty;
     private const int RenderWidth = 1024;
     private const int RenderHeight = 1024;
     private const float CameraFov = 45f;
-    private const float PaddingFactor = 1.2f;
+    private const float PaddingFactor = 1.1f;
     private static readonly Color BackgroundColor = new Color(0.85f, 0.85f, 0.85f, 1f);
     private Camera _previewCamera;
     private RenderTexture _previewTexture;
