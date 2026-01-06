@@ -120,18 +120,28 @@ public partial class GenerateInteractionsWindow
 
     private float CalculateCameraDistance(Bounds bounds, Vector3 viewDirection)
     {
-        Vector3 size = bounds.size * PaddingFactor;
+        Vector3 forward = viewDirection.normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        if (right.sqrMagnitude < 0.0001f)
+        {
+            right = Vector3.Cross(Vector3.right, forward);
+        }
+        right.Normalize();
+        Vector3 up = Vector3.Cross(forward, right);
+
+        Vector3 extents = bounds.extents;
+        float radiusRight = Vector3.Dot(new Vector3(Mathf.Abs(right.x), Mathf.Abs(right.y), Mathf.Abs(right.z)), extents) * PaddingFactor;
+        float radiusUp = Vector3.Dot(new Vector3(Mathf.Abs(up.x), Mathf.Abs(up.y), Mathf.Abs(up.z)), extents) * PaddingFactor;
+        float radiusForward = Vector3.Dot(new Vector3(Mathf.Abs(forward.x), Mathf.Abs(forward.y), Mathf.Abs(forward.z)), extents) * PaddingFactor;
+
         float aspect = (float)RenderWidth / Mathf.Max(1, RenderHeight);
         float halfVerticalFov = Mathf.Deg2Rad * CameraFov * 0.5f;
 
-        float distanceForHeight = (size.y * 0.5f) / Mathf.Tan(halfVerticalFov);
+        float distanceForHeight = radiusUp / Mathf.Tan(halfVerticalFov);
         float horizontalFov = 2f * Mathf.Atan(Mathf.Tan(halfVerticalFov) * aspect);
-        float distanceForWidth = (size.x * 0.5f) / Mathf.Tan(horizontalFov * 0.5f);
+        float distanceForWidth = radiusRight / Mathf.Tan(horizontalFov * 0.5f);
 
-        Vector3 dirAbs = new Vector3(Mathf.Abs(viewDirection.x), Mathf.Abs(viewDirection.y), Mathf.Abs(viewDirection.z));
-        float depthOffset = Vector3.Dot(bounds.extents * PaddingFactor, dirAbs);
-
-        return Mathf.Max(distanceForHeight, distanceForWidth) + depthOffset;
+        return Mathf.Max(distanceForHeight, distanceForWidth) + radiusForward;
     }
 
     private Bounds? CalculateWorldBounds(GameObject go)
