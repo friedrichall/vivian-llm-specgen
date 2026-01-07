@@ -4,6 +4,7 @@ Vivian LLM Spec Generator
 - Generate complete Vivian FunctionalSpecification JSON sets via a multi-agent pipeline that coordinates: 
   - Interaction Elements
   - Visualization Elements
+  - Visualization Arrays (always `{ "Elements": [] }` by default)
   - States
   - Transitions
 - Provide Pydantic schemas for all FuncSpec files so agent outputs are validated and JSON structure stays stable.
