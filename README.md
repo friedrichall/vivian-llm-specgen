@@ -1,6 +1,6 @@
 Vivian LLM Spec Generator
 
-Purpose (everything here except the Unity test project):
+****Purpose****
 - Generate complete Vivian FunctionalSpecification JSON sets via a multi-agent pipeline that coordinates: 
   - Interaction Elements
   - Visualization Elements
@@ -11,9 +11,10 @@ Purpose (everything here except the Unity test project):
 - Include a Unity-facing connector (`unityconnector.py`) 
 - Turn exported scene/preview data into specs 
 - Capturing prompt/error logs in `logs/`
+- Mock Unity export end-to-end: `python unityconnector_mock.py`.
 
 
-Setup (important steps, 5 bullets):
+****Setup****
 - Install Python 3.10+ and ensure it is on PATH; verify with `python --version`.
 - Create and activate virtual env: `python -m venv .venv` then `.\.venv\Scripts\activate`.
 - Install runtime dependencies: `pip install -U openai openai-agents pydantic`.
