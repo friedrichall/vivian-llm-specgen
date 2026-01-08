@@ -43,7 +43,8 @@ public partial class GenerateInteractionsWindow
             if (go == null) continue;
             var clone = Instantiate(go);
             clone.name = go.name;
-            clone.transform.SetParent(root.transform, true);
+            // keep transforms
+            clone.transform.SetParent(root.transform, true); 
         }
 
         // Save or replace the aggregate prefab in the group folder.
@@ -276,7 +277,7 @@ public partial class GenerateInteractionsWindow
                 // In Unity Console loggen
                 Debug.Log($"[PY] {e.Data}");
 
-                // Optional: in Buffer für UI
+                // in buffer für UI
                 _liveLogBuffer.AppendLine(e.Data);
             };
 
@@ -301,7 +302,7 @@ public partial class GenerateInteractionsWindow
             proc.BeginErrorReadLine();
 
             // Stall Detection Task (kein Output seit X Sekunden)
-            var stallSeconds = 60; // ggf anderer Timeout Wert
+            var stallSeconds = 120; // ggf anderer Timeout Wert
             var stallTask = Task.Run(async () =>
             {
                 while (!proc.HasExited && !_pythonCts.IsCancellationRequested)
