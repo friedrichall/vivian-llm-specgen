@@ -1,13 +1,14 @@
 import json
 import textwrap
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any, List, Optional
 
 from agents import Agent, Runner, ItemHelpers
 
 from constants.agent_instructions import MANAGER_INSTRUCTIONS, INTERACTION_ELEMENTS_INSTRUCTIONS, \
     TRANSITIONS_INSTRUCTIONS, STATES_INSTRUCTIONS, VISUALIZATION_ELEMENTS_INSTRUCTIONS, \
     VISUALIZATION_ARRAYS_INSTRUCTIONS
+from prompt_logging import _summarize_user_input, _extract_tool_call, _write_prompt_error_log
 from model.output_type_FuncSpec import FunctionalSpecification
 from model.output_type_InteractionElements import InteractionElements
 from model.output_type_States import States
@@ -15,7 +16,7 @@ from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationElements import VisualizationElements
 from model.output_type_VisualizationArrays import VisualizationArrays
 
-BASE_MODEL = "gpt-5.1"
+BASE_MODEL = "gpt-5.2"
 OUTPUT_DIR = Path("generated_specs")
 
 USER_INPUT = (
@@ -101,58 +102,63 @@ def build_manager_agent() -> Agent:
     )
 
 
-async def run_vivian(user_input: str, output_dir: Path | None = OUTPUT_DIR) -> FunctionalSpecification | None:
+async def run_vivian(user_input: str | List[Dict[str, Any]], output_dir: Path | None = OUTPUT_DIR) -> FunctionalSpecification | None:
     """Run the Vivian agent pipeline and optionally persist outputs."""
     manager_agent = build_manager_agent()
-    print(f"[manager_agent] Received user input: {user_input}")
-    result = Runner.run_streamed(manager_agent, input=user_input)
+    print(f"[manager_agent] Received user input: {_summarize_user_input(user_input)}")
     tool_names_by_call_id = {}
-    async for event in result.stream_events():
-        if event.type == "raw_response_event":
-            continue
-        elif event.type == "agent_updated_stream_event":
-            print(f"Agent updated: {event.new_agent.name}")
-            continue
-        elif event.type == "run_item_stream_event":
-            if event.item.type == "tool_call_item":
-                raw = getattr(event.item, "raw_item", None)
-                call_id = None
-                if hasattr(raw, "name"):
-                    tool_name = raw.name
-                elif hasattr(raw, "function") and hasattr(raw.function, "name"):
-                    tool_name = raw.function.name
-                elif isinstance(raw, dict):
-                    tool_name = raw.get("name") or raw.get("function", {}).get("name")
-                    call_id = raw.get("call_id")
+    current_agent_name = manager_agent.name
+    last_tool_call: Optional[Dict[str, Any]] = None
+    try:
+        result = Runner.run_streamed(manager_agent, input=user_input)
+        async for event in result.stream_events():
+            if event.type == "raw_response_event":
+                continue
+            elif event.type == "agent_updated_stream_event":
+                current_agent_name = event.new_agent.name
+                print(f"Agent updated: {event.new_agent.name}")
+                continue
+            elif event.type == "run_item_stream_event":
+                if event.item.type == "tool_call_item":
+                    raw = getattr(event.item, "raw_item", None)
+                    tool_call = _extract_tool_call(raw)
+                    tool_name = tool_call.get("tool_name")
+                    call_id = tool_call.get("call_id")
+                    if call_id and tool_name:
+                        tool_names_by_call_id[call_id] = tool_name
+                    last_tool_call = tool_call
+                    suffix = f": {tool_name}" if tool_name else ""
+                    print(f"-- Tool was called{suffix}")
+                elif event.item.type == "tool_call_output_item":
+                    # Emit the tool output, associating it with the originating tool name if available.
+                    raw = getattr(event.item, "raw_item", None)
+                    call_id = None
+                    if hasattr(raw, "call_id"):
+                        call_id = raw.call_id
+                    elif isinstance(raw, dict):
+                        call_id = raw.get("call_id")
+                    tool_name = tool_names_by_call_id.get(call_id, "unknown_tool")
+                    # Prefer structured output if present; fall back to raw object repr.
+                    if hasattr(event.item, "output"):
+                        payload = getattr(event.item, "output")
+                    elif isinstance(raw, dict) and "output" in raw:
+                        payload = raw["output"]
+                    else:
+                        payload = raw or event.item
+                    print(f"-- Tool output from {tool_name}: {payload}")
+                elif event.item.type == "message_output_item":
+                    print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
                 else:
-                    tool_name = None
-                if call_id is None and hasattr(raw, "call_id"):
-                    call_id = raw.call_id
-                if call_id and tool_name:
-                    tool_names_by_call_id[call_id] = tool_name
-                suffix = f": {tool_name}" if tool_name else ""
-                print(f"-- Tool was called{suffix}")
-            elif event.item.type == "tool_call_output_item":
-                # Emit the tool output, associating it with the originating tool name if available.
-                raw = getattr(event.item, "raw_item", None)
-                call_id = None
-                if hasattr(raw, "call_id"):
-                    call_id = raw.call_id
-                elif isinstance(raw, dict):
-                    call_id = raw.get("call_id")
-                tool_name = tool_names_by_call_id.get(call_id, "unknown_tool")
-                # Prefer structured output if present; fall back to raw object repr.
-                if hasattr(event.item, "output"):
-                    payload = getattr(event.item, "output")
-                elif isinstance(raw, dict) and "output" in raw:
-                    payload = raw["output"]
-                else:
-                    payload = raw or event.item
-                print(f"-- Tool output from {tool_name}: {payload}")
-            elif event.item.type == "message_output_item":
-                print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
-            else:
-                pass
+                    pass
+    except Exception as exc:  # pragma: no cover - defensive logging
+        _write_prompt_error_log(
+            error=exc,
+            user_input=user_input,
+            agent_name=current_agent_name,
+            last_tool_call=last_tool_call,
+            model=BASE_MODEL,
+        )
+        raise
 
     final_output = getattr(result, "final_output", None)
     if final_output and output_dir:
