@@ -34,6 +34,7 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private const int RenderHeight = 1024;
     private const float CameraFov = 45f;
     private const float PaddingFactor = 1.1f;
+    private const float MinProjectionSizePx = 4f;
     private static readonly Color BackgroundColor = new Color(0.85f, 0.85f, 0.85f, 1f);
     private Camera _previewCamera;
     private RenderTexture _previewTexture;

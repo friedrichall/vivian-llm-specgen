@@ -22,7 +22,27 @@ public partial class GenerateInteractionsWindow
 
         Directory.CreateDirectory(groupPath);
 
+        var refreshedSelection = new List<GameObject>();
+        foreach (var kv in _selection)
+        {
+            if (kv.Value && kv.Key != null)
+            {
+                refreshedSelection.Add(kv.Key);
+            }
+        }
+
+        if (refreshedSelection.Count > 0)
+        {
+            _selectedObjects.Clear();
+            _selectedObjects.AddRange(refreshedSelection);
+        }
+
         var topLevel = GetTopLevelOnly(_selectedObjects);
+        if (topLevel.Count == 0)
+        {
+            Debug.LogError("No valid objects selected for export. Aborting scene.json generation.");
+            return;
+        }
         string groupPathUnity = $"Packages/vivian-example-prototypes/Resources/{_groupName}";
 
         // Clear old prefabs in the group folder so only the fresh prefab remains
@@ -104,7 +124,7 @@ public partial class GenerateInteractionsWindow
             {
                 width = RenderWidth,
                 height = RenderHeight,
-                projectionType = "perspective",
+                projectionType = "mixed",
                 fov = CameraFov,
                 paddingFactor = PaddingFactor
             }
@@ -117,6 +137,9 @@ public partial class GenerateInteractionsWindow
         {
             groupName = _groupName,
             renderSettings = renderResult.renderSettings,
+            coordinateConventions = BuildCoordinateConventions(),
+            imageConventions = BuildImageConventions(),
+            projectionDepthConvention = BuildProjectionDepthConvention(),
             objects = renderResult.manifestObjects,
             timestamp = DateTime.UtcNow.ToString("o")
         };
@@ -140,33 +163,81 @@ public partial class GenerateInteractionsWindow
         {
             groupName = _groupName,
             description = _interactionDescription,
-            objects = new List<ExportedObject>()
+            objects = new List<ExportedObject>(),
+            adjacency = new List<AdjacencyEntry>()
         };
 
+        var allNodes = new List<ExportedObject>();
         foreach (var go in topLevel)
         {
             if (go == null) continue;
-            export.objects.Add(SerializeGameObject(go));
+            export.objects.Add(SerializeGameObject(go, null, null, allNodes));
         }
 
+        export.adjacency = BuildAdjacency(allNodes);
         return export;
     }
 
-    private ExportedObject SerializeGameObject(GameObject go)
+    private ExportedObject SerializeGameObject(GameObject go, string parentStableId, string parentPath, List<ExportedObject> collector)
     {
+        string stableId = GetStableId(go);
+        string path = string.IsNullOrEmpty(parentPath) ? go.name : $"{parentPath}/{go.name}";
         var data = new ExportedObject
         {
+            stableId = stableId,
+            path = path,
+            parentStableId = parentStableId,
             name = go.name,
             transform = new SerializableTransform(go.transform),
             materials = ExtractMaterials(go),
             children = new List<ExportedObject>()
         };
 
-        for (int i = 0; i < go.transform.childCount; i++)
+        data.childrenStableIds = new List<string>();
+
+        Bounds bounds;
+        if (TryGetWorldBounds(go, out bounds))
         {
-            data.children.Add(SerializeGameObject(go.transform.GetChild(i).gameObject));
+            data.worldAabb = new WorldAabb
+            {
+                min = ToArray(bounds.min),
+                max = ToArray(bounds.max)
+            };
+            data.size = ToArray(bounds.size);
+            data.shapeFeatures = BuildShapeFeatures(bounds.size);
         }
 
+        data.obb = BuildObb(go);
+        data.meshStats = GetMeshStats(go);
+
+        var renderer = go.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            data.rendererType = renderer.GetType().Name;
+        }
+
+        var colliders = go.GetComponents<Collider>();
+        data.hasCollider = colliders.Length > 0;
+        if (colliders.Length == 1)
+        {
+            data.colliderType = colliders[0].GetType().Name;
+        }
+        else if (colliders.Length > 1)
+        {
+            data.colliderType = "Multiple";
+        }
+
+        for (int i = 0; i < go.transform.childCount; i++)
+        {
+            var child = SerializeGameObject(go.transform.GetChild(i).gameObject, stableId, path, collector);
+            data.children.Add(child);
+            if (!string.IsNullOrEmpty(child.stableId))
+            {
+                data.childrenStableIds.Add(child.stableId);
+            }
+        }
+
+        collector?.Add(data);
         return data;
     }
 
@@ -199,6 +270,407 @@ public partial class GenerateInteractionsWindow
         }
 
         return result.Count > 0 ? result : null;
+    }
+
+    private string GetStableId(GameObject go)
+    {
+        var globalId = GlobalObjectId.GetGlobalObjectIdSlow(go);
+        string id = globalId.ToString();
+        if (!string.IsNullOrEmpty(id) && !id.Contains("0000000000000000"))
+        {
+            return id;
+        }
+
+        return $"instance_{go.GetInstanceID()}";
+    }
+
+    private static string GetHierarchyPath(Transform t)
+    {
+        if (t == null) return string.Empty;
+
+        var stack = new Stack<string>();
+        while (t != null)
+        {
+            stack.Push(t.name);
+            t = t.parent;
+        }
+
+        return string.Join("/", stack);
+    }
+
+    private bool TryGetWorldBounds(GameObject go, out Bounds bounds)
+    {
+        bounds = default;
+        bool hasBounds = false;
+
+        var renderers = go.GetComponents<Renderer>();
+        foreach (var renderer in renderers)
+        {
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        var colliders = go.GetComponents<Collider>();
+        foreach (var collider in colliders)
+        {
+            if (!hasBounds)
+            {
+                bounds = collider.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(collider.bounds);
+            }
+        }
+
+        return hasBounds;
+    }
+
+    private bool TryGetLocalBounds(GameObject go, out Bounds bounds)
+    {
+        var skinned = go.GetComponent<SkinnedMeshRenderer>();
+        if (skinned != null)
+        {
+            bounds = skinned.localBounds;
+            return true;
+        }
+
+        var filter = go.GetComponent<MeshFilter>();
+        if (filter != null && filter.sharedMesh != null)
+        {
+            bounds = filter.sharedMesh.bounds;
+            return true;
+        }
+
+        var meshCollider = go.GetComponent<MeshCollider>();
+        if (meshCollider != null && meshCollider.sharedMesh != null)
+        {
+            bounds = meshCollider.sharedMesh.bounds;
+            return true;
+        }
+
+        var box = go.GetComponent<BoxCollider>();
+        if (box != null)
+        {
+            bounds = new Bounds(box.center, box.size);
+            return true;
+        }
+
+        var sphere = go.GetComponent<SphereCollider>();
+        if (sphere != null)
+        {
+            float diameter = sphere.radius * 2f;
+            bounds = new Bounds(sphere.center, new Vector3(diameter, diameter, diameter));
+            return true;
+        }
+
+        var capsule = go.GetComponent<CapsuleCollider>();
+        if (capsule != null)
+        {
+            bounds = new Bounds(capsule.center, GetCapsuleSize(capsule));
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static Vector3 GetCapsuleSize(CapsuleCollider capsule)
+    {
+        float diameter = capsule.radius * 2f;
+        switch (capsule.direction)
+        {
+            case 0:
+                return new Vector3(capsule.height, diameter, diameter);
+            case 1:
+                return new Vector3(diameter, capsule.height, diameter);
+            case 2:
+                return new Vector3(diameter, diameter, capsule.height);
+            default:
+                return new Vector3(diameter, capsule.height, diameter);
+        }
+    }
+
+    private OrientedBounds BuildObb(GameObject go)
+    {
+        Bounds localBounds;
+        if (!TryGetLocalBounds(go, out localBounds))
+        {
+            return null;
+        }
+
+        var t = go.transform;
+        Vector3 absScale = AbsVector3(t.lossyScale);
+        return new OrientedBounds
+        {
+            center = t.TransformPoint(localBounds.center),
+            axes = new[] { t.right, t.up, t.forward },
+            extents = Vector3.Scale(localBounds.extents, absScale)
+        };
+    }
+
+    private MeshStats GetMeshStats(GameObject go)
+    {
+        Mesh mesh = null;
+        var skinned = go.GetComponent<SkinnedMeshRenderer>();
+        if (skinned != null)
+        {
+            mesh = skinned.sharedMesh;
+        }
+
+        if (mesh == null)
+        {
+            var filter = go.GetComponent<MeshFilter>();
+            if (filter != null)
+            {
+                mesh = filter.sharedMesh;
+            }
+        }
+
+        if (mesh == null)
+        {
+            var meshCollider = go.GetComponent<MeshCollider>();
+            if (meshCollider != null)
+            {
+                mesh = meshCollider.sharedMesh;
+            }
+        }
+
+        if (mesh == null)
+        {
+            return null;
+        }
+
+        int triangles = 0;
+        int submeshes = mesh.subMeshCount;
+        for (int i = 0; i < submeshes; i++)
+        {
+            triangles += mesh.GetTriangles(i).Length / 3;
+        }
+
+        return new MeshStats
+        {
+            triangles = triangles,
+            vertices = mesh.vertexCount,
+            submeshes = submeshes
+        };
+    }
+
+    private ShapeFeatures BuildShapeFeatures(Vector3 size)
+    {
+        float x = Mathf.Abs(size.x);
+        float y = Mathf.Abs(size.y);
+        float z = Mathf.Abs(size.z);
+        float min = Mathf.Min(x, Mathf.Min(y, z));
+        float max = Mathf.Max(x, Mathf.Max(y, z));
+
+        return new ShapeFeatures
+        {
+            aspectRatios = new[]
+            {
+                SafeRatio(x, y),
+                SafeRatio(y, z),
+                SafeRatio(x, z)
+            },
+            thinness = max > 0f ? min / max : 0f
+        };
+    }
+
+    private static float SafeRatio(float numerator, float denominator)
+    {
+        return denominator > 0f ? numerator / denominator : 0f;
+    }
+
+    private static float[] ToArray(Vector3 value)
+    {
+        return new[] { value.x, value.y, value.z };
+    }
+
+    private static Vector3 AbsVector3(Vector3 value)
+    {
+        return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
+    }
+
+    private List<AdjacencyEntry> BuildAdjacency(List<ExportedObject> nodes)
+    {
+        var adjacency = new List<AdjacencyEntry>();
+        if (nodes == null || nodes.Count == 0) return adjacency;
+
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            var a = nodes[i];
+            if (a.worldAabb == null || a.size == null) continue;
+            var boundsA = ToBounds(a.worldAabb);
+            float maxA = MaxComponent(a.size);
+
+            for (int j = i + 1; j < nodes.Count; j++)
+            {
+                var b = nodes[j];
+                if (b.worldAabb == null || b.size == null) continue;
+
+                var boundsB = ToBounds(b.worldAabb);
+                float maxB = MaxComponent(b.size);
+
+                float minDistance = GetAabbDistance(boundsA, boundsB);
+                float threshold = Mathf.Max(0.001f, Mathf.Min(maxA, maxB) * 0.02f);
+                if (minDistance <= threshold)
+                {
+                    adjacency.Add(new AdjacencyEntry
+                    {
+                        aStableId = a.stableId,
+                        bStableId = b.stableId,
+                        minDistance = minDistance,
+                        contactAreaEstimate = EstimateContactArea(boundsA, boundsB)
+                    });
+                }
+            }
+        }
+
+        return adjacency;
+    }
+
+    private static Bounds ToBounds(WorldAabb aabb)
+    {
+        var min = new Vector3(aabb.min[0], aabb.min[1], aabb.min[2]);
+        var max = new Vector3(aabb.max[0], aabb.max[1], aabb.max[2]);
+        var bounds = new Bounds();
+        bounds.SetMinMax(min, max);
+        return bounds;
+    }
+
+    private static float MaxComponent(float[] size)
+    {
+        if (size == null || size.Length < 3) return 0f;
+        return Mathf.Max(size[0], Mathf.Max(size[1], size[2]));
+    }
+
+    private static float GetAabbDistance(Bounds a, Bounds b)
+    {
+        float dx = AxisDistance(a.min.x, a.max.x, b.min.x, b.max.x);
+        float dy = AxisDistance(a.min.y, a.max.y, b.min.y, b.max.y);
+        float dz = AxisDistance(a.min.z, a.max.z, b.min.z, b.max.z);
+        return Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    private static float AxisDistance(float minA, float maxA, float minB, float maxB)
+    {
+        if (maxA < minB) return minB - maxA;
+        if (maxB < minA) return minA - maxB;
+        return 0f;
+    }
+
+    private static float EstimateContactArea(Bounds a, Bounds b)
+    {
+        float ox = OverlapExtent(a.min.x, a.max.x, b.min.x, b.max.x);
+        float oy = OverlapExtent(a.min.y, a.max.y, b.min.y, b.max.y);
+        float oz = OverlapExtent(a.min.z, a.max.z, b.min.z, b.max.z);
+
+        int overlaps = 0;
+        if (ox > 0f) overlaps++;
+        if (oy > 0f) overlaps++;
+        if (oz > 0f) overlaps++;
+
+        if (overlaps == 3)
+        {
+            return Mathf.Max(ox * oy, Mathf.Max(ox * oz, oy * oz));
+        }
+
+        if (overlaps == 2)
+        {
+            if (ox > 0f && oy > 0f) return ox * oy;
+            if (ox > 0f && oz > 0f) return ox * oz;
+            if (oy > 0f && oz > 0f) return oy * oz;
+        }
+
+        return 0f;
+    }
+
+    private static float OverlapExtent(float minA, float maxA, float minB, float maxB)
+    {
+        float min = Mathf.Max(minA, minB);
+        float max = Mathf.Min(maxA, maxB);
+        return Mathf.Max(0f, max - min);
+    }
+
+    private CoordinateConventions BuildCoordinateConventions()
+    {
+        return new CoordinateConventions
+        {
+            units = "meter",
+            scaleToMeters = 1f,
+            coordinateSystem = new CoordinateSystemData
+            {
+                handedness = "left",
+                upAxis = "Y",
+                forwardAxis = "Z",
+                rightAxis = "X"
+            },
+            viewConventions = BuildViewConventions(),
+            matrixLayout = "row-major"
+        };
+    }
+
+    private ImageConventions BuildImageConventions()
+    {
+        return new ImageConventions
+        {
+            origin = "top-left",
+            yAxis = "down",
+            bboxFormat = "xywh_px"
+        };
+    }
+
+    private ProjectionDepthConvention BuildProjectionDepthConvention()
+    {
+        return new ProjectionDepthConvention
+        {
+            depthHint = "camera_forward_meters",
+            space = "camera",
+            direction = "+forward",
+            unit = "meter",
+            linearity = "linear"
+        };
+    }
+
+    private List<ViewConventionEntry> BuildViewConventions()
+    {
+        var list = new List<ViewConventionEntry>();
+        foreach (var view in ViewDirections)
+        {
+            Vector3 forward;
+            Vector3 up;
+            Vector3 right;
+            GetViewBasis(view.direction, out forward, out up, out right);
+            list.Add(new ViewConventionEntry
+            {
+                viewId = view.name,
+                cameraForward = forward,
+                cameraUp = up,
+                cameraRight = right
+            });
+        }
+
+        return list;
+    }
+
+    private void GetViewBasis(Vector3 viewDirection, out Vector3 forward, out Vector3 up, out Vector3 right)
+    {
+        forward = -viewDirection.normalized;
+        right = Vector3.Cross(Vector3.up, forward);
+        if (right.sqrMagnitude < 0.0001f)
+        {
+            right = Vector3.Cross(Vector3.right, forward);
+        }
+        right.Normalize();
+        up = Vector3.Cross(forward, right);
     }
 
     /// <summary>
