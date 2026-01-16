@@ -58,6 +58,13 @@ MANAGER_INSTRUCTIONS: str = """
         - Keep names consistent across Visualization/Interaction elements, States, and Transitions.
         """
 
+SCENE_FEEDBACK_INSTRUCTIONS: str = """
+        You are a lightweight scene feedback agent for testing.
+        You receive SCENE_JSON, optional VIEWS_MANIFEST_JSON, and optional images.
+        Describe the 3D scene in concise text based on the provided data.
+        Focus on objects, hierarchy, transforms, materials, and any missing or notable data.
+        """
+
 INTERACTION_ELEMENTS_INSTRUCTIONS = _read_doc("InteractionElementsDocuLLMFriendly")
 TRANSITIONS_INSTRUCTIONS = _read_doc("TransitionsDocuLLMFriendly")
 STATES_INSTRUCTIONS = _read_doc("StatesDocuLLMFriendly")

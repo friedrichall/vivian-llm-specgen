@@ -18,6 +18,9 @@ public partial class GenerateInteractionsWindow
     {
         public string groupName;
         public RenderSettingsData renderSettings;
+        public CoordinateConventions coordinateConventions;
+        public ImageConventions imageConventions;
+        public ProjectionDepthConvention projectionDepthConvention;
         public List<RenderedObjectManifest> objects;
         public string timestamp;
     }
@@ -36,17 +39,43 @@ public partial class GenerateInteractionsWindow
     private class RenderedObjectManifest
     {
         public string objectName;
-        public int stableId;
+        public string stableId;
+        public string path;
         public List<ManifestView> views;
     }
 
     [Serializable]
     private class ManifestView
     {
-        public string viewName;
-        public string file;
+        public string viewId;
+        public ManifestImage image;
+        public string projectionType;
+        public float near;
+        public float far;
+        public float aspect;
+        public float fovY;
+        public float orthoSize;
+        public float[] worldToCamera;
+        public float[] projection;
         public ManifestPose cameraPose;
         public Vector3 lookAt;
+        public List<ProjectionEntry> projections;
+    }
+
+    [Serializable]
+    private class ManifestImage
+    {
+        public string file;
+        public int width;
+        public int height;
+    }
+
+    [Serializable]
+    private class ProjectionEntry
+    {
+        public string stableId;
+        public float[] bboxPx;
+        public float depthHint;
     }
 
     [Serializable]
@@ -74,14 +103,27 @@ public partial class GenerateInteractionsWindow
         public string groupName;
         public string description;
         public List<ExportedObject> objects;
+        public List<AdjacencyEntry> adjacency;
     }
 
     [Serializable]
     private class ExportedObject
     {
+        public string stableId;
+        public string path;
+        public string parentStableId;
+        public List<string> childrenStableIds;
         public string name;
         public SerializableTransform transform;
         public List<SerializableMaterial> materials;
+        public string rendererType;
+        public bool hasCollider;
+        public string colliderType;
+        public MeshStats meshStats;
+        public WorldAabb worldAabb;
+        public float[] size;
+        public OrientedBounds obb;
+        public ShapeFeatures shapeFeatures;
         public List<ExportedObject> children;
     }
 
@@ -106,6 +148,91 @@ public partial class GenerateInteractionsWindow
         public string name;
         public Color color;
         public string mainTexture;
+    }
+
+    [Serializable]
+    private class WorldAabb
+    {
+        public float[] min;
+        public float[] max;
+    }
+
+    [Serializable]
+    private class OrientedBounds
+    {
+        public Vector3 center;
+        public Vector3[] axes;
+        public Vector3 extents;
+    }
+
+    [Serializable]
+    private class MeshStats
+    {
+        public int triangles;
+        public int vertices;
+        public int submeshes;
+    }
+
+    [Serializable]
+    private class ShapeFeatures
+    {
+        public float[] aspectRatios;
+        public float thinness;
+    }
+
+    [Serializable]
+    private class AdjacencyEntry
+    {
+        public string aStableId;
+        public string bStableId;
+        public float minDistance;
+        public float contactAreaEstimate;
+    }
+
+    [Serializable]
+    private class CoordinateConventions
+    {
+        public string units;
+        public float scaleToMeters;
+        public CoordinateSystemData coordinateSystem;
+        public List<ViewConventionEntry> viewConventions;
+        public string matrixLayout;
+    }
+
+    [Serializable]
+    private class ImageConventions
+    {
+        public string origin;
+        public string yAxis;
+        public string bboxFormat;
+    }
+
+    [Serializable]
+    private class ProjectionDepthConvention
+    {
+        public string depthHint;
+        public string space;
+        public string direction;
+        public string unit;
+        public string linearity;
+    }
+
+    [Serializable]
+    private class CoordinateSystemData
+    {
+        public string handedness;
+        public string upAxis;
+        public string forwardAxis;
+        public string rightAxis;
+    }
+
+    [Serializable]
+    private class ViewConventionEntry
+    {
+        public string viewId;
+        public Vector3 cameraForward;
+        public Vector3 cameraUp;
+        public Vector3 cameraRight;
     }
 }
 #endif
