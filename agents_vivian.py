@@ -20,12 +20,42 @@ from scene_feedback_agent import build_scene_feedback_agent, write_scene_feedbac
 
 BASE_MODEL = "gpt-5.2"
 OUTPUT_DIR = Path("generated_specs")
-MANAGER_AGENT_VARIANT = os.getenv("VIVIAN_MANAGER_AGENT_VARIANT", "scene_feedback").lower()
+MANAGER_AGENT_VARIANT = "manager"  # options: "manager", "scene_feedback"
 
 USER_INPUT = (
     "generate a complete functional specification of a virtual prototype with two cubes: one is a slider and the other one is a rotatable."
 )
 
+interaction_elements_agent = Agent(
+    name="interaction_elements_agent",
+    model=BASE_MODEL,
+    instructions=INTERACTION_ELEMENTS_INSTRUCTIONS,
+    output_type=InteractionElements
+)
+transitions_agent = Agent(
+    name="transitions_agent",
+    model=BASE_MODEL,
+    instructions=TRANSITIONS_INSTRUCTIONS,
+    output_type=Transitions
+)
+states_agent = Agent(
+    name="states_agent",
+    model=BASE_MODEL,
+    instructions=STATES_INSTRUCTIONS,
+    output_type=States
+)
+visualization_elements_agent = Agent(
+    name="visualization_elements_agent",
+    model=BASE_MODEL,
+    instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
+    output_type=VisualizationElements
+)
+visualization_arrays_agent = Agent(
+    name="visualization_arrays_agent",
+    model=BASE_MODEL,
+    instructions=VISUALIZATION_ARRAYS_INSTRUCTIONS,
+    output_type=VisualizationArrays
+)
 
 def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
     object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
@@ -44,37 +74,6 @@ def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
 
 def build_manager_agent() -> Agent:
     """Create the Vivian manager agent with all sub-agents attached."""
-    interaction_elements_agent = Agent(
-        name="interaction_elements_agent",
-        model=BASE_MODEL,
-        instructions=INTERACTION_ELEMENTS_INSTRUCTIONS,
-        output_type=InteractionElements
-    )
-    transitions_agent = Agent(
-        name="transitions_agent",
-        model=BASE_MODEL,
-        instructions=TRANSITIONS_INSTRUCTIONS,
-        output_type=Transitions
-    )
-    states_agent = Agent(
-        name="states_agent",
-        model=BASE_MODEL,
-        instructions=STATES_INSTRUCTIONS,
-        output_type=States
-    )
-    visualization_elements_agent = Agent(
-        name="visualization_elements_agent",
-        model=BASE_MODEL,
-        instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
-        output_type=VisualizationElements
-    )
-    visualization_arrays_agent = Agent(
-        name="visualization_arrays_agent",
-        model=BASE_MODEL,
-        instructions=VISUALIZATION_ARRAYS_INSTRUCTIONS,
-        output_type=VisualizationArrays
-    )
-
     return Agent(
         name="manager_agent",
         model=BASE_MODEL,
@@ -106,7 +105,7 @@ def build_manager_agent() -> Agent:
 
 
 def build_active_manager_agent() -> Agent:
-    """Select which manager agent implementation to use for this run."""
+    """Select manager agent or simple scene feedback agent for testing."""
     if MANAGER_AGENT_VARIANT == "manager":
         return build_manager_agent()
     return build_scene_feedback_agent(BASE_MODEL)
