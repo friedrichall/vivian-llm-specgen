@@ -1,4 +1,5 @@
 import json
+import os
 import textwrap
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -15,9 +16,11 @@ from model.output_type_States import States
 from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationElements import VisualizationElements
 from model.output_type_VisualizationArrays import VisualizationArrays
+from scene_feedback_agent import build_scene_feedback_agent, write_scene_feedback
 
 BASE_MODEL = "gpt-5.2"
 OUTPUT_DIR = Path("generated_specs")
+MANAGER_AGENT_VARIANT = os.getenv("VIVIAN_MANAGER_AGENT_VARIANT", "scene_feedback").lower()
 
 USER_INPUT = (
     "generate a complete functional specification of a virtual prototype with two cubes: one is a slider and the other one is a rotatable."
@@ -102,9 +105,19 @@ def build_manager_agent() -> Agent:
     )
 
 
-async def run_vivian(user_input: str | List[Dict[str, Any]], output_dir: Path | None = OUTPUT_DIR) -> FunctionalSpecification | None:
+def build_active_manager_agent() -> Agent:
+    """Select which manager agent implementation to use for this run."""
+    if MANAGER_AGENT_VARIANT == "manager":
+        return build_manager_agent()
+    return build_scene_feedback_agent(BASE_MODEL)
+
+
+async def run_vivian(
+    user_input: str | List[Dict[str, Any]],
+    output_dir: Path | None = OUTPUT_DIR,
+) -> FunctionalSpecification | str | None:
     """Run the Vivian agent pipeline and optionally persist outputs."""
-    manager_agent = build_manager_agent()
+    manager_agent = build_active_manager_agent()
     print(f"[manager_agent] Received user input: {_summarize_user_input(user_input)}")
     tool_names_by_call_id = {}
     current_agent_name = manager_agent.name
@@ -161,7 +174,7 @@ async def run_vivian(user_input: str | List[Dict[str, Any]], output_dir: Path | 
         raise
 
     final_output = getattr(result, "final_output", None)
-    if final_output and output_dir:
+    if isinstance(final_output, FunctionalSpecification) and output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
         file_map = {
             "InteractionElements.json": final_output.interaction_elements.model_dump(),
@@ -174,6 +187,10 @@ async def run_vivian(user_input: str | List[Dict[str, Any]], output_dir: Path | 
             path = output_dir / filename
             path.write_text(json.dumps(payload, indent=4, ensure_ascii=False), encoding="utf-8")
             print(f"Wrote {path}")
+    elif isinstance(final_output, str):
+        print(f"Scene feedback:\n{final_output}")
+        path = write_scene_feedback(final_output)
+        print(f"Wrote {path}")
 
     return final_output
 
