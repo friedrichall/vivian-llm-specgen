@@ -104,6 +104,8 @@ public partial class GenerateInteractionsWindow
         public string description;
         public List<ExportedObject> objects;
         public List<AdjacencyEntry> adjacency;
+        public List<int> interactiveObjects;
+        public List<int> visualizationObjects;
     }
 
     [Serializable]
@@ -114,6 +116,10 @@ public partial class GenerateInteractionsWindow
         public string parentStableId;
         public List<string> childrenStableIds;
         public string name;
+        public List<string> roles;
+        public InteractionParams interactionParams;
+        public string unityTag;
+        public bool isPartOfDevice;
         public SerializableTransform transform;
         public List<SerializableMaterial> materials;
         public string rendererType;
@@ -125,6 +131,14 @@ public partial class GenerateInteractionsWindow
         public OrientedBounds obb;
         public ShapeFeatures shapeFeatures;
         public List<ExportedObject> children;
+    }
+
+    [Serializable]
+    private class InteractionParams
+    {
+        public string type;
+        public string axis;
+        public float range;
     }
 
     [Serializable]

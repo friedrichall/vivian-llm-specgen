@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -168,17 +169,24 @@ public partial class GenerateInteractionsWindow
         };
 
         var allNodes = new List<ExportedObject>();
+        var primaryRoot = topLevel.Count > 0 ? topLevel[0] : null;
         foreach (var go in topLevel)
         {
             if (go == null) continue;
-            export.objects.Add(SerializeGameObject(go, null, null, allNodes));
+            export.objects.Add(SerializeGameObject(go, null, null, allNodes, primaryRoot));
         }
 
         export.adjacency = BuildAdjacency(allNodes);
+        PopulateRoleIndices(export);
         return export;
     }
 
-    private ExportedObject SerializeGameObject(GameObject go, string parentStableId, string parentPath, List<ExportedObject> collector)
+    private ExportedObject SerializeGameObject(
+        GameObject go,
+        string parentStableId,
+        string parentPath,
+        List<ExportedObject> collector,
+        GameObject primaryRoot)
     {
         string stableId = GetStableId(go);
         string path = string.IsNullOrEmpty(parentPath) ? go.name : $"{parentPath}/{go.name}";
@@ -192,6 +200,12 @@ public partial class GenerateInteractionsWindow
             materials = ExtractMaterials(go),
             children = new List<ExportedObject>()
         };
+
+        var roles = DetermineRoles(go);
+        data.roles = roles != null && roles.Count > 0 ? roles : null;
+        data.interactionParams = DetermineInteractionParams(go);
+        data.unityTag = go.tag;
+        data.isPartOfDevice = primaryRoot != null && (go == primaryRoot || go.transform.IsChildOf(primaryRoot.transform));
 
         data.childrenStableIds = new List<string>();
 
@@ -229,7 +243,7 @@ public partial class GenerateInteractionsWindow
 
         for (int i = 0; i < go.transform.childCount; i++)
         {
-            var child = SerializeGameObject(go.transform.GetChild(i).gameObject, stableId, path, collector);
+            var child = SerializeGameObject(go.transform.GetChild(i).gameObject, stableId, path, collector, primaryRoot);
             data.children.Add(child);
             if (!string.IsNullOrEmpty(child.stableId))
             {
@@ -239,6 +253,412 @@ public partial class GenerateInteractionsWindow
 
         collector?.Add(data);
         return data;
+    }
+
+    private void PopulateRoleIndices(SceneExport export)
+    {
+        var interactive = new List<int>();
+        var visualization = new List<int>();
+        int index = 0;
+
+        if (export == null || export.objects == null)
+        {
+            if (export != null)
+            {
+                export.interactiveObjects = interactive;
+                export.visualizationObjects = visualization;
+            }
+            return;
+        }
+
+        var stack = new Stack<ExportedObject>();
+        for (int i = export.objects.Count - 1; i >= 0; i--)
+        {
+            if (export.objects[i] != null)
+            {
+                stack.Push(export.objects[i]);
+            }
+        }
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            if (HasRole(current.roles, "InteractionElement"))
+            {
+                interactive.Add(index);
+            }
+            if (HasRole(current.roles, "VisualizationElement"))
+            {
+                visualization.Add(index);
+            }
+            index++;
+
+            if (current.children != null && current.children.Count > 0)
+            {
+                for (int i = current.children.Count - 1; i >= 0; i--)
+                {
+                    if (current.children[i] != null)
+                    {
+                        stack.Push(current.children[i]);
+                    }
+                }
+            }
+        }
+
+        export.interactiveObjects = interactive;
+        export.visualizationObjects = visualization;
+    }
+
+    private static bool HasRole(List<string> roles, string role)
+    {
+        if (roles == null || string.IsNullOrEmpty(role)) return false;
+        for (int i = 0; i < roles.Count; i++)
+        {
+            if (string.Equals(roles[i], role, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private List<string> DetermineRoles(GameObject go)
+    {
+        var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (go == null)
+        {
+            return new List<string>();
+        }
+
+        string name = go.name ?? string.Empty;
+        var parent = go.transform != null ? go.transform.parent : null;
+        string parentName = parent != null ? parent.name ?? string.Empty : string.Empty;
+        if (!string.IsNullOrEmpty(parentName) && ContainsAny(parentName, "door"))
+        {
+            roles.Add("DoorComponent");
+        }
+
+        if (string.Equals(go.tag, "Interactable", StringComparison.OrdinalIgnoreCase))
+        {
+            roles.Add("InteractionElement");
+        }
+
+        if (string.Equals(go.tag, "Visualization", StringComparison.OrdinalIgnoreCase))
+        {
+            roles.Add("VisualizationElement");
+        }
+
+        var hinge = go.GetComponent<HingeJoint>();
+        if (hinge != null)
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Door");
+        }
+
+        if (go.GetComponent<UnityEngine.UI.Button>() != null)
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Button");
+        }
+
+        if (go.GetComponent<UnityEngine.UI.Slider>() != null)
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Slider");
+        }
+
+        if (go.GetComponent<Light>() != null)
+        {
+            roles.Add("VisualizationElement");
+        }
+
+        var vivianElement = go.GetComponent("VivianElement");
+        if (vivianElement != null)
+        {
+            var typeProp = vivianElement.GetType().GetProperty("Type");
+            if (typeProp != null)
+            {
+                var rawValue = typeProp.GetValue(vivianElement);
+                var value = rawValue as string ?? rawValue?.ToString();
+                if (string.Equals(value, "Visualization", StringComparison.OrdinalIgnoreCase))
+                {
+                    roles.Add("VisualizationElement");
+                }
+                else if (string.Equals(value, "Interaction", StringComparison.OrdinalIgnoreCase))
+                {
+                    roles.Add("InteractionElement");
+                }
+            }
+        }
+
+        if (ContainsAny(name, "button", "switch"))
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Button");
+        }
+
+        if (ContainsAny(name, "toggle"))
+        {
+            roles.Add("InteractionElement");
+        }
+
+        if (ContainsAny(name, "knob", "dial"))
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Rotatable");
+        }
+
+        if (ContainsAny(name, "slider", "handle"))
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Slider");
+        }
+
+        if (ContainsAny(name, "door"))
+        {
+            roles.Add("InteractionElement");
+            roles.Add("Door");
+        }
+
+        if (ContainsAny(name, "screen", "display"))
+        {
+            roles.Add("VisualizationElement");
+            roles.Add("Screen");
+        }
+
+        var renderer = go.GetComponent<Renderer>();
+        bool hasVisibleArea = false;
+        if (renderer != null)
+        {
+            Vector3 size = renderer.bounds.size;
+            float area = Mathf.Max(size.x * size.y, Mathf.Max(size.x * size.z, size.y * size.z));
+            hasVisibleArea = area > 0.0001f;
+        }
+        if (renderer != null && renderer.sharedMaterials != null)
+        {
+            foreach (var mat in renderer.sharedMaterials)
+            {
+                if (mat == null) continue;
+
+                string matName = mat.name ?? string.Empty;
+                bool isScreenLike = ContainsAny(matName, "screen", "display");
+                bool isEmissiveName = ContainsAny(matName, "emissive", "emission", "led");
+                bool hasEmission = false;
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    Color emission = mat.GetColor("_EmissionColor");
+                    hasEmission = emission.maxColorComponent > 0f;
+                    if (emission.maxColorComponent > 0.5f && hasVisibleArea)
+                    {
+                        roles.Add("VisualizationElement");
+                        roles.Add("Screen");
+                    }
+                }
+
+                if (!hasEmission && mat.IsKeywordEnabled("_EMISSION"))
+                {
+                    hasEmission = true;
+                }
+
+                if (isScreenLike)
+                {
+                    roles.Add("VisualizationElement");
+                    roles.Add("Screen");
+                }
+                else if (isEmissiveName || hasEmission)
+                {
+                    roles.Add("VisualizationElement");
+                }
+            }
+        }
+
+        if (roles.Contains("VisualizationElement") && !string.Equals(go.tag, "Visualization", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                go.tag = "Visualization";
+            }
+            catch (UnityException)
+            {
+                Debug.LogWarning($"Unity tag 'Visualization' is not defined in the tag manager. Please add it manually. Object: {go.name}");
+            }
+        }
+
+        if (roles.Contains("InteractionElement"))
+        {
+            string currentTag = null;
+            try
+            {
+                currentTag = go.tag;
+            }
+            catch (UnityException)
+            {
+                currentTag = null;
+            }
+
+            if (string.IsNullOrEmpty(currentTag) || string.Equals(currentTag, "Untagged", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    go.tag = "Interactable";
+                }
+                catch (UnityException)
+                {
+                    Debug.LogWarning($"Unity tag 'Interactable' is not defined in the tag manager. Please add it manually. Object: {go.name}");
+                }
+            }
+        }
+
+        var list = roles
+            .Where(role => !string.IsNullOrEmpty(role))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (list.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        list.Sort(StringComparer.OrdinalIgnoreCase);
+        return list;
+    }
+
+    private InteractionParams DetermineInteractionParams(GameObject go)
+    {
+        if (go == null)
+        {
+            return null;
+        }
+
+        string name = go.name ?? string.Empty;
+        bool isSlider = ContainsAny(name, "slider", "handle");
+        bool isDoor = ContainsAny(name, "door");
+        bool isRotatable = isDoor || ContainsAny(name, "knob", "dial", "rotary");
+
+        if (!isSlider && !isRotatable)
+        {
+            return null;
+        }
+
+        if (isSlider)
+        {
+            string axis = null;
+            float range = 0f;
+
+            if (TryGetLocalBounds(go, out Bounds bounds))
+            {
+                Vector3 scaledSize = Vector3.Scale(bounds.size, AbsVector3(go.transform.lossyScale));
+                axis = AxisFromSize(scaledSize);
+                range = RangeFromSize(scaledSize, axis);
+            }
+
+            if (string.IsNullOrEmpty(axis))
+            {
+                axis = "x";
+            }
+
+            return new InteractionParams
+            {
+                type = "Slider",
+                axis = axis,
+                range = range
+            };
+        }
+
+        string rotType = isDoor ? "Door" : "Rotatable";
+        string rotAxis = null;
+        float rotRange = 0f;
+
+        var hinge = go.GetComponent<HingeJoint>();
+        if (hinge != null)
+        {
+            rotAxis = AxisFromVector(hinge.axis);
+            if (hinge.useLimits)
+            {
+                rotRange = Mathf.Abs(hinge.limits.max - hinge.limits.min);
+            }
+        }
+
+        if (string.IsNullOrEmpty(rotAxis))
+        {
+            rotAxis = AxisFromBounds(go);
+        }
+
+        if (rotRange <= 0f)
+        {
+            rotRange = isDoor ? 90f : 270f;
+        }
+
+        return new InteractionParams
+        {
+            type = rotType,
+            axis = rotAxis,
+            range = rotRange
+        };
+    }
+
+    private string AxisFromBounds(GameObject go)
+    {
+        if (TryGetLocalBounds(go, out Bounds bounds))
+        {
+            Vector3 scaledSize = Vector3.Scale(bounds.size, AbsVector3(go.transform.lossyScale));
+            return AxisFromSize(scaledSize);
+        }
+
+        return "y";
+    }
+
+    private static string AxisFromVector(Vector3 axis)
+    {
+        float ax = Mathf.Abs(axis.x);
+        float ay = Mathf.Abs(axis.y);
+        float az = Mathf.Abs(axis.z);
+
+        if (ax >= ay && ax >= az) return "x";
+        if (ay >= az) return "y";
+        return "z";
+    }
+
+    private static string AxisFromSize(Vector3 size)
+    {
+        float ax = Mathf.Abs(size.x);
+        float ay = Mathf.Abs(size.y);
+        float az = Mathf.Abs(size.z);
+
+        if (ax >= ay && ax >= az) return "x";
+        if (ay >= az) return "y";
+        return "z";
+    }
+
+    private static float RangeFromSize(Vector3 size, string axis)
+    {
+        switch (axis)
+        {
+            case "x":
+                return Mathf.Abs(size.x);
+            case "y":
+                return Mathf.Abs(size.y);
+            case "z":
+                return Mathf.Abs(size.z);
+            default:
+                return 0f;
+        }
+    }
+
+    private static bool ContainsAny(string value, params string[] tokens)
+    {
+        if (string.IsNullOrEmpty(value) || tokens == null || tokens.Length == 0) return false;
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            if (string.IsNullOrEmpty(tokens[i])) continue;
+            if (value.IndexOf(tokens[i], StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private List<SerializableMaterial> ExtractMaterials(GameObject go)
