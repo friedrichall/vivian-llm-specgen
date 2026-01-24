@@ -224,7 +224,9 @@ def _load_views_manifest(manifest_path: Path) -> Tuple[Dict[str, Any], str]:
         for view in views:
             if not isinstance(view, dict):
                 raise ValueError("Malformed views manifest: view entries must be objects.")
-            if "viewName" not in view or "file" not in view:
+            view_name = _get_view_name(view)
+            view_file = _get_view_file(view)
+            if not view_name or not view_file:
                 raise ValueError("Malformed views manifest: view missing required keys.")
 
     return data, raw_text
@@ -244,7 +246,7 @@ def _select_ordered_views(views: Iterable[Dict[str, Any]]) -> Tuple[List[Dict[st
     """Sort views into the preferred ordering and list missing names."""
     view_by_name: Dict[str, Dict[str, Any]] = {}
     for view in views:
-        view_name = view.get("viewName") if isinstance(view, dict) else None
+        view_name = _get_view_name(view) if isinstance(view, dict) else None
         if isinstance(view_name, str) and view_name not in view_by_name:
             view_by_name[view_name] = view
 
@@ -274,8 +276,8 @@ def _collect_object_images(group_dir: Path, obj: Dict[str, Any]) -> ObjectImageS
     skipped_views: List[str] = []
 
     for view in ordered_views:
-        view_name = view.get("viewName")
-        file_name = view.get("file")
+        view_name = _get_view_name(view)
+        file_name = _get_view_file(view)
         if not isinstance(view_name, str) or not isinstance(file_name, str):
             continue
         if not _is_rgb_view_file(file_name):
@@ -353,6 +355,32 @@ def _chunk_objects(items: List[ObjectImageSelection], chunk_size: int) -> List[L
     if chunk_size <= 0:
         return [items]
     return [items[idx: idx + chunk_size] for idx in range(0, len(items), chunk_size)]
+
+
+def _get_view_name(view: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(view, dict):
+        return None
+    name = view.get("viewName")
+    if isinstance(name, str) and name:
+        return name
+    name = view.get("viewId")
+    if isinstance(name, str) and name:
+        return name
+    return None
+
+
+def _get_view_file(view: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(view, dict):
+        return None
+    file_name = view.get("file")
+    if isinstance(file_name, str) and file_name:
+        return file_name
+    image = view.get("image")
+    if isinstance(image, dict):
+        file_name = image.get("file")
+        if isinstance(file_name, str) and file_name:
+            return file_name
+    return None
 
 
 def _build_base64_image_items(images: List[ImagePayload]) -> List[Dict[str, Any]]:
