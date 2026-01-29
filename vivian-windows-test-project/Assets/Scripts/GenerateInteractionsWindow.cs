@@ -30,6 +30,8 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private bool _showChildObjects = false;
     private string _groupName = string.Empty;
     private string _interactionDescription = string.Empty;
+    private bool _startVivianPipeline = true;
+    private bool _onlySceneAnalysis = false;
     private const int RenderWidth = 1024;
     private const int RenderHeight = 1024;
     private const float CameraFov = 45f;

@@ -1129,7 +1129,9 @@ public partial class GenerateInteractionsWindow
             $"\"{scriptPath}\"",
             $"\"{_groupName}\"",
             $"\"{escapedDesc}\"",
-            $"\"{jsonPath}\""
+            $"\"{jsonPath}\"",
+            $"\"--start_pipeline={(_startVivianPipeline ? 1 : 0)}\"",
+            $"\"--only_scene_analysis={(_onlySceneAnalysis ? 1 : 0)}\""
         };
         foreach (var go in _selectedObjects)
         {
@@ -1148,6 +1150,8 @@ public partial class GenerateInteractionsWindow
         };
 
         psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
+        psi.EnvironmentVariables["VIVIAN_START_PIPELINE"] = _startVivianPipeline ? "1" : "0";
+        psi.EnvironmentVariables["VIVIAN_ONLY_SCENE_ANALYSIS"] = _onlySceneAnalysis ? "1" : "0";
         psi.StandardOutputEncoding = Encoding.UTF8;
         psi.StandardErrorEncoding  = Encoding.UTF8;
         

@@ -9,12 +9,14 @@ public partial class GenerateInteractionsWindow
 {
     private void DrawSelectionStep()
     {
+        EditorGUILayout.BeginVertical();
         EditorGUILayout.LabelField("GameObjects in Active Scene", EditorStyles.boldLabel);
 
         var scene = SceneManager.GetActiveScene();
         if (!scene.IsValid())
         {
             EditorGUILayout.LabelField("No active scene loaded.");
+            EditorGUILayout.EndVertical();
             return;
         }
 
@@ -73,14 +75,21 @@ public partial class GenerateInteractionsWindow
         EditorGUILayout.Space();
         _groupName = EditorGUILayout.TextField("Group Name", _groupName);
 
-        if (GUILayout.Button("Next"))
-        {
-            PrepareInteractionDefinition();
-        }
+        GUILayout.FlexibleSpace();
+        DrawPageSwitchButton("Next", PrepareInteractionDefinition);
+        EditorGUILayout.EndVertical();
     }
 
     private void DrawInteractionElementsStep()
     {
+        EditorGUILayout.BeginVertical();
+        EditorGUILayout.LabelField("Vivian Pipeline", EditorStyles.boldLabel);
+        _startVivianPipeline = EditorGUILayout.ToggleLeft("Start Vivian Pipeline (ON/OFF)", _startVivianPipeline);
+        EditorGUI.BeginDisabledGroup(!_startVivianPipeline);
+        _onlySceneAnalysis = EditorGUILayout.ToggleLeft("Only Scene Analysis (ON/OFF)", _onlySceneAnalysis);
+        EditorGUI.EndDisabledGroup();
+        EditorGUILayout.Space();
+
         EditorGUILayout.LabelField("Selected Objects", EditorStyles.boldLabel);
         foreach (var go in _selectedObjects)
         {
@@ -107,6 +116,10 @@ public partial class GenerateInteractionsWindow
         }
         GUI.backgroundColor = previousColor;
         EditorGUI.EndDisabledGroup();
+
+        GUILayout.FlexibleSpace();
+        DrawPageSwitchButton("Back", () => { _currentStep = Step.SelectObjects; });
+        EditorGUILayout.EndVertical();
     }
 
     private void PrepareInteractionDefinition()
@@ -173,6 +186,19 @@ public partial class GenerateInteractionsWindow
             if (!hasSelectedAncestor) result.Add(go);
         }
         return result;
+    }
+
+    private void DrawPageSwitchButton(string label, System.Action onClick)
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button(label, GUILayout.Width(120)))
+        {
+            onClick?.Invoke();
+        }
+        GUILayout.FlexibleSpace();
+        EditorGUILayout.EndHorizontal();
     }
 }
 #endif

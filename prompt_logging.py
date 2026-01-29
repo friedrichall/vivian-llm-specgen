@@ -10,6 +10,7 @@ from constants.agent_instructions import (
     STATES_INSTRUCTIONS,
     VISUALIZATION_ELEMENTS_INSTRUCTIONS,
     VISUALIZATION_ARRAYS_INSTRUCTIONS,
+    SCENE_ANALYSIS_INSTRUCTIONS,
 )
 
 PROMPT_LOG_DIR = Path("logs")
@@ -17,6 +18,7 @@ PROMPT_ERROR_LOG = PROMPT_LOG_DIR / "prompt_errors.log"
 
 AGENT_INSTRUCTIONS_BY_NAME = {
     "manager_agent": MANAGER_INSTRUCTIONS,
+    "scene_analysis_agent": SCENE_ANALYSIS_INSTRUCTIONS,
     "interaction_elements_agent": INTERACTION_ELEMENTS_INSTRUCTIONS,
     "transitions_agent": TRANSITIONS_INSTRUCTIONS,
     "states_agent": STATES_INSTRUCTIONS,

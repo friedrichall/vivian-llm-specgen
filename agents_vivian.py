@@ -1,5 +1,8 @@
+import asyncio
 import json
 import os
+import sys
+import traceback
 import textwrap
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -12,10 +15,19 @@ from constants.agent_instructions import MANAGER_INSTRUCTIONS, INTERACTION_ELEME
 from prompt_logging import _summarize_user_input, _extract_tool_call, _write_prompt_error_log
 from model.output_type_FuncSpec import FunctionalSpecification
 from model.output_type_InteractionElements import InteractionElements
+from model.output_type_SceneUnderstanding import SceneUnderstanding
 from model.output_type_States import States
 from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationElements import VisualizationElements
 from model.output_type_VisualizationArrays import VisualizationArrays
+from scene_analysis_agent import (
+    apply_scene_feedback,
+    build_scene_analysis_agent,
+    build_scene_context,
+    is_scene_feedback_confirmed,
+    summarize_scene_understanding,
+    write_scene_understanding,
+)
 from scene_feedback_agent import build_scene_feedback_agent, write_scene_feedback
 
 BASE_MODEL = "gpt-5.2"
@@ -56,6 +68,7 @@ visualization_arrays_agent = Agent(
     instructions=VISUALIZATION_ARRAYS_INSTRUCTIONS,
     output_type=VisualizationArrays
 )
+scene_analysis_agent = build_scene_analysis_agent(BASE_MODEL)
 
 def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
     object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
@@ -79,6 +92,10 @@ def build_manager_agent() -> Agent:
         model=BASE_MODEL,
         instructions=MANAGER_INSTRUCTIONS,
         tools=[
+            scene_analysis_agent.as_tool(
+                tool_name="scene_analysis_agent",
+                tool_description="Analyzes the Unity scene JSON (+ optional views/images) and returns SceneUnderstanding."
+            ),
             interaction_elements_agent.as_tool(
                 tool_name="interaction_elements_JSON_generator",
                 tool_description="Generates the InteractionElements.json file based on the prototype description and existing elements."
@@ -111,26 +128,47 @@ def build_active_manager_agent() -> Agent:
     return build_scene_feedback_agent(BASE_MODEL)
 
 
-async def run_vivian(
+def _append_scene_context_to_input(
     user_input: str | List[Dict[str, Any]],
-    output_dir: Path | None = OUTPUT_DIR,
-) -> FunctionalSpecification | str | None:
-    """Run the Vivian agent pipeline and optionally persist outputs."""
-    manager_agent = build_active_manager_agent()
-    print(f"[manager_agent] Received user input: {_summarize_user_input(user_input)}")
+    scene_understanding: SceneUnderstanding,
+) -> str | List[Dict[str, Any]]:
+    context_text = build_scene_context(scene_understanding)
+    if isinstance(user_input, str):
+        return f"{user_input}\n\n{context_text}"
+    input_items = list(user_input)
+    input_items.append(
+        {
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": context_text}],
+        }
+    )
+    return input_items
+
+
+async def _stream_agent_run(
+    agent: Agent,
+    user_input: str | List[Dict[str, Any]],
+    *,
+    label: str,
+) -> Any:
+    print(f"[{label}] Received user input: {_summarize_user_input(user_input)}")
+    print(f"[{label}] Starting streamed run (agent={agent.name})")
     tool_names_by_call_id = {}
-    current_agent_name = manager_agent.name
+    current_agent_name = agent.name
     last_tool_call: Optional[Dict[str, Any]] = None
     try:
-        result = Runner.run_streamed(manager_agent, input=user_input)
+        result = Runner.run_streamed(agent, input=user_input)
         async for event in result.stream_events():
             if event.type == "raw_response_event":
+                #print(f"[{label}] raw_response_event")
                 continue
             elif event.type == "agent_updated_stream_event":
                 current_agent_name = event.new_agent.name
-                print(f"Agent updated: {event.new_agent.name}")
+                print(f"[{label}] Agent updated: {event.new_agent.name}")
                 continue
             elif event.type == "run_item_stream_event":
+                print(f"[{label}] run_item_stream_event: {event.item.type}")
                 if event.item.type == "tool_call_item":
                     raw = getattr(event.item, "raw_item", None)
                     tool_call = _extract_tool_call(raw)
@@ -142,7 +180,6 @@ async def run_vivian(
                     suffix = f": {tool_name}" if tool_name else ""
                     print(f"-- Tool was called{suffix}")
                 elif event.item.type == "tool_call_output_item":
-                    # Emit the tool output, associating it with the originating tool name if available.
                     raw = getattr(event.item, "raw_item", None)
                     call_id = None
                     if hasattr(raw, "call_id"):
@@ -150,7 +187,6 @@ async def run_vivian(
                     elif isinstance(raw, dict):
                         call_id = raw.get("call_id")
                     tool_name = tool_names_by_call_id.get(call_id, "unknown_tool")
-                    # Prefer structured output if present; fall back to raw object repr.
                     if hasattr(event.item, "output"):
                         payload = getattr(event.item, "output")
                     elif isinstance(raw, dict) and "output" in raw:
@@ -172,6 +208,103 @@ async def run_vivian(
         )
         raise
 
+    print(f"[{label}] Stream completed (last_agent={current_agent_name})")
+    return result
+
+
+async def _prompt_scene_feedback() -> str:
+    #TODO remove env var
+    env_feedback = os.getenv("VIVIAN_SCENE_FEEDBACK")
+    if env_feedback is not None:
+        print("[scene_feedback] Using VIVIAN_SCENE_FEEDBACK from environment.")
+        return env_feedback
+    prompt = (
+        "\nPlease review the scene summary above.\n"
+        "Reply with corrections (e.g., \"Button X controls Light Y\") "
+        "or type 'ok' to continue: "
+    )
+    print(f"[scene_feedback] Waiting for user input... (stdin isatty={sys.stdin.isatty()})")
+    try:
+        return await asyncio.to_thread(input, prompt)
+    except EOFError as exc:
+        print(f"[scene_feedback] input() failed with EOFError; auto-confirming. ({exc!r})", file=sys.stderr)
+        return "ok"
+    except Exception as exc:
+        print(f"[scene_feedback] input() failed: {exc!r}", file=sys.stderr)
+        traceback.print_exc()
+        raise
+
+
+async def run_vivian(
+    user_input: str | List[Dict[str, Any]],
+    output_dir: Path | None = OUTPUT_DIR,
+    scene_json_path: Path | None = None,
+) -> FunctionalSpecification | str | None:
+    """Run the Vivian agent pipeline and optionally persist outputs."""
+    manager_agent = build_active_manager_agent()
+    if MANAGER_AGENT_VARIANT != "manager":
+        result = await _stream_agent_run(manager_agent, user_input, label=manager_agent.name)
+        final_output = getattr(result, "final_output", None)
+        if isinstance(final_output, str):
+            print(f"Scene feedback:\n{final_output}")
+            path = write_scene_feedback(final_output)
+            print(f"Wrote {path}")
+        return final_output
+
+    print("[manager_agent] Starting scene analysis step...")
+    analysis_manager = manager_agent.clone(
+        tools=[manager_agent.tools[0]],
+        tool_use_behavior={"stop_at_tool_names": ["scene_analysis_agent"]},
+    )
+    analysis_result = await _stream_agent_run(
+        analysis_manager,
+        user_input,
+        label="scene_analysis_manager",
+    )
+
+    scene_understanding = getattr(analysis_result, "final_output", None)
+    if not isinstance(scene_understanding, SceneUnderstanding):
+        raise TypeError("Scene analysis did not return SceneUnderstanding.")
+    print("[manager_agent] Scene analysis completed.")
+
+    scene_dir = scene_json_path.parent if scene_json_path else None
+    log_path = write_scene_understanding(
+        scene_understanding,
+        extra_dir=scene_dir,
+        extra_filename="scene_understanding.json",
+    )
+    print(f"Wrote {log_path}")
+
+    summary = summarize_scene_understanding(scene_understanding)
+    print(f"\nScene summary:\n{summary}")
+
+    try:
+        while True:
+            feedback = await _prompt_scene_feedback()
+            if not feedback.strip():
+                print("No feedback provided; assuming scene understanding is confirmed.")
+                break
+            if is_scene_feedback_confirmed(feedback):
+                break
+            apply_scene_feedback(scene_understanding, feedback)
+            summary = summarize_scene_understanding(scene_understanding)
+            print(f"\nUpdated scene summary:\n{summary}")
+    except Exception as exc:
+        print(f"[manager_agent] Feedback loop failed: {exc!r}", file=sys.stderr)
+        traceback.print_exc()
+        raise
+
+    log_path = write_scene_understanding(
+        scene_understanding,
+        extra_dir=scene_dir,
+        extra_filename="scene_understanding.json",
+    )
+    print(f"Wrote {log_path}")
+
+    print("[manager_agent] Scene understanding confirmed. Starting spec generation...")
+    manager_input = _append_scene_context_to_input(user_input, scene_understanding)
+    result = await _stream_agent_run(manager_agent, manager_input, label="manager_agent")
+
     final_output = getattr(result, "final_output", None)
     if isinstance(final_output, FunctionalSpecification) and output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -186,10 +319,6 @@ async def run_vivian(
             path = output_dir / filename
             path.write_text(json.dumps(payload, indent=4, ensure_ascii=False), encoding="utf-8")
             print(f"Wrote {path}")
-    elif isinstance(final_output, str):
-        print(f"Scene feedback:\n{final_output}")
-        path = write_scene_feedback(final_output)
-        print(f"Wrote {path}")
 
     return final_output
 

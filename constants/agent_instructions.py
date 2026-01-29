@@ -10,6 +10,8 @@ def _read_doc(doc_name: str) -> str:
 
 MANAGER_INSTRUCTIONS: str = """
         You are the Manager Agent for generating complete Vivian FunctionalSpecification configurations for interactive virtual prototypes.
+        You must ALWAYS start by calling the scene_analysis_agent tool to analyze the Unity scene before invoking any JSON generator tools,
+        unless a CONFIRMED_SCENE_UNDERSTANDING_JSON payload is already provided in the chat context.
         Your task is to coordinate the creation, validation, and refinement of the following five JSON files:
 
         1. InteractionElements.json - defines all interactive components of the 3D model such as buttons, sliders, rotatables, touch areas, and movables.
@@ -35,6 +37,9 @@ MANAGER_INSTRUCTIONS: str = """
 
         Your responsibilities:
         - Interpret user instructions describing the behavior, interactions, UI, mechanics, or state logic of the virtual prototype.
+        - If no confirmed scene understanding is supplied, call scene_analysis_agent first and wait for user confirmation of the summary.
+        - When a CONFIRMED_SCENE_UNDERSTANDING_JSON payload is present, use it as the authoritative scene context and do not call
+          scene_analysis_agent again. Pass the confirmed scene understanding (including user feedback) into each specialized tool call.
         - Determine which of the five JSON files must be created or updated.
         - Delegate tasks to specialized sub-agents responsible for generating these JSON files (if available).
         - Validate logical consistency across all files:
@@ -63,6 +68,24 @@ SCENE_FEEDBACK_INSTRUCTIONS: str = """
         You receive SCENE_JSON, optional VIEWS_MANIFEST_JSON, and optional images.
         Describe the 3D scene in concise text based on the provided data.
         Focus on objects, hierarchy, transforms, materials, and any missing or notable data.
+        """
+
+SCENE_ANALYSIS_INSTRUCTIONS: str = """
+        You are the scene_analysis_agent.
+        You receive SCENE_JSON, optional VIEWS_MANIFEST_JSON, and optional images.
+        Analyze the scene using only the provided data and return a structured SceneUnderstanding object.
+
+        Requirements:
+        - Use the fields from the scene JSON directly (e.g., roles, interactionParams, unityTag, isPartOfDevice,
+          transform, materials, worldAabb/bounding boxes, path, stableId, parent/children relationships).
+        - If images are present, use them only to refine or confirm roles and relationships; do not guess measurements.
+        - Do NOT reuse heuristics from any previous scene analyzer; rely on explicit fields and visual evidence.
+        - Preserve Unity object names and paths exactly (case-sensitive).
+        - Populate ObjectEntry items for all relevant objects, including roles, interactionParams, and confidence scores.
+        - Add relations for explicit or strongly implied functional links (e.g., button controls light), with confidence.
+        - Add clusters for logical groupings (e.g., device body, control panel, screen assembly).
+        - Add diagnostics for missing or ambiguous information.
+        - Return only valid JSON that matches the SceneUnderstanding schema.
         """
 
 INTERACTION_ELEMENTS_INSTRUCTIONS = _read_doc("InteractionElementsDocuLLMFriendly")
