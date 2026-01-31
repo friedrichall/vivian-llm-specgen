@@ -44,6 +44,11 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private CancellationTokenSource _pythonCts;
     private readonly StringBuilder _liveLogBuffer = new StringBuilder();
     private DateTime _lastOutputAt = DateTime.MinValue;
+    private string _groupPath = string.Empty;
+    private string _sceneSummaryText = string.Empty;
+    private string _sceneFeedbackText = string.Empty;
+    private DateTime _sceneSummaryLastWrite = DateTime.MinValue;
+    private Vector2 _sceneSummaryScroll;
 
     private const string ViewsFolderName = "views";
     private static readonly ViewDirection[] ViewDirections =

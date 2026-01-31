@@ -20,6 +20,10 @@ public partial class GenerateInteractionsWindow
         string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         string basePath = Path.Combine(projectRoot, "Packages", "vivian-example-prototypes", "Resources");
         string groupPath = Path.Combine(basePath, _groupName);
+        _groupPath = groupPath;
+        _sceneSummaryText = string.Empty;
+        _sceneFeedbackText = string.Empty;
+        _sceneSummaryLastWrite = DateTime.MinValue;
 
         Directory.CreateDirectory(groupPath);
 
@@ -1215,7 +1219,7 @@ public partial class GenerateInteractionsWindow
             }, _pythonCts.Token);
 
             // Auf Ende warten, ohne den Editor-Thread zu blockieren
-            var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_pythonCts.Token, timeoutCts.Token);
 
             int exitCode = -1;

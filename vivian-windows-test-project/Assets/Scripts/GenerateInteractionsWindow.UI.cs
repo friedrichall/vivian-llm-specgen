@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -90,6 +92,9 @@ public partial class GenerateInteractionsWindow
         EditorGUI.EndDisabledGroup();
         EditorGUILayout.Space();
 
+        DrawSceneConfirmationSection();
+
+        EditorGUILayout.Space();
         EditorGUILayout.LabelField("Selected Objects", EditorStyles.boldLabel);
         foreach (var go in _selectedObjects)
         {
@@ -120,6 +125,119 @@ public partial class GenerateInteractionsWindow
         GUILayout.FlexibleSpace();
         DrawPageSwitchButton("Back", () => { _currentStep = Step.SelectObjects; });
         EditorGUILayout.EndVertical();
+    }
+
+    private void DrawSceneConfirmationSection()
+    {
+        EditorGUILayout.LabelField("Scene Analysis Confirmation", EditorStyles.boldLabel);
+        UpdateSceneSummaryIfNeeded();
+
+        string summaryPath = GetSceneSummaryPath();
+        EditorGUILayout.LabelField("Summary file:", string.IsNullOrEmpty(summaryPath) ? "(not available)" : summaryPath);
+
+        _sceneSummaryScroll = EditorGUILayout.BeginScrollView(_sceneSummaryScroll, GUILayout.MinHeight(140));
+        EditorGUILayout.TextArea(string.IsNullOrEmpty(_sceneSummaryText) ? "(no summary yet)" : _sceneSummaryText,
+            GUILayout.ExpandHeight(true));
+        EditorGUILayout.EndScrollView();
+
+        EditorGUILayout.LabelField("Feedback / Corrections (optional):");
+        _sceneFeedbackText = EditorGUILayout.TextArea(_sceneFeedbackText, GUILayout.MinHeight(50));
+
+        bool isPythonRunning = _runningProc != null && !_runningProc.HasExited;
+        EditorGUI.BeginDisabledGroup(!isPythonRunning);
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Send Feedback"))
+        {
+            WriteSceneFeedback(false);
+        }
+        if (GUILayout.Button("Confirm Scene Analysis"))
+        {
+            WriteSceneFeedback(true);
+        }
+        EditorGUILayout.EndHorizontal();
+        EditorGUI.EndDisabledGroup();
+    }
+
+    private void UpdateSceneSummaryIfNeeded()
+    {
+        string summaryPath = GetSceneSummaryPath();
+        if (string.IsNullOrEmpty(summaryPath) || !File.Exists(summaryPath))
+        {
+            return;
+        }
+
+        DateTime lastWrite = File.GetLastWriteTimeUtc(summaryPath);
+        if (lastWrite <= _sceneSummaryLastWrite)
+        {
+            return;
+        }
+
+        try
+        {
+            _sceneSummaryText = File.ReadAllText(summaryPath);
+            _sceneSummaryLastWrite = lastWrite;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read scene summary: {ex.Message}");
+        }
+    }
+
+    private string GetSceneSummaryPath()
+    {
+        if (string.IsNullOrEmpty(_groupPath))
+        {
+            return string.Empty;
+        }
+        return Path.Combine(_groupPath, "scene_understanding_summary.txt");
+    }
+
+    private string GetSceneFeedbackPath()
+    {
+        if (string.IsNullOrEmpty(_groupPath))
+        {
+            return string.Empty;
+        }
+        return Path.Combine(_groupPath, "scene_feedback.json");
+    }
+
+    private void WriteSceneFeedback(bool confirmed)
+    {
+        string feedbackPath = GetSceneFeedbackPath();
+        if (string.IsNullOrEmpty(feedbackPath))
+        {
+            Debug.LogWarning("Scene feedback path is not available yet.");
+            return;
+        }
+
+        var payload = new SceneFeedbackPayload
+        {
+            confirmed = confirmed,
+            feedback = _sceneFeedbackText ?? string.Empty,
+            timestamp = DateTime.UtcNow.ToString("o")
+        };
+
+        try
+        {
+            string tempPath = feedbackPath + ".tmp";
+            string json = JsonUtility.ToJson(payload, true);
+            var utf8NoBom = new System.Text.UTF8Encoding(false);
+            File.WriteAllText(tempPath, json, utf8NoBom);
+            if (File.Exists(feedbackPath))
+            {
+                File.Delete(feedbackPath);
+            }
+            File.Move(tempPath, feedbackPath);
+            Debug.Log($"Wrote scene feedback: {feedbackPath}");
+            if (confirmed)
+            {
+                _sceneFeedbackText = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Failed to write scene feedback: {ex.Message}");
+        }
     }
 
     private void PrepareInteractionDefinition()
