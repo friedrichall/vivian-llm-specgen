@@ -1,0 +1,729 @@
+{
+    "$defs": {
+        "BoundingBox": {
+            "properties": {
+                "min": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "number"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Min"
+                },
+                "max": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "number"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Max"
+                }
+            },
+            "title": "BoundingBox",
+            "type": "object"
+        },
+        "Cluster": {
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "object_names": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Object Names",
+                    "type": "array"
+                },
+                "rationale": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Rationale"
+                },
+                "confidence": {
+                    "anyOf": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Confidence"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Cluster",
+            "type": "object"
+        },
+        "ColorRGBA": {
+            "properties": {
+                "r": {
+                    "title": "R",
+                    "type": "number"
+                },
+                "g": {
+                    "title": "G",
+                    "type": "number"
+                },
+                "b": {
+                    "title": "B",
+                    "type": "number"
+                },
+                "a": {
+                    "title": "A",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "r",
+                "g",
+                "b",
+                "a"
+            ],
+            "title": "ColorRGBA",
+            "type": "object"
+        },
+        "Diagnostic": {
+            "properties": {
+                "level": {
+                    "enum": [
+                        "info",
+                        "warning",
+                        "error"
+                    ],
+                    "title": "Level",
+                    "type": "string"
+                },
+                "message": {
+                    "title": "Message",
+                    "type": "string"
+                },
+                "object_name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Object Name"
+                }
+            },
+            "required": [
+                "level",
+                "message"
+            ],
+            "title": "Diagnostic",
+            "type": "object"
+        },
+        "InteractionParams": {
+            "properties": {
+                "type": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Type"
+                },
+                "axis": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Axis"
+                },
+                "range": {
+                    "anyOf": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Range"
+                }
+            },
+            "title": "InteractionParams",
+            "type": "object"
+        },
+        "MaterialEntry": {
+            "properties": {
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Name"
+                },
+                "color": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/ColorRGBA"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "main_texture": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Main Texture"
+                }
+            },
+            "title": "MaterialEntry",
+            "type": "object"
+        },
+        "MeshStats": {
+            "properties": {
+                "triangles": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Triangles"
+                },
+                "vertices": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Vertices"
+                },
+                "submeshes": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Submeshes"
+                }
+            },
+            "title": "MeshStats",
+            "type": "object"
+        },
+        "ObjectEntry": {
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "path": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Path"
+                },
+                "stable_id": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Stable Id"
+                },
+                "parent_name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Parent Name"
+                },
+                "parent_path": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Parent Path"
+                },
+                "children": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Children",
+                    "type": "array"
+                },
+                "child_paths": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Child Paths",
+                    "type": "array"
+                },
+                "transform": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Transform"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "materials": {
+                    "items": {
+                        "$ref": "#/$defs/MaterialEntry"
+                    },
+                    "title": "Materials",
+                    "type": "array"
+                },
+                "roles": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Roles",
+                    "type": "array"
+                },
+                "interaction_params": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/InteractionParams"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "unity_tag": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Unity Tag"
+                },
+                "is_part_of_device": {
+                    "anyOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Is Part Of Device"
+                },
+                "renderer_type": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Renderer Type"
+                },
+                "has_collider": {
+                    "anyOf": [
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Has Collider"
+                },
+                "collider_type": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Collider Type"
+                },
+                "mesh_stats": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/MeshStats"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "bounding_box": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/BoundingBox"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "size": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "number"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Size"
+                },
+                "confidence": {
+                    "anyOf": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Confidence"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "ObjectEntry",
+            "type": "object"
+        },
+        "Relation": {
+            "properties": {
+                "subject": {
+                    "title": "Subject",
+                    "type": "string"
+                },
+                "predicate": {
+                    "title": "Predicate",
+                    "type": "string"
+                },
+                "object": {
+                    "title": "Object",
+                    "type": "string"
+                },
+                "confidence": {
+                    "anyOf": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Confidence"
+                },
+                "evidence": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Evidence"
+                }
+            },
+            "required": [
+                "subject",
+                "predicate",
+                "object"
+            ],
+            "title": "Relation",
+            "type": "object"
+        },
+        "Transform": {
+            "properties": {
+                "position": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Vec3"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "rotation": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Vec4"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "scale": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Vec3"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                }
+            },
+            "title": "Transform",
+            "type": "object"
+        },
+        "UserFeedbackEntry": {
+            "properties": {
+                "text": {
+                    "title": "Text",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Timestamp"
+                }
+            },
+            "required": [
+                "text"
+            ],
+            "title": "UserFeedbackEntry",
+            "type": "object"
+        },
+        "Vec3": {
+            "properties": {
+                "x": {
+                    "title": "X",
+                    "type": "number"
+                },
+                "y": {
+                    "title": "Y",
+                    "type": "number"
+                },
+                "z": {
+                    "title": "Z",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "title": "Vec3",
+            "type": "object"
+        },
+        "Vec4": {
+            "properties": {
+                "x": {
+                    "title": "X",
+                    "type": "number"
+                },
+                "y": {
+                    "title": "Y",
+                    "type": "number"
+                },
+                "z": {
+                    "title": "Z",
+                    "type": "number"
+                },
+                "w": {
+                    "title": "W",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z",
+                "w"
+            ],
+            "title": "Vec4",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "scene_id": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Scene Id"
+        },
+        "source_file": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Source File"
+        },
+        "description": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Description"
+        },
+        "objects": {
+            "items": {
+                "$ref": "#/$defs/ObjectEntry"
+            },
+            "title": "Objects",
+            "type": "array"
+        },
+        "relations": {
+            "items": {
+                "$ref": "#/$defs/Relation"
+            },
+            "title": "Relations",
+            "type": "array"
+        },
+        "clusters": {
+            "items": {
+                "$ref": "#/$defs/Cluster"
+            },
+            "title": "Clusters",
+            "type": "array"
+        },
+        "diagnostics": {
+            "items": {
+                "$ref": "#/$defs/Diagnostic"
+            },
+            "title": "Diagnostics",
+            "type": "array"
+        },
+        "user_feedback": {
+            "items": {
+                "$ref": "#/$defs/UserFeedbackEntry"
+            },
+            "title": "User Feedback",
+            "type": "array"
+        }
+    },
+    "title": "SceneUnderstanding",
+    "type": "object"
+}

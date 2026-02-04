@@ -1,0 +1,174 @@
+{
+    "$defs": {
+        "EventParameterGuard": {
+            "properties": {
+                "Type": {
+                    "const": "EventParameterGuard",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "EventParameter": {
+                    "title": "Eventparameter",
+                    "type": "string"
+                },
+                "Operator": {
+                    "title": "Operator",
+                    "type": "string"
+                },
+                "CompareValue": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "title": "Comparevalue"
+                }
+            },
+            "required": [
+                "Type",
+                "EventParameter",
+                "Operator",
+                "CompareValue"
+            ],
+            "title": "EventParameterGuard",
+            "type": "object"
+        },
+        "InteractionElementAttributeGuard": {
+            "properties": {
+                "Type": {
+                    "const": "InteractionElementAttributeGuard",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "InteractionElement": {
+                    "title": "Interactionelement",
+                    "type": "string"
+                },
+                "Attribute": {
+                    "title": "Attribute",
+                    "type": "string"
+                },
+                "Operator": {
+                    "title": "Operator",
+                    "type": "string"
+                },
+                "CompareValue": {
+                    "title": "Comparevalue",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Type",
+                "InteractionElement",
+                "Attribute",
+                "Operator",
+                "CompareValue"
+            ],
+            "title": "InteractionElementAttributeGuard",
+            "type": "object"
+        },
+        "Transition": {
+            "properties": {
+                "SourceState": {
+                    "title": "Sourcestate",
+                    "type": "string"
+                },
+                "DestinationState": {
+                    "title": "Destinationstate",
+                    "type": "string"
+                },
+                "InteractionElement": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Interactionelement"
+                },
+                "Event": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Event"
+                },
+                "Timeout": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Timeout"
+                },
+                "Guards": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "discriminator": {
+                                    "mapping": {
+                                        "EventParameterGuard": "#/$defs/EventParameterGuard",
+                                        "InteractionElementAttributeGuard": "#/$defs/InteractionElementAttributeGuard"
+                                    },
+                                    "propertyName": "Type"
+                                },
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/$defs/EventParameterGuard"
+                                    },
+                                    {
+                                        "$ref": "#/$defs/InteractionElementAttributeGuard"
+                                    }
+                                ]
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Guards"
+                }
+            },
+            "required": [
+                "SourceState",
+                "DestinationState"
+            ],
+            "title": "Transition",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "Transitions": {
+            "items": {
+                "$ref": "#/$defs/Transition"
+            },
+            "title": "Transitions",
+            "type": "array"
+        }
+    },
+    "required": [
+        "Transitions"
+    ],
+    "title": "Transitions",
+    "type": "object"
+}
