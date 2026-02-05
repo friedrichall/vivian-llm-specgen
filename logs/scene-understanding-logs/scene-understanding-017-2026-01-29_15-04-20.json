@@ -1,0 +1,31 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "No scene JSON or images were provided to analyze. Please attach the CoffeeMachine2 SCENE_JSON and optional VIEWS_MANIFEST_JSON and images so the scene can be analyzed.",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON not provided. I cannot extract object entries, roles, interactionParams, transforms, or bounding boxes without the scene JSON.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "VIEWS_MANIFEST_JSON not provided. If you have a views manifest it can help confirm visual roles and states from images.",
+            "object_name": null
+        },
+        {
+            "level": "info",
+            "message": "No images were provided. If you attach images they will be used only to confirm or refine roles and relationships, not measurements.",
+            "object_name": null
+        },
+        {
+            "level": "info",
+            "message": "When you provide the CoffeeMachine2 SCENE_JSON, I will return a SceneUnderstanding JSON including ObjectEntry records (names, paths, transforms, materials, roles, interaction_params, confidence), Relations describing functional links, and Clusters grouping logical subassemblies.",
+            "object_name": null
+        }
+    ],
+    "user_feedback": []
+}

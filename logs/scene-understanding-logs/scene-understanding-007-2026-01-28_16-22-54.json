@@ -1,0 +1,461 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "make a coffee machine",
+    "objects": [
+        {
+            "name": "CoffeeMachine2",
+            "path": "CoffeeMachine2",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-770774713105414007-1815925864",
+            "parent_name": null,
+            "parent_path": null,
+            "children": [
+                "CoffeeMachine",
+                "Cup",
+                "CoffeeSimulations"
+            ],
+            "child_paths": [
+                "CoffeeMachine2/CoffeeMachine",
+                "CoffeeMachine2/Cup",
+                "CoffeeMachine2/CoffeeSimulations"
+            ],
+            "transform": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 1.0
+                },
+                "scale": {
+                    "x": 0.0031999999191612005,
+                    "y": 0.003000000026077032,
+                    "z": 0.0024999999441206455
+                }
+            },
+            "materials": [],
+            "roles": [
+                "device",
+                "coffee_machine"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 0,
+                "vertices": 0,
+                "submeshes": 0
+            },
+            "bounding_box": {
+                "min": [],
+                "max": []
+            },
+            "size": [],
+            "confidence": 0.7
+        },
+        {
+            "name": "CoffeeMachine",
+            "path": "CoffeeMachine2/CoffeeMachine",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-6513299821497267101-1815925864",
+            "parent_name": "CoffeeMachine2",
+            "parent_path": "CoffeeMachine2",
+            "children": [
+                "Case",
+                "UserInterfaceElements"
+            ],
+            "child_paths": [
+                "CoffeeMachine2/CoffeeMachine/Case",
+                "CoffeeMachine2/CoffeeMachine/UserInterfaceElements"
+            ],
+            "transform": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.2822999954223633,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": -0.7071068286895752,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 0.7071068286895752
+                },
+                "scale": {
+                    "x": 0.0031999999191612005,
+                    "y": 0.002500000409781933,
+                    "z": 0.0030000009573996067
+                }
+            },
+            "materials": [],
+            "roles": [
+                "device_body_root"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 0,
+                "vertices": 0,
+                "submeshes": 0
+            },
+            "bounding_box": {
+                "min": [],
+                "max": []
+            },
+            "size": [],
+            "confidence": 0.65
+        },
+        {
+            "name": "Case",
+            "path": "CoffeeMachine2/CoffeeMachine/Case",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-2648024311247450317-1815925864",
+            "parent_name": "CoffeeMachine",
+            "parent_path": "CoffeeMachine2/CoffeeMachine",
+            "children": [],
+            "child_paths": [],
+            "transform": {
+                "position": {
+                    "x": 0.0032345000654459,
+                    "y": 0.2794211506843567,
+                    "z": -0.08534448593854904
+                },
+                "rotation": {
+                    "x": -0.7071068286895752,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 0.7071068286895752
+                },
+                "scale": {
+                    "x": 0.0031999999191612005,
+                    "y": 0.002500000409781933,
+                    "z": 0.0030000009573996067
+                }
+            },
+            "materials": [],
+            "roles": [
+                "housing",
+                "chassis"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 0,
+                "vertices": 0,
+                "submeshes": 0
+            },
+            "bounding_box": {
+                "min": [],
+                "max": []
+            },
+            "size": [],
+            "confidence": 0.6
+        },
+        {
+            "name": "UserInterfaceElements",
+            "path": "CoffeeMachine2/CoffeeMachine/UserInterfaceElements",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-2670347968593702530-1815925864",
+            "parent_name": "CoffeeMachine",
+            "parent_path": "CoffeeMachine2/CoffeeMachine",
+            "children": [],
+            "child_paths": [],
+            "transform": {
+                "position": {
+                    "x": -0.0032345000654459,
+                    "y": 0.2851788401603699,
+                    "z": 0.08534449338912964
+                },
+                "rotation": {
+                    "x": -0.7071068286895752,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 0.7071068286895752
+                },
+                "scale": {
+                    "x": 0.0031999999191612005,
+                    "y": 0.002500000409781933,
+                    "z": 0.0030000009573996067
+                }
+            },
+            "materials": [],
+            "roles": [
+                "ui_panel",
+                "controls"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 0,
+                "vertices": 0,
+                "submeshes": 0
+            },
+            "bounding_box": {
+                "min": [],
+                "max": []
+            },
+            "size": [],
+            "confidence": 0.6
+        },
+        {
+            "name": "Cup",
+            "path": "CoffeeMachine2/Cup",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-8858550657489120192-1815925864",
+            "parent_name": "CoffeeMachine2",
+            "parent_path": "CoffeeMachine2",
+            "children": [],
+            "child_paths": [],
+            "transform": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.09000000357627869,
+                    "z": 0.125
+                },
+                "rotation": {
+                    "x": -0.7071068286895752,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 0.7071068286895752
+                },
+                "scale": {
+                    "x": 0.021127667278051376,
+                    "y": 0.016505993902683258,
+                    "z": 0.01980719342827797
+                }
+            },
+            "materials": [
+                {
+                    "name": "Cup",
+                    "color": {
+                        "r": 0.800000011920929,
+                        "g": 0.800000011920929,
+                        "b": 0.800000011920929,
+                        "a": 1.0
+                    },
+                    "main_texture": ""
+                }
+            ],
+            "roles": [
+                "cup",
+                "container"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "MeshRenderer",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 111744,
+                "vertices": 54458,
+                "submeshes": 1
+            },
+            "bounding_box": {
+                "min": [
+                    -0.041541408747434616,
+                    0.05694613978266716,
+                    0.07998111844062805
+                ],
+                "max": [
+                    0.041541408747434616,
+                    0.12305386364459991,
+                    0.1716517210006714
+                ]
+            },
+            "size": [
+                0.08308281749486923,
+                0.06610772758722305,
+                0.09167060256004333
+            ],
+            "confidence": 0.85
+        },
+        {
+            "name": "CoffeeSimulations",
+            "path": "CoffeeMachine2/CoffeeSimulations",
+            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-4626918319566897535-1815925864",
+            "parent_name": "CoffeeMachine2",
+            "parent_path": "CoffeeMachine2",
+            "children": [],
+            "child_paths": [],
+            "transform": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 1.0
+                },
+                "scale": {
+                    "x": 0.0031999999191612005,
+                    "y": 0.003000000026077032,
+                    "z": 0.0024999999441206455
+                }
+            },
+            "materials": [],
+            "roles": [
+                "simulation_container"
+            ],
+            "interaction_params": {
+                "type": "",
+                "axis": "",
+                "range": 0.0
+            },
+            "unity_tag": "Untagged",
+            "is_part_of_device": true,
+            "renderer_type": "",
+            "has_collider": false,
+            "collider_type": "",
+            "mesh_stats": {
+                "triangles": 0,
+                "vertices": 0,
+                "submeshes": 0
+            },
+            "bounding_box": {
+                "min": [],
+                "max": []
+            },
+            "size": [],
+            "confidence": 0.55
+        }
+    ],
+    "relations": [
+        {
+            "subject": "CoffeeMachine2",
+            "predicate": "has_part",
+            "object": "CoffeeMachine",
+            "confidence": 0.95,
+            "evidence": "Parent/child hierarchy: CoffeeMachine2 -> CoffeeMachine"
+        },
+        {
+            "subject": "CoffeeMachine",
+            "predicate": "has_part",
+            "object": "Case",
+            "confidence": 0.95,
+            "evidence": "Parent/child hierarchy: CoffeeMachine -> Case"
+        },
+        {
+            "subject": "CoffeeMachine",
+            "predicate": "has_part",
+            "object": "UserInterfaceElements",
+            "confidence": 0.95,
+            "evidence": "Parent/child hierarchy: CoffeeMachine -> UserInterfaceElements"
+        },
+        {
+            "subject": "CoffeeMachine2",
+            "predicate": "has_part",
+            "object": "Cup",
+            "confidence": 0.9,
+            "evidence": "Parent/child hierarchy: CoffeeMachine2 -> Cup"
+        },
+        {
+            "subject": "CoffeeMachine2",
+            "predicate": "has_part",
+            "object": "CoffeeSimulations",
+            "confidence": 0.9,
+            "evidence": "Parent/child hierarchy: CoffeeMachine2 -> CoffeeSimulations"
+        },
+        {
+            "subject": "CoffeeMachine2",
+            "predicate": "dispenses_into",
+            "object": "Cup",
+            "confidence": 0.55,
+            "evidence": "Scene description indicates a coffee machine; presence of Cup under same device root suggests intended target container, but no explicit spout/dispense link provided."
+        }
+    ],
+    "clusters": [
+        {
+            "name": "CoffeeMachine2_DeviceAssembly",
+            "object_names": [
+                "CoffeeMachine2",
+                "CoffeeMachine",
+                "Case",
+                "UserInterfaceElements"
+            ],
+            "rationale": "All are marked isPartOfDevice=true and form the main coffee machine assembly via hierarchy.",
+            "confidence": 0.8
+        },
+        {
+            "name": "CoffeeMachine2_CupAssembly",
+            "object_names": [
+                "Cup"
+            ],
+            "rationale": "Cup mesh/material provided; likely the receptacle used with the coffee machine.",
+            "confidence": 0.75
+        },
+        {
+            "name": "CoffeeMachine2_Simulations",
+            "object_names": [
+                "CoffeeSimulations"
+            ],
+            "rationale": "Named container suggests simulation-related objects, though children are not present in provided hierarchy details.",
+            "confidence": 0.6
+        }
+    ],
+    "diagnostics": [
+        {
+            "level": "warning",
+            "message": "Many listed childrenStableIds are not present as expanded child objects in the provided SCENE_JSON (e.g., CoffeeMachine2/CoffeeMachine/Case shows multiple childrenStableIds but children array is empty). Scene understanding may be incomplete.",
+            "object_name": "Case"
+        },
+        {
+            "level": "warning",
+            "message": "Interactive objects list is provided (indices), but no per-object interaction types are specified beyond empty interactionParams; cannot identify buttons/levers/switches within UserInterfaceElements.",
+            "object_name": "UserInterfaceElements"
+        },
+        {
+            "level": "warning",
+            "message": "CoffeeSimulations lists childrenStableIds but has no expanded children objects in provided data; simulation elements cannot be enumerated.",
+            "object_name": "CoffeeSimulations"
+        },
+        {
+            "level": "info",
+            "message": "No colliders are present on key objects (hasCollider=false). If runtime interaction is expected, colliders may need to be added.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "World AABB/size data is missing for most device components (only Cup has populated bounds). Spatial reasoning about device layout is limited.",
+            "object_name": "CoffeeMachine2"
+        }
+    ],
+    "user_feedback": []
+}

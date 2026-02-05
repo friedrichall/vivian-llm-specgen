@@ -30,6 +30,9 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private bool _showChildObjects = false;
     private string _groupName = string.Empty;
     private string _interactionDescription = string.Empty;
+    private bool _startVivianPipeline = true;
+    private bool _onlySceneAnalysis = false;
+    private bool _useMockSceneAnalysis = false;
     private const int RenderWidth = 1024;
     private const int RenderHeight = 1024;
     private const float CameraFov = 45f;
@@ -42,6 +45,26 @@ public partial class GenerateInteractionsWindow : EditorWindow
     private CancellationTokenSource _pythonCts;
     private readonly StringBuilder _liveLogBuffer = new StringBuilder();
     private DateTime _lastOutputAt = DateTime.MinValue;
+    private string _groupPath = string.Empty;
+    private string _sceneSummaryText = string.Empty;
+    private string _sceneFeedbackText = string.Empty;
+    private DateTime _sceneSummaryLastWrite = DateTime.MinValue;
+    private enum ChatRole
+    {
+        Agent,
+        User
+    }
+
+    private struct ChatMessage
+    {
+        public ChatRole role;
+        public string text;
+    }
+
+    private readonly List<ChatMessage> _chatMessages = new List<ChatMessage>();
+    private Vector2 _chatScroll;
+    private string _userChatInput = string.Empty;
+    private bool _showAdvanced;
 
     private const string ViewsFolderName = "views";
     private static readonly ViewDirection[] ViewDirections =
@@ -67,6 +90,43 @@ public partial class GenerateInteractionsWindow : EditorWindow
         {
             DrawInteractionElementsStep();
         }
+    }
+
+    private void OnUserMessageSubmitted(string text)
+    {
+        _chatMessages.Add(new ChatMessage { role = ChatRole.User, text = text });
+        _userChatInput = string.Empty;
+        _chatScroll.y = float.MaxValue;
+        GUI.FocusControl(null);
+    }
+
+    public void AddAgentResponse(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        _chatMessages.Add(new ChatMessage { role = ChatRole.Agent, text = text.Trim() });
+        _chatScroll.y = float.MaxValue;
+        Repaint();
+    }
+
+    public static bool TryAddAgentResponse(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var windows = Resources.FindObjectsOfTypeAll<GenerateInteractionsWindow>();
+        if (windows == null || windows.Length == 0)
+        {
+            return false;
+        }
+
+        windows[0].AddAgentResponse(text);
+        return true;
     }
 }
 #endif

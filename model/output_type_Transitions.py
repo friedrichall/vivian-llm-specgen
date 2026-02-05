@@ -18,7 +18,7 @@ class InteractionElementAttributeGuard(BaseModel):
     InteractionElement: str        # Name of the element
     Attribute: str                 # VALUE, POSITION, etc.
     Operator: str                  # logical operator
-    CompareValue: str              # always string according to docs
+    CompareValue: str              # always string according to docs_vivian
 
 
 Guard = Annotated[

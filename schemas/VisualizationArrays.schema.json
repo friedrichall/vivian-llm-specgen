@@ -1,0 +1,13 @@
+{
+    "properties": {
+        "Elements": {
+            "items": {
+                "type": "string"
+            },
+            "title": "Elements",
+            "type": "array"
+        }
+    },
+    "title": "VisualizationArrays",
+    "type": "object"
+}

@@ -1,0 +1,169 @@
+{
+    "$defs": {
+        "FloatValueVisualization": {
+            "properties": {
+                "Type": {
+                    "const": "FloatValueVisualization",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "VisualizationElement": {
+                    "title": "Visualizationelement",
+                    "type": "string"
+                },
+                "Value": {
+                    "title": "Value",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "Type",
+                "VisualizationElement",
+                "Value"
+            ],
+            "title": "FloatValueVisualization",
+            "type": "object"
+        },
+        "InteractionElementCondition": {
+            "properties": {
+                "Type": {
+                    "const": "InteractionElementCondition",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "InteractionElement": {
+                    "title": "Interactionelement",
+                    "type": "string"
+                },
+                "Attribute": {
+                    "title": "Attribute",
+                    "type": "string"
+                },
+                "Value": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "title": "Value"
+                }
+            },
+            "required": [
+                "Type",
+                "InteractionElement",
+                "Attribute",
+                "Value"
+            ],
+            "title": "InteractionElementCondition",
+            "type": "object"
+        },
+        "ScreenContentVisualization": {
+            "properties": {
+                "Type": {
+                    "const": "ScreenContentVisualization",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "VisualizationElement": {
+                    "title": "Visualizationelement",
+                    "type": "string"
+                },
+                "FileName": {
+                    "title": "Filename",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Type",
+                "VisualizationElement",
+                "FileName"
+            ],
+            "title": "ScreenContentVisualization",
+            "type": "object"
+        },
+        "State": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Conditions": {
+                    "items": {
+                        "discriminator": {
+                            "mapping": {
+                                "FloatValueVisualization": "#/$defs/FloatValueVisualization",
+                                "InteractionElementCondition": "#/$defs/InteractionElementCondition",
+                                "ScreenContentVisualization": "#/$defs/ScreenContentVisualization",
+                                "ValueOfInteractionElementVisualization": "#/$defs/ValueOfInteractionElementVisualization"
+                            },
+                            "propertyName": "Type"
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/FloatValueVisualization"
+                            },
+                            {
+                                "$ref": "#/$defs/ScreenContentVisualization"
+                            },
+                            {
+                                "$ref": "#/$defs/ValueOfInteractionElementVisualization"
+                            },
+                            {
+                                "$ref": "#/$defs/InteractionElementCondition"
+                            }
+                        ]
+                    },
+                    "title": "Conditions",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "Name",
+                "Conditions"
+            ],
+            "title": "State",
+            "type": "object"
+        },
+        "ValueOfInteractionElementVisualization": {
+            "properties": {
+                "Type": {
+                    "const": "ValueOfInteractionElementVisualization",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "VisualizationElement": {
+                    "title": "Visualizationelement",
+                    "type": "string"
+                },
+                "InteractionElement": {
+                    "title": "Interactionelement",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Type",
+                "VisualizationElement",
+                "InteractionElement"
+            ],
+            "title": "ValueOfInteractionElementVisualization",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "States": {
+            "items": {
+                "$ref": "#/$defs/State"
+            },
+            "title": "States",
+            "type": "array"
+        }
+    },
+    "required": [
+        "States"
+    ],
+    "title": "States",
+    "type": "object"
+}

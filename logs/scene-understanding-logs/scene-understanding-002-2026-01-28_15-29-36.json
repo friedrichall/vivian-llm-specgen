@@ -1,0 +1,26 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "Coffee machine scene (requested: make a coffee machine).",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON was provided as '{...}' placeholder; no parseable scene data was included, so objects/paths/transforms/materials/relationships cannot be extracted.",
+            "object_name": null
+        },
+        {
+            "level": "error",
+            "message": "VIEWS_MANIFEST_JSON was provided as '{...}' placeholder; no view metadata/images available to confirm roles or relationships.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "Interaction mapping mentions 'CoffeeMachine2' but no corresponding object data (name/path/stableId) was provided in SCENE_JSON to attach interaction_params.",
+            "object_name": "CoffeeMachine2"
+        }
+    ],
+    "user_feedback": []
+}

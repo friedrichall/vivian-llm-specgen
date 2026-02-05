@@ -2,7 +2,11 @@
 """Unity entrypoint that reuses the existing Vivian agent pipeline.
 
 Usage:
-    python unityconnector.py <group> <description> <scene_json> [object_name...]
+    python unityconnector.py <group> <description> <scene_json>
+        [--start_pipeline=0|1|true|false|yes|no] [--start-pipeline=...]
+        [--only_scene_analysis=0|1|true|false|yes|no] [--only-scene-analysis=...]
+        [--use_mock_scene_analysis=0|1|true|false|yes|no] [--use-mock-scene-analysis=...]
+        [object_name...]
 Inputs:
 - A scene JSON export containing an "objects" array (required).
 - Optional `views_manifest.json` and `views/` images in the same folder.
@@ -107,21 +111,52 @@ def _ensure_sys_path() -> None:
             sys.path.insert(0, str(path))
 
 
-def _parse_argv(argv: list[str]) -> Tuple[str, str, Dict[str, str], Optional[str]]:
+def _parse_argv(argv: list[str]) -> Tuple[str, str, Dict[str, str], Optional[str], bool, bool, bool]:
     """
     Parse CLI args as:
         argv[0]: group name
         argv[1]: description
         argv[2]: scene JSON path (required)
-        argv[3:]: selected object names (types inferred by agent; flat list)
+        argv[3:]: flags and selected object names (types inferred by agent; flat list)
     """
     group = argv[0] if len(argv) >= 1 else "GeneratedGroup"
     description = argv[1] if len(argv) >= 2 else ""
     scene_json = argv[2] if len(argv) >= 3 else None
-    names: list[str] = argv[3:] if len(argv) > 3 else []
+    start_pipeline = True
+    only_scene_analysis = False
+    use_mock_scene_analysis = False
+    names: list[str] = []
+    for arg in (argv[3:] if len(argv) > 3 else []):
+        if isinstance(arg, str) and (
+            arg.startswith("--start_pipeline=") or arg.startswith("--start-pipeline=")
+        ):
+            raw_value = arg.split("=", 1)[-1].strip().lower()
+            start_pipeline = raw_value in {"1", "true", "yes", "on"}
+            continue
+        if isinstance(arg, str) and (
+            arg.startswith("--only_scene_analysis=") or arg.startswith("--only-scene-analysis=")
+        ):
+            raw_value = arg.split("=", 1)[-1].strip().lower()
+            only_scene_analysis = raw_value in {"1", "true", "yes", "on"}
+            continue
+        if isinstance(arg, str) and (
+            arg.startswith("--use_mock_scene_analysis=") or arg.startswith("--use-mock-scene-analysis=")
+        ):
+            raw_value = arg.split("=", 1)[-1].strip().lower()
+            use_mock_scene_analysis = raw_value in {"1", "true", "yes", "on"}
+            continue
+        names.append(arg)
 
     objects = {name: "" for name in names}
-    return group, description, objects, scene_json
+    return (
+        group,
+        description,
+        objects,
+        scene_json,
+        start_pipeline,
+        only_scene_analysis,
+        use_mock_scene_analysis,
+    )
 
 
 def _safe_vec(value: Any, length: int = 3) -> List[float]:
@@ -424,6 +459,7 @@ def _build_input_items(
     bundle: InputBundle,
     use_uploads: bool = True,
     include_images: bool = True,
+    skip_images_note: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Create the message payload with scene JSON, manifest, and images."""
     content: List[Dict[str, Any]] = [
@@ -441,6 +477,8 @@ def _build_input_items(
                 content.extend(_build_base64_image_items(failed))
         else:
             content.extend(_build_base64_image_items(bundle.images))
+    elif skip_images_note:
+        content.append({"type": "input_text", "text": skip_images_note})
 
     return [
         {
@@ -572,7 +610,15 @@ def main() -> None:
         print("Please set the OPENAI_API_KEY environment variable before running.")
         sys.exit(1)
 
-    group, description, object_interactions, scene_json = _parse_argv(sys.argv[1:])
+    (
+        group,
+        description,
+        object_interactions,
+        scene_json,
+        _start_pipeline,
+        _only_scene_analysis,
+        _use_mock_scene_analysis,
+    ) = _parse_argv(sys.argv[1:])
     if not description:
         print("No description provided. Please pass at least a short scene description.")
         sys.exit(1)
@@ -616,6 +662,12 @@ def main() -> None:
     total_images = sum(len(selection.images) for selection in object_selections)
     print("Images ready to send:", total_images)
 
+    include_images = SEND_IMAGES_TO_AGENT and _start_pipeline
+    skip_images_note = None
+    if not _start_pipeline and total_images > 0:
+        skip_images_note = "Image uploads skipped because --start_pipeline=0."
+        print(skip_images_note)
+
     _, fs_dir = _output_dirs(group)
 
     batches = _chunk_objects(object_selections, MAX_OBJECTS_PER_RUN) if object_selections else [[]]
@@ -640,9 +692,10 @@ def main() -> None:
         )
         content = _build_input_items(
             task_text,
-            input_bundle,
-            use_uploads=True,
-            include_images=SEND_IMAGES_TO_AGENT,
+             input_bundle,
+            use_uploads=include_images,
+            include_images=include_images,
+            skip_images_note=skip_images_note,
         )
 
         if len(batches) > 1:
@@ -654,17 +707,34 @@ def main() -> None:
             output_dir = fs_dir
 
         try:
-            spec = asyncio.run(run_vivian(user_input=content, output_dir=output_dir))
+            spec = asyncio.run(
+                run_vivian(
+                    user_input=content,
+                    output_dir=output_dir,
+                    scene_json_path=scene_path,
+                    start_pipeline=_start_pipeline,
+                    only_scene_analysis=_only_scene_analysis,
+                    use_mock_scene_analysis=_use_mock_scene_analysis,
+                )
+            )
+            #print("vivian llm specgen pipeline would start here...")
+            #spec = None  # Placeholder since run_vivian is not actually called
         except Exception as exc:  # pragma: no cover - defensive logging
             print(f"Failed to run Vivian pipeline: {exc}", file=sys.stderr)
             sys.exit(1)
 
         if spec is None:
+            if not _start_pipeline:
+                print("Pipeline stopped before manager agent (start_pipeline disabled).")
+                return
             print("No output received from Vivian agents.", file=sys.stderr)
             sys.exit(1)
 
     print("")
-    print("OK: files generated in:", fs_dir)
+    if _only_scene_analysis:
+        print("OK: scene analysis completed; pipeline stopped after analysis.")
+    else:
+        print("OK: files generated in:", fs_dir)
 
 
 if __name__ == "__main__":

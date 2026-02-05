@@ -1,0 +1,26 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "No scene JSON or views manifest were provided in the request. Unable to produce the requested analysis until the full SCENE_JSON (Unity scene export) and optional VIEWS_MANIFEST_JSON and images are supplied.",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON not provided. Please paste the full Unity scene JSON for CoffeeMachine2 so the agent can extract object entries (paths, stableId, roles, interactionParams, materials, transforms, colliders, renderer info, worldAabb, children, parent relationships).",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "VIEWS_MANIFEST_JSON not provided. If available, supply it and any images to allow visual confirmation of roles, relationships, and material/texture appearances.",
+            "object_name": null
+        },
+        {
+            "level": "info",
+            "message": "Requested outputs (interaction elements, visualization elements, hierarchical paths, colliders, renderers, materials/textures, recommended canonical names) cannot be generated without the scene data. When you provide SCENE_JSON, the agent will: (1) enumerate all objects and their roles/interactionParams, (2) list visualization-only objects and their renderer types, (3) preserve Unity object paths and parent/child relationships, (4) flag which objects have colliders and collider types, (5) list materials and main_texture fields, and (6) propose canonical functional names with confidence levels and note ambiguities.",
+            "object_name": null
+        }
+    ],
+    "user_feedback": []
+}

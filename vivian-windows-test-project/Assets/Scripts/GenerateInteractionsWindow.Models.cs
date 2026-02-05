@@ -248,5 +248,6 @@ public partial class GenerateInteractionsWindow
         public Vector3 cameraUp;
         public Vector3 cameraRight;
     }
+
 }
 #endif

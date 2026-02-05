@@ -1,0 +1,255 @@
+{
+    "$defs": {
+        "Animation": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "Animation",
+                    "title": "Type",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Name",
+                "Type"
+            ],
+            "title": "Animation",
+            "type": "object"
+        },
+        "AppearingObject": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "AppearingObject",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "Value": {
+                    "anyOf": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Value"
+                }
+            },
+            "required": [
+                "Name",
+                "Type"
+            ],
+            "title": "AppearingObject",
+            "type": "object"
+        },
+        "ColorRGBA": {
+            "properties": {
+                "r": {
+                    "title": "R",
+                    "type": "number"
+                },
+                "g": {
+                    "title": "G",
+                    "type": "number"
+                },
+                "b": {
+                    "title": "B",
+                    "type": "number"
+                },
+                "a": {
+                    "title": "A",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "r",
+                "g",
+                "b",
+                "a"
+            ],
+            "title": "ColorRGBA",
+            "type": "object"
+        },
+        "Light": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "Light",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "EmissionColor": {
+                    "$ref": "#/$defs/ColorRGBA"
+                }
+            },
+            "required": [
+                "Name",
+                "Type",
+                "EmissionColor"
+            ],
+            "title": "Light",
+            "type": "object"
+        },
+        "Particles": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "Particles",
+                    "title": "Type",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Name",
+                "Type"
+            ],
+            "title": "Particles",
+            "type": "object"
+        },
+        "Resolution": {
+            "properties": {
+                "x": {
+                    "title": "X",
+                    "type": "integer"
+                },
+                "y": {
+                    "title": "Y",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "x",
+                "y"
+            ],
+            "title": "Resolution",
+            "type": "object"
+        },
+        "Screen": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "Screen",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "Plane": {
+                    "$ref": "#/$defs/Vec3"
+                },
+                "Resolution": {
+                    "$ref": "#/$defs/Resolution"
+                }
+            },
+            "required": [
+                "Name",
+                "Type",
+                "Plane",
+                "Resolution"
+            ],
+            "title": "Screen",
+            "type": "object"
+        },
+        "SoundSource": {
+            "properties": {
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
+                "Type": {
+                    "const": "SoundSource",
+                    "title": "Type",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Name",
+                "Type"
+            ],
+            "title": "SoundSource",
+            "type": "object"
+        },
+        "Vec3": {
+            "properties": {
+                "x": {
+                    "title": "X",
+                    "type": "number"
+                },
+                "y": {
+                    "title": "Y",
+                    "type": "number"
+                },
+                "z": {
+                    "title": "Z",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "x",
+                "y",
+                "z"
+            ],
+            "title": "Vec3",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "Elements": {
+            "items": {
+                "discriminator": {
+                    "mapping": {
+                        "Animation": "#/$defs/Animation",
+                        "AppearingObject": "#/$defs/AppearingObject",
+                        "Light": "#/$defs/Light",
+                        "Particles": "#/$defs/Particles",
+                        "Screen": "#/$defs/Screen",
+                        "SoundSource": "#/$defs/SoundSource"
+                    },
+                    "propertyName": "Type"
+                },
+                "oneOf": [
+                    {
+                        "$ref": "#/$defs/Light"
+                    },
+                    {
+                        "$ref": "#/$defs/Screen"
+                    },
+                    {
+                        "$ref": "#/$defs/AppearingObject"
+                    },
+                    {
+                        "$ref": "#/$defs/SoundSource"
+                    },
+                    {
+                        "$ref": "#/$defs/Animation"
+                    },
+                    {
+                        "$ref": "#/$defs/Particles"
+                    }
+                ]
+            },
+            "title": "Elements",
+            "type": "array"
+        }
+    },
+    "required": [
+        "Elements"
+    ],
+    "title": "VisualizationElements",
+    "type": "object"
+}
