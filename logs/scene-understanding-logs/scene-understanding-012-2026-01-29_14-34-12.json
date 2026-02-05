@@ -1,0 +1,36 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "Coffee machine Unity scene. SCENE_JSON and VIEWS_MANIFEST_JSON content were not provided (placeholders '{...}'), and no images were attached in this message; therefore object inventory, hierarchy, materials, transforms, and interaction mappings cannot be extracted. This output is a structural placeholder with diagnostics requesting the missing inputs.",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON was not provided (placeholder '{...}'). Cannot enumerate objects, paths, stableIds, transforms, materials, colliders, bounding boxes, or roles.",
+            "object_name": null
+        },
+        {
+            "level": "error",
+            "message": "VIEWS_MANIFEST_JSON was not provided (placeholder '{...}'). Cannot associate scene objects with camera views for image-based confirmation.",
+            "object_name": null
+        },
+        {
+            "level": "error",
+            "message": "No images were provided. Cannot analyze/confirm coffee machine parts visually.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "Interaction objects list provided only contains 'CoffeeMachine2' with unspecified interaction type details beyond being an interaction object; cannot populate interactionParams without SCENE_JSON fields.",
+            "object_name": "CoffeeMachine2"
+        }
+    ],
+    "user_feedback": [
+        {
+            "text": "Provide the actual SCENE_JSON export (not '{...}'), the VIEWS_MANIFEST_JSON, and the referenced images/screenshots. Then I will produce a complete object/parts breakdown and functional specification (roles, interactions, relations, clusters) without guessing measurements.",
+            "timestamp": null
+        }
+    ]
+}

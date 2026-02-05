@@ -24,6 +24,9 @@ public partial class GenerateInteractionsWindow
         _sceneSummaryText = string.Empty;
         _sceneFeedbackText = string.Empty;
         _sceneSummaryLastWrite = DateTime.MinValue;
+        _chatMessages.Clear();
+        _userChatInput = string.Empty;
+        _chatScroll = Vector2.zero;
 
         Directory.CreateDirectory(groupPath);
 
@@ -1135,7 +1138,8 @@ public partial class GenerateInteractionsWindow
             $"\"{escapedDesc}\"",
             $"\"{jsonPath}\"",
             $"\"--start_pipeline={(_startVivianPipeline ? 1 : 0)}\"",
-            $"\"--only_scene_analysis={(_onlySceneAnalysis ? 1 : 0)}\""
+            $"\"--only_scene_analysis={(_onlySceneAnalysis ? 1 : 0)}\"",
+            $"\"--use_mock_scene_analysis={(_useMockSceneAnalysis ? 1 : 0)}\""
         };
         foreach (var go in _selectedObjects)
         {
@@ -1156,6 +1160,7 @@ public partial class GenerateInteractionsWindow
         psi.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
         psi.EnvironmentVariables["VIVIAN_START_PIPELINE"] = _startVivianPipeline ? "1" : "0";
         psi.EnvironmentVariables["VIVIAN_ONLY_SCENE_ANALYSIS"] = _onlySceneAnalysis ? "1" : "0";
+        psi.EnvironmentVariables["VIVIAN_USE_MOCK_SCENE_ANALYSIS"] = _useMockSceneAnalysis ? "1" : "0";
         psi.StandardOutputEncoding = Encoding.UTF8;
         psi.StandardErrorEncoding  = Encoding.UTF8;
         
@@ -1233,7 +1238,7 @@ public partial class GenerateInteractionsWindow
                 if (timeoutCts.IsCancellationRequested && !proc.HasExited)
                 {
                     timedOut = true;
-                    Debug.LogError("Python timed out after 10 minutes. Killing process.");
+                    Debug.LogError("Python timed out after 20 minutes. Killing process.");
                     TryKillRunningPython();
                 }
                 else

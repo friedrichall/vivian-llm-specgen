@@ -1,0 +1,31 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "Coffee machine scene requested, but SCENE_JSON / VIEWS_MANIFEST_JSON contents were not actually provided (payload omitted). Cannot enumerate Unity object names/paths, transforms, materials, colliders, or relationships without the scene data.",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON payload missing/omitted. Provide the full SCENE_JSON so object names, paths, hierarchy, transforms, materials, colliders, and bounds can be extracted exactly as required.",
+            "object_name": null
+        },
+        {
+            "level": "error",
+            "message": "VIEWS_MANIFEST_JSON payload missing/omitted. Provide it to map the included images (front/back/left/right/top/bottom/iso views) to camera metadata if available.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "Interaction objects list mentions 'CoffeeMachine2' but without SCENE_JSON the corresponding Unity object/path/stableId cannot be verified or populated into ObjectEntry.",
+            "object_name": "CoffeeMachine2"
+        }
+    ],
+    "user_feedback": [
+        {
+            "text": "Please resend the complete SCENE_JSON and (optionally) VIEWS_MANIFEST_JSON without omitting fields. If the payload is large, split across multiple messages. Once provided, I will return a full SceneUnderstanding JSON with objects, relations, clusters, and diagnostics.",
+            "timestamp": null
+        }
+    ]
+}

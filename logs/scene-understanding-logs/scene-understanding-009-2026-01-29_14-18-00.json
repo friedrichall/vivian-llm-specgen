@@ -1,0 +1,26 @@
+{
+    "scene_id": null,
+    "source_file": null,
+    "description": "CoffeeMachine2 scene: coffee machine with UI buttons, display, cup, and coffee/liquid simulations. Focus on interactive and visualization objects for Vivian FS.",
+    "objects": [],
+    "relations": [],
+    "clusters": [],
+    "diagnostics": [
+        {
+            "level": "error",
+            "message": "SCENE_JSON and VIEWS_MANIFEST_JSON were referenced but not actually included in the message content available to the agent. Cannot extract Unity object names/paths, roles, interactionParams, tags, transforms, materials, colliders, or hierarchy as required.",
+            "object_name": null
+        },
+        {
+            "level": "warning",
+            "message": "No images were provided alongside the request; visual confirmation of interactive vs visualization elements is not possible.",
+            "object_name": null
+        },
+        {
+            "level": "info",
+            "message": "Provide/paste the SCENE_JSON (and VIEWS_MANIFEST_JSON if available) or attach the exported scene data so I can populate ObjectEntry for all objects, add relations (e.g., button->brew/dispense->coffee simulation), and clusters (device body/control panel/liquid system) with required exact Unity names/paths.",
+            "object_name": null
+        }
+    ],
+    "user_feedback": []
+}

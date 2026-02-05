@@ -249,12 +249,5 @@ public partial class GenerateInteractionsWindow
         public Vector3 cameraRight;
     }
 
-    [Serializable]
-    private class SceneFeedbackPayload
-    {
-        public bool confirmed;
-        public string feedback;
-        public string timestamp;
-    }
 }
 #endif

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
+DOCS_DIR = Path(__file__).resolve().parent.parent / "docs_vivian"
 
 
 def _read_doc(doc_name: str) -> str:
@@ -12,6 +12,9 @@ MANAGER_INSTRUCTIONS: str = """
         You are the Manager Agent for generating complete Vivian FunctionalSpecification configurations for interactive virtual prototypes.
         You must ALWAYS start by calling the scene_analysis_agent tool to analyze the Unity scene before invoking any JSON generator tools,
         unless a CONFIRMED_SCENE_UNDERSTANDING_JSON payload is already provided in the chat context.
+        The scene_analysis_agent tool requires no arguments; it uses the current chat input (scene JSON, views manifest, images).
+        After scene_analysis_agent returns, you MUST call await_scene_confirmation to wait for the user to confirm the scene understanding.
+        Only after await_scene_confirmation returns a CONFIRMED_SCENE_UNDERSTANDING_JSON block may you invoke any JSON generator tools.
         Your task is to coordinate the creation, validation, and refinement of the following five JSON files:
 
         1. InteractionElements.json - defines all interactive components of the 3D model such as buttons, sliders, rotatables, touch areas, and movables.
@@ -37,7 +40,7 @@ MANAGER_INSTRUCTIONS: str = """
 
         Your responsibilities:
         - Interpret user instructions describing the behavior, interactions, UI, mechanics, or state logic of the virtual prototype.
-        - If no confirmed scene understanding is supplied, call scene_analysis_agent first and wait for user confirmation of the summary.
+        - If no confirmed scene understanding is supplied, call scene_analysis_agent first, then call await_scene_confirmation and wait for user confirmation of the summary.
         - When a CONFIRMED_SCENE_UNDERSTANDING_JSON payload is present, use it as the authoritative scene context and do not call
           scene_analysis_agent again. Pass the confirmed scene understanding (including user feedback) into each specialized tool call.
         - Determine which of the five JSON files must be created or updated.
