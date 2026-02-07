@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="6.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\VivianFramework.cs" Link="VivianCore\VivianFramework.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\VirtualPrototypeElement.cs" Link="VivianCore\VirtualPrototypeElement.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\StateMachine.cs" Link="VivianCore\StateMachine.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\interactionelements\InteractionElement.cs" Link="VivianCore\interactionelements\InteractionElement.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\visualizationelements\VisualizationElement.cs" Link="VivianCore\visualizationelements\VisualizationElement.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\specifications\InteractionElementSpecs.cs" Link="VivianCore\specifications\InteractionElementSpecs.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\specifications\VisualizationElementSpecs.cs" Link="VivianCore\specifications\VisualizationElementSpecs.cs" />
+    <Compile Include="..\..\vivian-windows-test-project\Packages\vivian-core\Runtime\Scripts\specifications\StateMachineSpecs.cs" Link="VivianCore\specifications\StateMachineSpecs.cs" />
+  </ItemGroup>
+</Project>

@@ -5,6 +5,7 @@ import sys
 import traceback
 import textwrap
 import time
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -448,6 +449,96 @@ async def _prompt_scene_feedback() -> str:
         raise
 
 
+def _validator_project_path() -> Path:
+    return PROJECT_ROOT / "tools" / "VivianValidator" / "VivianValidator.csproj"
+
+
+def _run_vivian_validator(output_dir: Path) -> Optional[Dict[str, Any]]:
+    validator_proj = _validator_project_path()
+    schema_path = PROJECT_ROOT / "schemas" / "FunctionalSpecification.schema.json"
+
+    if not validator_proj.exists():
+        print(f"[validator] Skipping: project missing at {validator_proj}", file=sys.stderr)
+        return None
+
+    if not schema_path.exists():
+        print(f"[validator] Skipping: schema missing at {schema_path}", file=sys.stderr)
+        return None
+
+    cmd = [
+        "dotnet",
+        "run",
+        "--project",
+        str(validator_proj),
+        "--",
+        f"--input-dir={output_dir}",
+        f"--schema={schema_path}",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("[validator] Skipping: dotnet is not available on PATH.", file=sys.stderr)
+        return None
+    except Exception as exc:
+        print(f"[validator] Failed to launch: {exc!r}", file=sys.stderr)
+        return None
+
+    stdout = (result.stdout or "").strip()
+    payload: Dict[str, Any]
+    if stdout:
+        try:
+            payload = json.loads(stdout)
+        except json.JSONDecodeError:
+            payload = {
+                "Ok": False,
+                "Errors": [
+                    {
+                        "File": "validator",
+                        "Stage": "runner",
+                        "Message": "Validator output was not valid JSON.",
+                        "Raw": stdout,
+                    }
+                ],
+            }
+    else:
+        payload = {
+            "Ok": False,
+            "Errors": [
+                {
+                    "File": "validator",
+                    "Stage": "runner",
+                    "Message": "Validator produced no output.",
+                }
+            ],
+        }
+
+    output_path = output_dir / "ValidationErrors.json"
+    try:
+        output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[validator] Wrote {output_path}")
+    except Exception as exc:
+        print(f"[validator] Failed to write {output_path}: {exc!r}", file=sys.stderr)
+
+    if result.returncode != 0:
+        print(f"[validator] Exit code {result.returncode}", file=sys.stderr)
+        stderr = (result.stderr or "").strip()
+        if stderr:
+            print(f"[validator] stderr:\n{stderr}", file=sys.stderr)
+
+    errors = payload.get("Errors") or payload.get("errors") or []
+    if errors:
+        print("[validator] Errors detected:")
+        for error in errors:
+            file_name = error.get("File", "unknown")
+            stage = error.get("Stage", "unknown")
+            message = error.get("Message", "")
+            print(f"- {file_name} [{stage}]: {message}")
+    else:
+        print("[validator] No errors detected.")
+
+    return payload
+
+
 #Entrypoint from unityconnector.py
 async def run_vivian(
     user_input: str | List[Dict[str, Any]],
@@ -537,6 +628,7 @@ async def run_vivian(
             path = output_dir / filename
             path.write_text(json.dumps(payload, indent=4, ensure_ascii=False), encoding="utf-8")
             print(f"Wrote {path}")
+        _run_vivian_validator(output_dir)
 
     return final_output
 
