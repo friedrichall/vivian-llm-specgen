@@ -6,6 +6,8 @@ import traceback
 import textwrap
 import time
 import subprocess
+import shutil
+import random
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -34,7 +36,7 @@ from scene_analysis_agent import (
 )
 from scene_feedback_agent import build_scene_feedback_agent, write_scene_feedback
 
-BASE_MODEL = "gpt-5-mini-2025-08-07"
+BASE_MODEL = "gpt-5.2"
 OUTPUT_DIR = Path("generated_specs")
 MANAGER_AGENT_VARIANT = "manager"  # options: "manager", "scene_feedback"
 
@@ -88,6 +90,7 @@ class VivianRunContext:
     scene_analysis_done: bool = False
     scene_confirmed: bool = False
     only_scene_analysis: bool = False
+    validation_errors: Optional[List[Dict[str, Any]]] = None
 
 
 def _resolve_scene_dir(scene_json_path: Optional[Path]) -> Optional[Path]:
@@ -449,94 +452,334 @@ async def _prompt_scene_feedback() -> str:
         raise
 
 
-def _validator_project_path() -> Path:
-    return PROJECT_ROOT / "tools" / "VivianValidator" / "VivianValidator.csproj"
+def _unity_project_path() -> Path:
+    return PROJECT_ROOT / "vivian-windows-test-project"
 
 
-def _run_vivian_validator(output_dir: Path) -> Optional[Dict[str, Any]]:
-    validator_proj = _validator_project_path()
+def _unity_validator_source_path() -> Path:
+    return PROJECT_ROOT / "tools" / "VivianUnityValidator" / "VivianValidatorRunner.cs"
+
+
+def _unity_validator_target_dir(unity_project: Path) -> Path:
+    return unity_project / "Assets" / "Editor" / "VivianValidator"
+
+
+def _copy_if_changed(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if not dst.exists() or src.read_bytes() != dst.read_bytes():
+        shutil.copy2(src, dst)
+
+
+def _copy_file(src: Path, dst: Path) -> None:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+
+
+def _copy_tree(src: Path, dst: Path) -> None:
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+
+
+def _build_validator_run_id() -> str:
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    suffix = f"{random.getrandbits(32):08x}"
+    return f"{timestamp}-{suffix}"
+
+
+def _create_temp_unity_project(
+    source_unity_project: Path,
+    temp_unity_project: Path,
+) -> None:
+    # Minimal project shape required for compiling and running VivianValidatorRunner.
+    required_project_settings = source_unity_project / "ProjectSettings"
+    required_project_version = required_project_settings / "ProjectVersion.txt"
+    required_manifest = source_unity_project / "Packages" / "manifest.json"
+    required_vivian_core = source_unity_project / "Packages" / "vivian-core"
+
+    if not required_project_version.exists():
+        raise FileNotFoundError(f"Missing required file: {required_project_version}")
+    if not required_manifest.exists():
+        raise FileNotFoundError(f"Missing required file: {required_manifest}")
+    if not required_vivian_core.exists():
+        raise FileNotFoundError(f"Missing required folder: {required_vivian_core}")
+
+    temp_unity_project.mkdir(parents=True, exist_ok=True)
+
+    _copy_tree(required_project_settings, temp_unity_project / "ProjectSettings")
+    temp_manifest = temp_unity_project / "Packages" / "manifest.json"
+    _copy_file(required_manifest, temp_manifest)
+    _copy_tree(required_vivian_core, temp_unity_project / "Packages" / "vivian-core")
+    _prune_temp_manifest_for_validator(temp_manifest)
+
+    # Keep Assets minimal for fast copy; validator script is injected afterwards.
+    (temp_unity_project / "Assets").mkdir(parents=True, exist_ok=True)
+
+
+def _prune_temp_manifest_for_validator(manifest_path: Path) -> None:
+    raw = manifest_path.read_text(encoding="utf-8")
+    payload = json.loads(raw)
+    deps = payload.get("dependencies")
+    if not isinstance(deps, dict):
+        return
+
+    keys_to_remove: List[str] = []
+    for package_name, package_ref in deps.items():
+        if not isinstance(package_ref, str):
+            continue
+        if not package_ref.startswith("file:./"):
+            continue
+        if package_name == "de.ugoe.cs.vivian.core":
+            continue
+        keys_to_remove.append(package_name)
+
+    for key in keys_to_remove:
+        deps.pop(key, None)
+
+    manifest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _cleanup_temp_dir(temp_run_root: Path, retries: int = 5, delay_seconds: float = 0.5) -> None:
+    if not temp_run_root.exists():
+        return
+    for attempt in range(1, retries + 1):
+        try:
+            shutil.rmtree(temp_run_root)
+            return
+        except Exception as exc:
+            if attempt == retries:
+                print(
+                    f"[validator] Warning: failed to clean up temp folder {temp_run_root}: {exc!r}",
+                    file=sys.stderr,
+                )
+                return
+            time.sleep(delay_seconds)
+
+
+def _ensure_unity_validator_assets(unity_project: Path) -> Optional[Path]:
+    source = _unity_validator_source_path()
+    if not source.exists():
+        print(f"[validator] Missing validator source: {source}", file=sys.stderr)
+        return None
+
+    target_dir = _unity_validator_target_dir(unity_project)
+    _copy_if_changed(source, target_dir / source.name)
+
+    return target_dir
+
+
+def _find_unity_editor_path() -> Optional[Path]:
+    candidates = [
+        Path(r"C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _run_json_schema_validation(input_dir: Path, schema_path: Path) -> List[Dict[str, Any]]:
+    files_to_defs = {
+        "InteractionElements.json": "InteractionElements",
+        "VisualizationElements.json": "VisualizationElements",
+        "VisualizationArrays.json": "VisualizationArrays",
+        "States.json": "States",
+        "Transitions.json": "Transitions",
+    }
+    errors: List[Dict[str, Any]] = []
+
+    try:
+        from jsonschema import Draft202012Validator
+    except Exception as exc:
+        return [{
+            "file": "schema",
+            "stage": "schema",
+            "message": f"{type(exc).__name__}: Python package 'jsonschema' is required for schema validation.",
+        }]
+
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [{
+            "file": str(schema_path),
+            "stage": "schema",
+            "message": f"{type(exc).__name__}: {exc}",
+        }]
+
+    defs = schema.get("$defs")
+    if not isinstance(defs, dict):
+        return [{
+            "file": str(schema_path),
+            "stage": "schema",
+            "message": "Schema is missing top-level '$defs'.",
+        }]
+
+    for file_name, def_name in files_to_defs.items():
+        input_path = input_dir / file_name
+        try:
+            payload = json.loads(input_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append({
+                "file": file_name,
+                "stage": "schema",
+                "message": f"{type(exc).__name__}: {exc}",
+            })
+            continue
+
+        sub_schema = {
+            "$schema": schema.get("$schema", "https://json-schema.org/draft/2020-12/schema"),
+            "$defs": defs,
+            "$ref": f"#/$defs/{def_name}",
+        }
+        validator = Draft202012Validator(sub_schema)
+        for validation_error in validator.iter_errors(payload):
+            location = "/".join(str(part) for part in validation_error.absolute_path)
+            prefix = f"{location}: " if location else ""
+            errors.append({
+                "file": file_name,
+                "stage": "schema",
+                "message": f"{prefix}{validation_error.message}",
+            })
+
+    return errors
+
+
+def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
+    source_unity_project = _unity_project_path()
     schema_path = PROJECT_ROOT / "schemas" / "FunctionalSpecification.schema.json"
+    all_errors: List[Dict[str, Any]] = []
 
-    if not validator_proj.exists():
-        print(f"[validator] Skipping: project missing at {validator_proj}", file=sys.stderr)
+    if not source_unity_project.exists():
+        print(f"[validator] Skipping: Unity project missing at {source_unity_project}", file=sys.stderr)
         return None
 
     if not schema_path.exists():
         print(f"[validator] Skipping: schema missing at {schema_path}", file=sys.stderr)
         return None
 
+    all_errors.extend(_run_json_schema_validation(output_dir, schema_path))
+
+    unity_path = _find_unity_editor_path()
+    if not unity_path:
+        print(
+            "[validator] Skipping: required Unity version 2022.3.62f3 is not installed "
+            "(expected at C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f3\\Editor\\Unity.exe).",
+            file=sys.stderr,
+        )
+        return all_errors if all_errors else None
+
+    log_dir = PROJECT_ROOT / "logs" / "validator"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    run_id = _build_validator_run_id()
+    temp_root = log_dir / "tmp-unity-projects"
+    temp_run_root = temp_root / run_id
+    temp_unity_project = temp_run_root / "vivian-windows-test-project"
+    error_package_path = log_dir / f"error-package-{run_id}.json"
+    unity_log = log_dir / f"unity-validator-{run_id}.log"
+
+    try:
+        _create_temp_unity_project(source_unity_project, temp_unity_project)
+    except Exception as exc:
+        print(f"[validator] Failed to prepare temp Unity project: {exc!r}", file=sys.stderr)
+        all_errors.append({
+            "file": "",
+            "stage": "unity_batchmode",
+            "message": f"Failed to prepare temp Unity project: {type(exc).__name__}: {exc}",
+        })
+        _cleanup_temp_dir(temp_run_root)
+        return all_errors
+
+    if _ensure_unity_validator_assets(temp_unity_project) is None:
+        _cleanup_temp_dir(temp_run_root)
+        return all_errors if all_errors else None
+
     cmd = [
-        "dotnet",
-        "run",
-        "--project",
-        str(validator_proj),
-        "--",
-        f"--input-dir={output_dir}",
-        f"--schema={schema_path}",
+        str(unity_path),
+        "-batchmode",
+        "-nographics",
+        "-quit",
+        "-projectPath",
+        str(temp_unity_project.resolve()),
+        "-executeMethod",
+        "VivianValidatorRunner.Run",
+        "-logFile",
+        str(unity_log),
+        "-validatorInputDir",
+        str(output_dir.resolve()),
+        "-validatorSchemaPath",
+        str(schema_path.resolve()),
+        "-validatorOut",
+        str(error_package_path.resolve()),
     ]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-    except FileNotFoundError:
-        print("[validator] Skipping: dotnet is not available on PATH.", file=sys.stderr)
-        return None
-    except Exception as exc:
-        print(f"[validator] Failed to launch: {exc!r}", file=sys.stderr)
-        return None
 
-    stdout = (result.stdout or "").strip()
-    payload: Dict[str, Any]
-    if stdout:
+    try:
         try:
-            payload = json.loads(stdout)
-        except json.JSONDecodeError:
-            payload = {
-                "Ok": False,
-                "Errors": [
-                    {
-                        "File": "validator",
-                        "Stage": "runner",
-                        "Message": "Validator output was not valid JSON.",
-                        "Raw": stdout,
-                    }
-                ],
-            }
-    else:
-        payload = {
-            "Ok": False,
-            "Errors": [
-                {
-                    "File": "validator",
-                    "Stage": "runner",
-                    "Message": "Validator produced no output.",
-                }
-            ],
-        }
+            result = subprocess.run(cmd, capture_output=True, text=True)
+        except Exception as exc:
+            print(f"[validator] Failed to launch Unity: {exc!r}", file=sys.stderr)
+            all_errors.append({
+                "file": "unity-validator.log",
+                "stage": "unity_batchmode",
+                "message": f"Failed to launch Unity: {type(exc).__name__}: {exc}",
+            })
+            return all_errors
 
-    output_path = output_dir / "ValidationErrors.json"
-    try:
-        output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"[validator] Wrote {output_path}")
-    except Exception as exc:
-        print(f"[validator] Failed to write {output_path}: {exc!r}", file=sys.stderr)
+        if result.returncode != 0:
+            print(f"[validator] Unity exit code {result.returncode}", file=sys.stderr)
+            stderr = (result.stderr or "").strip()
+            if stderr:
+                print(f"[validator] Unity stderr:\n{stderr}", file=sys.stderr)
 
-    if result.returncode != 0:
-        print(f"[validator] Exit code {result.returncode}", file=sys.stderr)
-        stderr = (result.stderr or "").strip()
-        if stderr:
-            print(f"[validator] stderr:\n{stderr}", file=sys.stderr)
+        if not error_package_path.exists():
+            if result.returncode != 0:
+                fallback_errors = [{
+                    "file": "unity-validator.log",
+                    "stage": "unity_batchmode",
+                    "message": "Unity validation failed; see unity log",
+                }]
+                try:
+                    error_package_path.write_text(
+                        json.dumps(fallback_errors, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                except Exception as exc:
+                    print(
+                        f"[validator] Failed to write fallback error package {error_package_path}: {exc!r}",
+                        file=sys.stderr,
+                    )
+                all_errors.extend(fallback_errors)
+                return all_errors
 
-    errors = payload.get("Errors") or payload.get("errors") or []
-    if errors:
+            print(f"[validator] Missing error package at {error_package_path}", file=sys.stderr)
+            return all_errors if all_errors else None
+
+        try:
+            errors = json.loads(error_package_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"[validator] Error package JSON invalid: {exc}", file=sys.stderr)
+            all_errors.append({
+                "file": "unity-validator.log",
+                "stage": "unity_batchmode",
+                "message": f"Invalid error package JSON: {exc}",
+            })
+            return all_errors
+
+        if isinstance(errors, list):
+            all_errors.extend(errors)
+    finally:
+        _cleanup_temp_dir(temp_run_root)
+
+    if all_errors:
         print("[validator] Errors detected:")
-        for error in errors:
-            file_name = error.get("File", "unknown")
-            stage = error.get("Stage", "unknown")
-            message = error.get("Message", "")
+        for error in all_errors:
+            file_name = error.get("file", "unknown")
+            stage = error.get("stage", "unknown")
+            message = error.get("message", "")
             print(f"- {file_name} [{stage}]: {message}")
     else:
         print("[validator] No errors detected.")
 
-    return payload
+    return all_errors
 
 
 #Entrypoint from unityconnector.py
@@ -628,7 +871,7 @@ async def run_vivian(
             path = output_dir / filename
             path.write_text(json.dumps(payload, indent=4, ensure_ascii=False), encoding="utf-8")
             print(f"Wrote {path}")
-        _run_vivian_validator(output_dir)
+        context.validation_errors = _run_vivian_validator(output_dir)
 
     return final_output
 
