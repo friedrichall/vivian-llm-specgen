@@ -1,0 +1,44 @@
+{
+    "Elements": [
+        {
+            "Name": "LED",
+            "Type": "Light",
+            "EmissionColor": {
+                "r": 1.0,
+                "g": 0.0,
+                "b": 0.0,
+                "a": 1.0
+            }
+        },
+        {
+            "Name": "Heating_resistors",
+            "Type": "AppearingObject",
+            "Value": 0.0
+        },
+        {
+            "Name": "Toast1",
+            "Type": "AppearingObject",
+            "Value": 0.0
+        },
+        {
+            "Name": "Toast2",
+            "Type": "AppearingObject",
+            "Value": 0.0
+        },
+        {
+            "Name": "Toast3",
+            "Type": "AppearingObject",
+            "Value": 0.0
+        },
+        {
+            "Name": "Plate.000",
+            "Type": "AppearingObject",
+            "Value": 1.0
+        },
+        {
+            "Name": "Body",
+            "Type": "AppearingObject",
+            "Value": 1.0
+        }
+    ]
+}
