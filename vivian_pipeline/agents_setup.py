@@ -1,3 +1,5 @@
+"""Agent construction utilities and shared agent instances for the Vivian pipeline."""
+
 import textwrap
 from typing import Any, Dict
 
@@ -58,6 +60,7 @@ scene_analysis_agent = build_scene_analysis_agent(BASE_MODEL)
 
 
 def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
+    """Build the manager prompt from scene description and interaction objects."""
     object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
     return textwrap.dedent(
         f"""
@@ -78,17 +81,20 @@ def build_manager_agent(
     await_scene_confirmation: Any,
     only_scene_analysis: bool = False,
 ) -> Agent:
-    """Create the Vivian manager agent with all sub-agents attached."""
+    """Create the manager agent with scene and specification-generation tools."""
 
     def _analysis_enabled(ctx: Any, _agent: Agent) -> bool:
+        """Return whether scene analysis is still required for this run."""
         state: VivianRunContext = ctx.context
         return not state.scene_analysis_done and not state.scene_confirmed
 
     def _confirm_enabled(ctx: Any, _agent: Agent) -> bool:
+        """Return whether scene confirmation should be available."""
         state: VivianRunContext = ctx.context
         return state.scene_understanding is not None and not state.scene_confirmed
 
     def _spec_tools_enabled(ctx: Any, _agent: Agent) -> bool:
+        """Return whether JSON spec tools can run after confirmation."""
         state: VivianRunContext = ctx.context
         return state.scene_confirmed and not state.only_scene_analysis
 
@@ -140,7 +146,7 @@ def build_active_manager_agent(
     scene_analysis_tool: Any = None,
     await_scene_confirmation: Any = None,
 ) -> Agent:
-    """Select manager agent or simple scene feedback agent for testing."""
+    """Return the active manager variant configured for the current run."""
     if MANAGER_AGENT_VARIANT == "manager":
         if scene_analysis_tool is None or await_scene_confirmation is None:
             from vivian_pipeline.scene_confirmation import (

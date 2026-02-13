@@ -67,6 +67,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 
 def _read_bool_flag(flag_name: str, default: bool) -> bool:
+    """Read a ``--<flag>=0|1`` CLI flag and return its boolean value."""
     prefix = f"--{flag_name}="
     for arg in sys.argv[1:]:
         if not arg.startswith(prefix):
@@ -81,6 +82,7 @@ def _read_bool_flag(flag_name: str, default: bool) -> bool:
 
 
 async def _prompt_scene_feedback() -> str:
+    """Prompt for scene feedback from env var or interactive stdin."""
     #TODO remove env var
     env_feedback = os.getenv("VIVIAN_SCENE_FEEDBACK")
     if env_feedback is not None:
@@ -112,7 +114,29 @@ async def run_vivian(
     only_scene_analysis: bool = False,
     use_mock_scene_analysis: bool = False,
 ) -> FunctionalSpecification | str | None:
-    """Run the Vivian agent pipeline and optionally persist outputs."""
+    """Run the Vivian orchestration pipeline and optionally persist artifacts.
+
+    This entrypoint logs raw user input, initializes run context, executes the
+    selected manager variant in streamed mode, and conditionally writes
+    generated FunctionalSpecification files plus validator results.
+
+    Args:
+        user_input: Either raw user text or structured input items passed to
+            the manager run.
+        output_dir: Optional output directory for generated JSON files.
+        scene_json_path: Optional source scene JSON path used to derive the
+            scene directory.
+        start_pipeline: Whether to execute manager orchestration after input
+            logging.
+        only_scene_analysis: Whether to stop after scene analysis/confirmation.
+        use_mock_scene_analysis: Whether to preload scene understanding from
+            mock JSON and skip scene analysis execution.
+
+    Returns:
+        A ``FunctionalSpecification`` for full manager runs, a ``str`` for the
+        scene-feedback manager variant, or ``None`` when execution is skipped
+        or aborted before a final output is available.
+    """
     if isinstance(user_input, str):
         try:
             parsed = json.loads(user_input)
@@ -209,7 +233,7 @@ async def run_vivian(
 
 
 async def agents_vivian():
-    """Demo runner that uses the default USER_INPUT and writes files."""
+    """Run the default demo flow using CLI flag overrides and default input."""
     start_pipeline = _read_bool_flag("start-pipeline", True)
     only_scene_analysis = _read_bool_flag("only-scene-analysis", False)
     use_mock_scene_analysis = _read_bool_flag("use-mock-scene-analysis", False)

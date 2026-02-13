@@ -12,6 +12,8 @@ MOCK_SCENE_UNDERSTANDING_FILENAME = "scene_understanding.json"
 
 @dataclass
 class VivianRunContext:
+    """Carry mutable per-run state shared across the Vivian pipeline."""
+
     user_input: str | List[Dict[str, Any]]
     scene_dir: Optional[Path] = None
     scene_understanding: Optional[SceneUnderstanding] = None
@@ -22,6 +24,7 @@ class VivianRunContext:
 
 
 def _resolve_scene_dir(scene_json_path: Optional[Path]) -> Optional[Path]:
+    """Resolve the active scene directory from path argument, env var, or cwd."""
     if scene_json_path:
         return scene_json_path.parent
     env_dir = os.getenv("VIVIAN_SCENE_DIR")
@@ -31,12 +34,14 @@ def _resolve_scene_dir(scene_json_path: Optional[Path]) -> Optional[Path]:
 
 
 def _scene_summary_path(scene_dir: Optional[Path]) -> Optional[Path]:
+    """Return the scene summary file path for a scene directory."""
     if scene_dir is None:
         return None
     return scene_dir / SCENE_SUMMARY_FILENAME
 
 
 def _scene_feedback_path(scene_dir: Optional[Path]) -> Optional[Path]:
+    """Return the scene feedback file path for a scene directory."""
     if scene_dir is None:
         return None
     return scene_dir / SCENE_FEEDBACK_FILENAME
