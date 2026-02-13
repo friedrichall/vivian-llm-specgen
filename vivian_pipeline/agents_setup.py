@@ -23,7 +23,7 @@ from scene_analysis_agent import build_scene_analysis_agent
 from scene_feedback_agent import build_scene_feedback_agent
 from vivian_pipeline.context import VivianRunContext
 
-BASE_MODEL = "gpt-5.2"
+BASE_MODEL = "gpt-5-mini-2025-08-07"
 MANAGER_AGENT_VARIANT = "manager"  # options: "manager", "scene_feedback"
 
 interaction_elements_agent = Agent(
