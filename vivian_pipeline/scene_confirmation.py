@@ -8,7 +8,7 @@ from agents import ItemHelpers, Runner, function_tool
 from agents.tool_context import ToolContext
 
 from model.output_type_SceneUnderstanding import SceneUnderstanding
-from scene_analysis_agent import (
+from vivian_pipeline.scene_analysis import (
     apply_scene_feedback,
     build_scene_context,
     summarize_scene_understanding,

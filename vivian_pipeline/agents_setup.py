@@ -19,9 +19,9 @@ from model.output_type_States import States
 from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationArrays import VisualizationArrays
 from model.output_type_VisualizationElements import VisualizationElements
-from scene_analysis_agent import build_scene_analysis_agent
 from scene_feedback_agent import build_scene_feedback_agent
 from vivian_pipeline.context import VivianRunContext
+from vivian_pipeline.scene_analysis import build_scene_analysis_agent
 
 BASE_MODEL = "gpt-5-mini-2025-08-07"
 MANAGER_AGENT_VARIANT = "manager"  # options: "manager", "scene_feedback"
