@@ -282,10 +282,12 @@ def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
     log_dir = PROJECT_ROOT / "logs" / "validator"
     log_dir.mkdir(parents=True, exist_ok=True)
     run_id = _build_validator_run_id()
+    run_dir = log_dir / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
     temp_root = log_dir / "tmp-unity-projects"
     temp_run_root = temp_root / run_id
     temp_unity_project = temp_run_root / "vivian-windows-test-project"
-    error_package_path = log_dir / f"error-package-{run_id}.json"
+    error_package_path = run_dir / "error-package.json"
     unity_log = log_dir / f"unity-validator-{run_id}.log"
 
     try:
