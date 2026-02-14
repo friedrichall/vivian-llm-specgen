@@ -603,7 +603,7 @@ def main() -> None:
     _ensure_sys_path()
 
     try:
-        from agents_vivian import build_vivian_prompt, run_vivian  # imported late so sys.path is patched
+        from vivian_pipeline.agents_vivian import build_vivian_prompt, run_vivian  # imported late so sys.path is patched
     except ModuleNotFoundError as exc:
         print(
             "Could not import project modules (missing 'agents' dependency). "

@@ -63,7 +63,7 @@ USER_INPUT = (
     "generate a complete functional specification of a virtual prototype."
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _read_bool_flag(flag_name: str, default: bool) -> bool:
