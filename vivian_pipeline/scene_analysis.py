@@ -1,3 +1,5 @@
+"""Scene-analysis helpers for building, summarizing, and contextualizing results."""
+
 import json
 from datetime import datetime
 from pathlib import Path
@@ -73,7 +75,22 @@ def summarize_scene_understanding(
     max_relations: int = 15,
     max_clusters: int = 10,
 ) -> str:
-    """Create a human-readable summary from SceneUnderstanding."""
+    """Build a human-readable scene summary from ``SceneUnderstanding``.
+
+    The summary includes scene metadata, detected objects, relations, clusters,
+    diagnostics, and recent user feedback. Object, relation, and cluster
+    sections are truncated according to the corresponding ``max_*`` limits, and
+    an overflow line is appended when additional entries exist.
+
+    Args:
+        scene_understanding: Parsed scene analysis output to summarize.
+        max_objects: Maximum number of objects to list.
+        max_relations: Maximum number of relations to list.
+        max_clusters: Maximum number of clusters to list.
+
+    Returns:
+        A newline-delimited summary string intended for human review.
+    """
     lines: List[str] = []
     scene_id = scene_understanding.scene_id or "(unknown scene)"
     source_file = scene_understanding.source_file or ""
@@ -192,6 +209,7 @@ def build_scene_context(scene_understanding: SceneUnderstanding) -> str:
 
 
 def _next_scene_understanding_index(output_dir: Path) -> int:
+    """Return the next sequential index for scene-understanding log files."""
     existing = sorted(output_dir.glob("scene-understanding-*.json"))
     return len(existing) + 1
 
@@ -200,6 +218,7 @@ def _filter_objects_by_roles(
     objects: Iterable[ObjectEntry],
     role_hints: set[str],
 ) -> List[ObjectEntry]:
+    """Filter objects by role hints, with interaction fallback for interactive hints."""
     filtered: List[ObjectEntry] = []
     for obj in objects or []:
         roles = set(obj.roles or [])
@@ -213,6 +232,7 @@ def _filter_objects_by_roles(
 
 
 def _format_object_lines(objects: Iterable[ObjectEntry]) -> List[str]:
+    """Format object entries as human-readable bullet lines."""
     lines: List[str] = []
     for obj in objects:
         role_str = ", ".join(obj.roles) if obj.roles else "no roles"

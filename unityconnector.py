@@ -36,7 +36,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple, Optional, Any, List, Iterable
+from dotenv import load_dotenv
 
+
+
+from agents import set_trace_processors
+from langsmith.integrations.openai_agents_sdk import OpenAIAgentsTracingProcessor
+from langsmith.wrappers import wrap_openai
 from openai.types.container_create_params import ExpiresAfter
 
 DEFAULT_OUTPUT_ROOT = Path("generated_specs")
@@ -435,7 +441,7 @@ def _build_uploaded_image_items(images: List[ImagePayload]) -> Tuple[List[Dict[s
         print(f"Failed to import OpenAI client for image upload: {exc}")
         return [], images
 
-    client = OpenAI()
+    client = wrap_openai(OpenAI())  # log traces to langsmith by wrapping the model calls
     items: List[Dict[str, Any]] = []
     failed: List[ImagePayload] = []
     for image in images:
@@ -597,7 +603,7 @@ def main() -> None:
     _ensure_sys_path()
 
     try:
-        from agents_vivian import build_vivian_prompt, run_vivian  # imported late so sys.path is patched
+        from vivian_pipeline.agents_vivian import build_vivian_prompt, run_vivian  # imported late so sys.path is patched
     except ModuleNotFoundError as exc:
         print(
             "Could not import project modules (missing 'agents' dependency). "
@@ -738,4 +744,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    load_dotenv()  # lädt .env aus dem Projekt-Root
+    set_trace_processors([OpenAIAgentsTracingProcessor()])
     main()
