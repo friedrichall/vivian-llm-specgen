@@ -1,5 +1,6 @@
 # This is a sample Python script.
 import asyncio
+from dotenv import load_dotenv
 
 from vivian_pipeline.agents_vivian import agents_vivian
 
@@ -12,6 +13,7 @@ async def main():
     await agents_vivian()
 
 if __name__ == '__main__':
+    load_dotenv()
     asyncio.run(main())
 
 
