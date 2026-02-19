@@ -13,10 +13,13 @@
 3. **Structure of a state**
    3.1. Each state object must contain a `"Name"` field.
    3.2. `"Name"` must be a string that uniquely identifies the state within `States.json`.
-   3.3. Each state object must contain a `"Conditions"` field.
-   3.4. `"Conditions"` must be an array of condition objects.
-   3.5. You must only place supported condition objects inside `"Conditions"`.
-   3.6. A state must follow this pattern:
+   3.3. The state name in `"Name"` must follow these naming conventions:
+   3.3.1. The name must be camelCase.
+   3.3.2. The name must end with `.state`.
+   3.4. Each state object must contain a `"Conditions"` field.
+   3.5. `"Conditions"` must be an array of condition objects.
+   3.6. You must only place supported condition objects inside `"Conditions"`.
+   3.7. A state must follow this pattern:
 
    * `{ "Name": "example.state", "Conditions": [ { ...condition 1... }, { ...condition 2... } ] }`
 

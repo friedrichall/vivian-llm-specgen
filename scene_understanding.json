@@ -1,7 +1,7 @@
 {
-    "scene_id": null,
+    "scene_id": "CoffeeMachine2_Spec",
     "source_file": null,
-    "description": "coffee machine",
+    "description": "Vivian FunctionalSpecification extracted from provided scene JSON for CoffeeMachine2.",
     "objects": [
         {
             "name": "CoffeeMachine2",
@@ -59,7 +59,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.65
+            "confidence": 0.9
         },
         {
             "name": "CoffeeMachine",
@@ -115,7 +115,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.75
+            "confidence": 0.9
         },
         {
             "name": "Case",
@@ -177,7 +177,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.72
+            "confidence": 0.9
         },
         {
             "name": "CaseTop",
@@ -233,7 +233,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.72
+            "confidence": 0.9
         },
         {
             "name": "CupWarmerPlate",
@@ -291,7 +291,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.7
+            "confidence": 0.9
         },
         {
             "name": "MainPlate",
@@ -323,9 +323,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -456,79 +456,6 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.8
-        },
-        {
-            "name": "Cylinder.013",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/CaseTop/CupWarmerPlate/PlateTexture/Cylinder.013",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-6724860529535906267-1815925864",
-            "parent_name": "PlateTexture",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/CaseTop/CupWarmerPlate/PlateTexture",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.03888590261340141,
-                    "y": 0.3811003565788269,
-                    "z": -0.013844260945916176
-                },
-                "rotation": {
-                    "x": 0.007400006055831909,
-                    "y": 0.7093260288238525,
-                    "z": -0.007448554039001465,
-                    "w": 0.7048025131225586
-                },
-                "scale": {
-                    "x": 0.04820939525961876,
-                    "y": 0.05785228684544563,
-                    "z": 0.061705026775598526
-                }
-            },
-            "materials": [
-                {
-                    "name": "GreyMetal",
-                    "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 5588,
-                "vertices": 9856,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    0.034625835716724396,
-                    0.37765973806381226,
-                    -0.01705159619450569
-                ],
-                "max": [
-                    0.043876536190509796,
-                    0.3845411539077759,
-                    0.07857559621334076
-                ]
-            },
-            "size": [
-                0.009250696748495102,
-                0.0068814316764473915,
-                0.09562719613313675
-            ],
             "confidence": 0.9
         },
         {
@@ -585,7 +512,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.7
+            "confidence": 0.75
         },
         {
             "name": "MetalPart",
@@ -617,9 +544,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -658,7 +585,7 @@
                 0.0028713191859424114,
                 0.06379566341638565
             ],
-            "confidence": 0.9
+            "confidence": 0.8
         },
         {
             "name": "PlasticPart",
@@ -731,7 +658,7 @@
                 0.006717304699122906,
                 0.07204318046569824
             ],
-            "confidence": 0.9
+            "confidence": 0.8
         },
         {
             "name": "Top",
@@ -866,7 +793,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.8
+            "confidence": 0.9
         },
         {
             "name": "Cover",
@@ -898,9 +825,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -939,7 +866,7 @@
                 0.010289116762578487,
                 0.2656461000442505
             ],
-            "confidence": 0.94
+            "confidence": 0.9
         },
         {
             "name": "Pan",
@@ -1012,7 +939,7 @@
                 0.0570954829454422,
                 0.3053492605686188
             ],
-            "confidence": 0.93
+            "confidence": 0.9
         },
         {
             "name": "VerticalCover",
@@ -1085,80 +1012,7 @@
                 0.1562548130750656,
                 0.017678895965218544
             ],
-            "confidence": 0.9
-        },
-        {
-            "name": "VerticalCoverBackside",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/CollectingPan/VerticalCoverBackside",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-7219110223385471361-1815925864",
-            "parent_name": "CollectingPan",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/CollectingPan",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.0012102813925594091,
-                    "y": 0.08565063029527664,
-                    "z": 0.07714489102363586
-                },
-                "rotation": {
-                    "x": 0.0014181733131408691,
-                    "y": 0.0028289074543863535,
-                    "z": 0.002489675534889102,
-                    "w": 0.9999919533729553
-                },
-                "scale": {
-                    "x": 0.011793104000389576,
-                    "y": 0.011056134477257729,
-                    "z": 0.009213537909090519
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 108,
-                "vertices": 168,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.07252670079469681,
-                    0.004165589809417725,
-                    0.06828233599662781
-                ],
-                "max": [
-                    0.07494726032018661,
-                    0.16713562607765198,
-                    0.08600744605064392
-                ]
-            },
-            "size": [
-                0.14747396111488342,
-                0.16297003626823425,
-                0.017725102603435516
-            ],
-            "confidence": 0.9
+            "confidence": 0.85
         },
         {
             "name": "WaterLevelIndicator",
@@ -1231,7 +1085,7 @@
                 0.02657567337155342,
                 0.0016229783650487661
             ],
-            "confidence": 0.92
+            "confidence": 0.9
         },
         {
             "name": "Front",
@@ -1297,80 +1151,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.8
-        },
-        {
-            "name": "BrandNameHolder",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/BrandNameHolder",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-1183025851359919811-1815925864",
-            "parent_name": "Front",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": -0.0006397216347977519,
-                    "y": 0.3134905695915222,
-                    "z": 0.09739867597818375
-                },
-                "rotation": {
-                    "x": 0.0022604763507843018,
-                    "y": 0.008439799770712852,
-                    "z": -0.01503715105354786,
-                    "w": 0.9998488426208496
-                },
-                "scale": {
-                    "x": 0.2592807710170746,
-                    "y": 0.08788520097732544,
-                    "z": 0.07939613610506058
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 84,
-                "vertices": 138,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.01830306462943554,
-                    0.308411180973053,
-                    0.09487786889076233
-                ],
-                "max": [
-                    0.017023621127009392,
-                    0.31856995820999146,
-                    0.09991948306560516
-                ]
-            },
-            "size": [
-                0.03532668575644493,
-                0.010158788412809372,
-                0.005041619762778282
-            ],
-            "confidence": 0.88
+            "confidence": 0.9
         },
         {
             "name": "FrontPanel",
@@ -1443,7 +1224,7 @@
                 0.358563631772995,
                 0.0226761307567358
             ],
-            "confidence": 0.94
+            "confidence": 0.95
         },
         {
             "name": "InteractionPanelBackground",
@@ -1574,7 +1355,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.82
+            "confidence": 0.9
         },
         {
             "name": "LeftOutlet",
@@ -1606,9 +1387,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -1647,7 +1428,7 @@
                 0.0164501816034317,
                 0.006356884725391865
             ],
-            "confidence": 0.9
+            "confidence": 0.85
         },
         {
             "name": "OutletCase",
@@ -1752,9 +1533,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -1793,80 +1574,7 @@
                 0.0164501816034317,
                 0.006356884725391865
             ],
-            "confidence": 0.9
-        },
-        {
-            "name": "OutletHolder",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/OutletHolder",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-7404913464963705624-1815925864",
-            "parent_name": "Front",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.0024280028883367777,
-                    "y": 0.24309851229190826,
-                    "z": 0.09071338176727295
-                },
-                "rotation": {
-                    "x": -0.49852344393730164,
-                    "y": 0.5014722347259521,
-                    "z": 0.5014722347259521,
-                    "w": 0.49852344393730164
-                },
-                "scale": {
-                    "x": 0.023406419903039932,
-                    "y": 0.04129885882139206,
-                    "z": 0.028087429702281952
-                }
-            },
-            "materials": [
-                {
-                    "name": "GreyPlastic",
-                    "color": {
-                        "r": 0.2861446142196655,
-                        "g": 0.2859342396259308,
-                        "b": 0.384346067905426,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 108,
-                "vertices": 168,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.0783924087882042,
-                    0.21757400035858154,
-                    0.07995623350143433
-                ],
-                "max": [
-                    0.08324848860502243,
-                    0.26731929183006287,
-                    0.10147050023078918
-                ]
-            },
-            "size": [
-                0.16164089739322662,
-                0.04974530264735222,
-                0.02151426486670971
-            ],
-            "confidence": 0.86
+            "confidence": 0.85
         },
         {
             "name": "SteamOutlet",
@@ -1928,152 +1636,6 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.85
-        },
-        {
-            "name": "AssetHolder",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet/AssetHolder",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-1534832259378074489-1815925864",
-            "parent_name": "SteamOutlet",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": -0.12518858909606934,
-                    "y": 0.21504046022891998,
-                    "z": 0.12085885554552078
-                },
-                "rotation": {
-                    "x": 0.35561779141426086,
-                    "y": 0.6181351542472839,
-                    "z": 0.6098307967185974,
-                    "w": -0.3457622230052948
-                },
-                "scale": {
-                    "x": 0.10165242850780487,
-                    "y": 0.11452431231737137,
-                    "z": 0.02271983027458191
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 442,
-                "vertices": 608,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.13429707288742065,
-                    0.2060755044221878,
-                    0.11366432905197144
-                ],
-                "max": [
-                    -0.11608009785413742,
-                    0.22400541603565216,
-                    0.12805338203907013
-                ]
-            },
-            "size": [
-                0.018216978758573532,
-                0.017929913476109505,
-                0.01438905019313097
-            ],
-            "confidence": 0.9
-        },
-        {
-            "name": "LowerRubber",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet/LowerRubber",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-3276115723684608825-1815925864",
-            "parent_name": "SteamOutlet",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": -0.12502475082874298,
-                    "y": 0.21372626721858978,
-                    "z": 0.12133542448282242
-                },
-                "rotation": {
-                    "x": -0.5055899024009705,
-                    "y": 0.49426183104515076,
-                    "z": 0.5085803866386414,
-                    "w": 0.4913555383682251
-                },
-                "scale": {
-                    "x": 0.07322916388511658,
-                    "y": 0.09372691065073013,
-                    "z": 0.08787890523672104
-                }
-            },
-            "materials": [
-                {
-                    "name": "RedPlastic",
-                    "color": {
-                        "r": 0.37573426961898804,
-                        "g": 0.06331395357847214,
-                        "b": 0.04307818040251732,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 1152,
-                "vertices": 1920,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.13050328195095062,
-                    0.21256579458713531,
-                    0.11707764863967896
-                ],
-                "max": [
-                    -0.11954621225595474,
-                    0.21488673985004425,
-                    0.12559324502944946
-                ]
-            },
-            "size": [
-                0.010957073420286179,
-                0.002320930827409029,
-                0.00851559266448021
-            ],
             "confidence": 0.9
         },
         {
@@ -2106,9 +1668,9 @@
                 {
                     "name": "GreyMetal",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -2147,226 +1709,7 @@
                 0.025945013388991356,
                 0.04228033125400543
             ],
-            "confidence": 0.92
-        },
-        {
-            "name": "SteamPipeHolder",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet/SteamPipeHolder",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-7242487337477233771-1815925864",
-            "parent_name": "SteamOutlet",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": -0.12386047095060349,
-                    "y": 0.2369745522737503,
-                    "z": 0.09201221168041229
-                },
-                "rotation": {
-                    "x": 0.7070497274398804,
-                    "y": -0.7071298956871033,
-                    "z": -0.001981377601623535,
-                    "w": 0.006655305624008179
-                },
-                "scale": {
-                    "x": -0.017876673489809036,
-                    "y": -0.019076300784945488,
-                    "z": -0.00546684255823493
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 246,
-                "vertices": 345,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.14305470883846283,
-                    0.21902722120285034,
-                    0.0853971466422081
-                ],
-                "max": [
-                    -0.10466623306274414,
-                    0.25492191314697266,
-                    0.09862729161977768
-                ]
-            },
-            "size": [
-                0.03838847950100899,
-                0.03589469566941261,
-                0.013230151496827602
-            ],
             "confidence": 0.9
-        },
-        {
-            "name": "UpperRubber",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet/UpperRubber",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-8985361365203793334-1815925864",
-            "parent_name": "SteamOutlet",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front/SteamOutlet",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": -0.1247357651591301,
-                    "y": 0.2171991765499115,
-                    "z": 0.12184182554483414
-                },
-                "rotation": {
-                    "x": -0.5055899024009705,
-                    "y": 0.49426183104515076,
-                    "z": 0.5085803866386414,
-                    "w": 0.4913555383682251
-                },
-                "scale": {
-                    "x": 0.07322916388511658,
-                    "y": 0.09372691065073013,
-                    "z": 0.08787890523672104
-                }
-            },
-            "materials": [
-                {
-                    "name": "RedPlastic",
-                    "color": {
-                        "r": 0.37573426961898804,
-                        "g": 0.06331395357847214,
-                        "b": 0.04307818040251732,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 1152,
-                "vertices": 1920,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.13021430373191833,
-                    0.21603870391845703,
-                    0.11758402734994888
-                ],
-                "max": [
-                    -0.11925722658634186,
-                    0.21835964918136597,
-                    0.1260996162891388
-                ]
-            },
-            "size": [
-                0.010957073420286179,
-                0.002320930827409029,
-                0.00851559266448021
-            ],
-            "confidence": 0.9
-        },
-        {
-            "name": "UpperCenter",
-            "path": "CoffeeMachine2/CoffeeMachine/Case/Front/UpperCenter",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-3202474618092337968-1815925864",
-            "parent_name": "Front",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/Case/Front",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.0019875732250511646,
-                    "y": 0.2987462282180786,
-                    "z": 0.08905265480279922
-                },
-                "rotation": {
-                    "x": -0.49852344393730164,
-                    "y": 0.5014722347259521,
-                    "z": 0.5014722347259521,
-                    "w": 0.49852344393730164
-                },
-                "scale": {
-                    "x": 0.023406419903039932,
-                    "y": 0.04129885882139206,
-                    "z": 0.028087429702281952
-                }
-            },
-            "materials": [
-                {
-                    "name": "GreyPlastic",
-                    "color": {
-                        "r": 0.2861446142196655,
-                        "g": 0.2859342396259308,
-                        "b": 0.384346067905426,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 40,
-                "vertices": 66,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    -0.07883283495903015,
-                    0.2277487814426422,
-                    0.07829552888870239
-                ],
-                "max": [
-                    0.0828079879283905,
-                    0.369743674993515,
-                    0.09980978071689606
-                ]
-            },
-            "size": [
-                0.16164082288742065,
-                0.1419948786497116,
-                0.021514257416129112
-            ],
-            "confidence": 0.85
         },
         {
             "name": "MainCase",
@@ -2439,7 +1782,7 @@
                 0.36487793922424316,
                 0.28845804929733276
             ],
-            "confidence": 0.93
+            "confidence": 0.9
         },
         {
             "name": "WaterReservoir",
@@ -2512,7 +1855,7 @@
                 0.28869497776031494,
                 0.24073903262615204
             ],
-            "confidence": 0.92
+            "confidence": 0.9
         },
         {
             "name": "UserInterfaceElements",
@@ -2572,7 +1915,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.85
+            "confidence": 0.95
         },
         {
             "name": "CoffeeButtons",
@@ -2709,7 +2052,7 @@
                 0.018061544746160507,
                 0.0017077488591894507
             ],
-            "confidence": 0.96
+            "confidence": 0.97
         },
         {
             "name": "ButtonStrongCoffee",
@@ -2785,7 +2128,7 @@
                 0.018061522394418716,
                 0.0017077481606975198
             ],
-            "confidence": 0.96
+            "confidence": 0.97
         },
         {
             "name": "ButtonTwoLightCoffees",
@@ -2861,7 +2204,7 @@
                 0.018061544746160507,
                 0.0017077488591894507
             ],
-            "confidence": 0.95
+            "confidence": 0.97
         },
         {
             "name": "Display",
@@ -2996,80 +2339,7 @@
                 0.01647462137043476,
                 1.2627371148710154e-08
             ],
-            "confidence": 0.97
-        },
-        {
-            "name": "Margin",
-            "path": "CoffeeMachine2/CoffeeMachine/UserInterfaceElements/Display/Margin",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-7307014328604097727-1815925864",
-            "parent_name": "Display",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/UserInterfaceElements/Display",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.10906536877155304,
-                    "y": 0.2885097563266754,
-                    "z": 0.08636894077062607
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.9999942779541016,
-                    "z": -8.940696716308594e-08,
-                    "w": -0.003421482630074024
-                },
-                "scale": {
-                    "x": 0.033359330147504807,
-                    "y": 0.01609119400382042,
-                    "z": 0.01344609446823597
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 270,
-                "vertices": 233,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    0.07568098604679108,
-                    0.2724185585975647,
-                    0.08327874541282654
-                ],
-                "max": [
-                    0.142449751496315,
-                    0.30460095405578613,
-                    0.0894591361284256
-                ]
-            },
-            "size": [
-                0.06676875799894333,
-                0.03218239173293114,
-                0.006180384662002325
-            ],
-            "confidence": 0.9
+            "confidence": 0.98
         },
         {
             "name": "MenuButtons",
@@ -3135,82 +2405,6 @@
             },
             "size": null,
             "confidence": 0.95
-        },
-        {
-            "name": "MenuButtonsBackplane",
-            "path": "CoffeeMachine2/CoffeeMachine/UserInterfaceElements/MenuButtons/MenuButtonsBackplane",
-            "stable_id": "GlobalObjectId_V1-2-49e3e24c50743784d9b15d09de04e13b-5935696752175599146-1815925864",
-            "parent_name": "MenuButtons",
-            "parent_path": "CoffeeMachine2/CoffeeMachine/UserInterfaceElements/MenuButtons",
-            "children": [],
-            "child_paths": [],
-            "transform": {
-                "position": {
-                    "x": 0.11920168250799179,
-                    "y": 0.2516917884349823,
-                    "z": 0.08299654722213745
-                },
-                "rotation": {
-                    "x": -0.014468342065811157,
-                    "y": -0.009793579578399658,
-                    "z": 0.7070131897926331,
-                    "w": 0.7069846391677856
-                },
-                "scale": {
-                    "x": -0.01499225664883852,
-                    "y": -0.01599472388625145,
-                    "z": -0.0045860810205340385
-                }
-            },
-            "materials": [
-                {
-                    "name": "BlackPlastic",
-                    "color": {
-                        "r": 0.033100612461566925,
-                        "g": 0.033100612461566925,
-                        "b": 0.033100612461566925,
-                        "a": 1.0
-                    },
-                    "main_texture": ""
-                }
-            ],
-            "roles": [
-                "Button",
-                "InteractionElement"
-            ],
-            "interaction_params": {
-                "type": "",
-                "axis": "",
-                "range": 0.0
-            },
-            "unity_tag": "Untagged",
-            "is_part_of_device": true,
-            "renderer_type": "MeshRenderer",
-            "has_collider": false,
-            "collider_type": "",
-            "mesh_stats": {
-                "triangles": 124,
-                "vertices": 192,
-                "submeshes": 1
-            },
-            "bounding_box": {
-                "min": [
-                    0.10300977528095245,
-                    0.23666109144687653,
-                    0.07790342718362808
-                ],
-                "max": [
-                    0.13539358973503113,
-                    0.26672250032424927,
-                    0.08808966726064682
-                ]
-            },
-            "size": [
-                0.032383814454078674,
-                0.030061407014727592,
-                0.010186242870986462
-            ],
-            "confidence": 0.9
         },
         {
             "name": "ButtonOnOff",
@@ -3649,7 +2843,7 @@
                 0.010828238911926746,
                 0.0010187980951741338
             ],
-            "confidence": 0.95
+            "confidence": 0.97
         },
         {
             "name": "SteamButton",
@@ -3725,7 +2919,7 @@
                 0.010828238911926746,
                 0.0010187980951741338
             ],
-            "confidence": 0.95
+            "confidence": 0.97
         },
         {
             "name": "Cup",
@@ -3757,9 +2951,9 @@
                 {
                     "name": "Cup",
                     "color": {
-                        "r": 0.800000011920929,
-                        "g": 0.800000011920929,
-                        "b": 0.800000011920929,
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
                         "a": 1.0
                     },
                     "main_texture": ""
@@ -3798,7 +2992,7 @@
                 0.06610772758722305,
                 0.09167060256004333
             ],
-            "confidence": 0.9
+            "confidence": 0.95
         },
         {
             "name": "CoffeeSimulations",
@@ -3856,7 +3050,7 @@
                 "max": null
             },
             "size": null,
-            "confidence": 0.85
+            "confidence": 0.9
         },
         {
             "name": "CoffeeSimulation1",
@@ -4102,59 +3296,100 @@
     ],
     "relations": [
         {
-            "subject": "ButtonOnOff",
+            "subject": "ButtonLightCoffee",
             "predicate": "controls",
-            "object": "CoffeeSimulations",
+            "object": "CoffeeSimulation1",
+            "confidence": 0.9,
+            "evidence": "Button has role 'Button' and is part of CoffeeButtons; simulation objects exist for coffee particle visual effect."
+        },
+        {
+            "subject": "ButtonStrongCoffee",
+            "predicate": "controls",
+            "object": "CoffeeSimulation1",
+            "confidence": 0.9,
+            "evidence": "Button has role 'Button' and material 'StrongCoffee' ; likely selects stronger coffee simulation."
+        },
+        {
+            "subject": "ButtonTwoLightCoffees",
+            "predicate": "controls",
+            "object": "CoffeeSimulation2",
             "confidence": 0.85,
-            "evidence": "ButtonOnOff is a menu button with collider and is placed on control panel; likely toggles machine power/simulations"
+            "evidence": "Button role and naming imply two-cup action mapped to a separate simulation."
         },
         {
-            "subject": "CoffeeButtons",
-            "predicate": "triggers",
-            "object": "CoffeeSimulations/CoffeeSimulation1",
-            "confidence": 0.87,
-            "evidence": "CoffeeButtons group contains coffee-selection buttons and CoffeeSimulation particle systems exist beneath brew area"
+            "subject": "OnOff",
+            "predicate": "toggles_power_of",
+            "object": "CoffeeMachine2",
+            "confidence": 0.9,
+            "evidence": "ButtonOnOff named 'OnOff' and placed on control panel."
         },
         {
-            "subject": "WaterButtons/HotWaterButton",
+            "subject": "HotWaterButton",
             "predicate": "activates",
-            "object": "SteamOutlet/SteamPipe",
+            "object": "SteamOutlet",
+            "confidence": 0.9,
+            "evidence": "HotWaterButton located near steam/hot-water hardware; SteamOutlet and SteamButton exist."
+        },
+        {
+            "subject": "SteamButton",
+            "predicate": "activates",
+            "object": "SteamOutlet",
+            "confidence": 0.9,
+            "evidence": "SteamButton named and proximate to SteamOutlet."
+        },
+        {
+            "subject": "Outlet",
+            "predicate": "dispenses_into",
+            "object": "Cup",
+            "confidence": 0.95,
+            "evidence": "Outlet geometry is located above cup area / collecting pan; visual projections and images show cup under outlet."
+        },
+        {
+            "subject": "WaterReservoir",
+            "predicate": "supplies",
+            "object": "CoffeeMachine2",
+            "confidence": 0.8,
+            "evidence": "Named WaterReservoir and positioned within the device; typical coffee machine function."
+        },
+        {
+            "subject": "PowderInlet",
+            "predicate": "provides_powder_to",
+            "object": "CoffeeMachine2",
+            "confidence": 0.7,
+            "evidence": "PowderInlet located on top plate; name implies powder input."
+        },
+        {
+            "subject": "CoffeeSimulation1",
+            "predicate": "fills",
+            "object": "Cup",
             "confidence": 0.85,
-            "evidence": "HotWaterButton located near steam outlet controls hot/steam output (UI proximity & naming)"
+            "evidence": "Particle simulation located above cup position; material named 'Coffee'."
         },
         {
             "subject": "DisplayContent",
-            "predicate": "displays_status_of",
-            "object": "CoffeeSimulations",
+            "predicate": "visualizes",
+            "object": "CoffeeMachine2",
             "confidence": 0.9,
-            "evidence": "Display roles include Screen/VisualizationElement and is located on the front control panel"
+            "evidence": "DisplayContent role marked as Screen/VisualizationElement and located on front panel."
         },
         {
-            "subject": "Cup",
-            "predicate": "is_placed_on",
-            "object": "CollectingPan/Pan",
+            "subject": "CollectingPan",
+            "predicate": "supports",
+            "object": "Cup",
             "confidence": 0.95,
-            "evidence": "Cup transform places it in the collecting pan area in multiple views and projections"
-        },
-        {
-            "subject": "SteamOutlet/SteamPipe",
-            "predicate": "outputs_to",
-            "object": "CollectingPan/Pan",
-            "confidence": 0.8,
-            "evidence": "Steam pipe located over collection area; functional relationship implied by geometry"
+            "evidence": "Pan positioned under outlet and cup; visual images show cup on pan."
         }
     ],
     "clusters": [
         {
             "name": "DeviceBody",
             "object_names": [
-                "Case",
                 "MainCase",
+                "Case",
                 "Front",
-                "WaterReservoir",
                 "CaseTop"
             ],
-            "rationale": "Main structural components that form the coffee machine body",
+            "rationale": "Main structural parts forming the physical body of the coffee machine.",
             "confidence": 0.95
         },
         {
@@ -4164,38 +3399,58 @@
                 "CoffeeButtons",
                 "MenuButtons",
                 "WaterButtons",
-                "Display",
-                "InteractionPanelBackground"
+                "Display"
             ],
-            "rationale": "UI elements and buttons grouped on the front panel for user interaction",
+            "rationale": "Group of interactive controls and display on the front.",
             "confidence": 0.97
         },
         {
-            "name": "TopAssembly_CupWarmer",
+            "name": "TopAssembly",
             "object_names": [
                 "CaseTop",
                 "CupWarmerPlate",
                 "MainPlate",
                 "PlateTexture",
-                "PowderInlet"
+                "Top"
             ],
-            "rationale": "Top area including cup warmer and inlets",
-            "confidence": 0.9
-        },
-        {
-            "name": "OutputAssembly",
-            "object_names": [
-                "Outlet",
-                "SteamOutlet",
-                "CollectingPan",
-                "Pan",
-                "Cup"
-            ],
-            "rationale": "Components involved in delivering coffee/steam and collecting cup/overflow",
+            "rationale": "Top plate and cup warmer elements (visible perforated metal plate on top).",
             "confidence": 0.95
         },
         {
-            "name": "VisualizationAndSim",
+            "name": "DripTrayAndPan",
+            "object_names": [
+                "CollectingPan",
+                "Pan",
+                "Cover"
+            ],
+            "rationale": "Lower front tray area that receives dispensed liquids and supports cup.",
+            "confidence": 0.95
+        },
+        {
+            "name": "OutletsAndSteam",
+            "object_names": [
+                "Outlet",
+                "LeftOutlet",
+                "RightOutlet",
+                "OutletCase",
+                "SteamOutlet",
+                "SteamPipe",
+                "SteamPipeHolder"
+            ],
+            "rationale": "Elements that route brewed coffee and steam/hot water to the user side.",
+            "confidence": 0.95
+        },
+        {
+            "name": "WaterSystem",
+            "object_names": [
+                "WaterReservoir",
+                "WaterLevelIndicator"
+            ],
+            "rationale": "Reservoir and level indicator for water supply.",
+            "confidence": 0.9
+        },
+        {
+            "name": "SimulationAndVisualization",
             "object_names": [
                 "CoffeeSimulations",
                 "CoffeeSimulation1",
@@ -4203,35 +3458,50 @@
                 "CoffeePlane",
                 "DisplayContent"
             ],
-            "rationale": "Particle systems and display used to visualize brewing and output",
-            "confidence": 0.93
+            "rationale": "Visual/particle systems that represent coffee flow and display output.",
+            "confidence": 0.9
+        },
+        {
+            "name": "CupAssembly",
+            "object_names": [
+                "Cup",
+                "CollectingPan",
+                "Pan"
+            ],
+            "rationale": "Cup placement and support area.",
+            "confidence": 0.95
         }
     ],
     "diagnostics": [
         {
             "level": "warning",
-            "message": "Many interactive objects have empty interactionParams.type (no interaction mechanism specified).",
-            "object_name": "multiple"
+            "message": "Many interactive elements (buttons) have empty interactionParams.type/axis/range. Interaction type/axes not specified.",
+            "object_name": null
         },
         {
             "level": "warning",
-            "message": "Several parts have hasCollider=false despite being expected interactive elements (buttons, outlets). Colliders are present only on some menu buttons.",
-            "object_name": "MenuButtons / CoffeeButtons / Outlet"
+            "message": "Several interactive meshes (e.g., many button objects) are missing colliders (hasCollider=false). This may prevent physical interaction in runtime.",
+            "object_name": null
         },
         {
             "level": "info",
-            "message": "World AABB / bounding boxes are missing for container-level nodes (CoffeeMachine2, CoffeeMachine, Case etc.). Use child meshes for spatial queries.",
-            "object_name": "CoffeeMachine2, CoffeeMachine, Case"
+            "message": "Top-level CoffeeMachine2 worldAabb is empty/missing; spatial extents are available on many children instead.",
+            "object_name": "CoffeeMachine2"
         },
         {
             "level": "info",
-            "message": "Roles preserved from scene JSON. Where roles are absent, role inference was not added unless explicit in data.",
-            "object_name": "scene"
+            "message": "CoffeeSimulations entries are ParticleSystemRenderer; these are visualization-only and may not have conventional mesh bounds.",
+            "object_name": "CoffeeSimulations"
         },
         {
             "level": "warning",
-            "message": "Cup is marked isPartOfDevice=true in scene JSON. If the cup is a user-supplied object it may be better treated as external; confirm in authoring.",
-            "object_name": "Cup"
+            "message": "Some small decorative children under PlateTexture are present (many Cylinder.*). Their functional roles are ambiguous.",
+            "object_name": "PlateTexture"
+        },
+        {
+            "level": "info",
+            "message": "DisplayContent is a flat mesh with negligible depth (z extents near zero) — visualization only.",
+            "object_name": "DisplayContent"
         }
     ],
     "user_feedback": []
