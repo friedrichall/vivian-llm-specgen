@@ -23,6 +23,30 @@
 - Set `OPENAI_API_KEY` in environment before running any agent calls.
 - Run a demo: `python main.py` (manager + sub-agents)
 
+## Backend API (FastAPI)
+
+- Start backend (recommended): `fastapi dev backend/main.py`
+- Alternative start command: `python -m backend` or `uvicorn backend.main:app --reload`
+- Open API docs: `http://127.0.0.1:8000/docs`
+- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+
+### Core endpoints
+
+- `GET /`
+- `GET /health`
+- `POST /v1/vivian/run` (full `run_vivian` arguments)
+- `POST /v1/specs/generate`
+- `POST /v1/specs/generate/mock-scene`
+- `POST /v1/scene/analyze`
+- `POST /v1/scene/analyze/mock`
+- `POST /v1/pipeline/prepare-only`
+
+### Notes
+
+- Endpoints with `start_pipeline=true` require `OPENAI_API_KEY` (can be set in .env file).
+- The current scene-confirmation flow can block while waiting for feedback from the `scene_feedback.json` mechanism.
+- Run backend API tests: `python -m pytest tests/test_backend_api.py`
+
 ## Directory overview
 
 ### `schemas/`
