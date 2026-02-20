@@ -18,8 +18,8 @@
 ## Setup
 
 - Install Python 3.10+ and ensure it is on PATH; verify with `python --version`.
-- Create and activate virtual env: `python -m venv .venv` then `.\.venv\Scripts\activate`.
-- Install runtime dependencies: `pip install -U openai openai-agents pydantic python-dotenv`.
+- Create and activate virtual env: `python -m venv .venv` then `.\.venv\Scripts\activate `.
+- Install runtime dependencies: `pip install -U -r requirements.txt`.
 - Set `OPENAI_API_KEY` in environment before running any agent calls.
 - Run a demo: `python main.py` (manager + sub-agents)
 

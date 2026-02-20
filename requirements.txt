@@ -1,0 +1,8 @@
+openai
+openai-agents
+pydantic
+python-dotenv
+langsmith[openai-agents]
+jsonschema
+fastapi[standard]
+uvicorn[standard]
