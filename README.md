@@ -34,17 +34,17 @@
 
 - `GET /`
 - `GET /health`
-- `POST /v1/vivian/run` (full `run_vivian` arguments)
-- `POST /v1/specs/generate`
-- `POST /v1/specs/generate/mock-scene`
-- `POST /v1/scene/analyze`
-- `POST /v1/scene/analyze/mock`
-- `POST /v1/pipeline/prepare-only`
+- `POST /v1/jobs/start`
+- `GET /v1/jobs/{job_id}/status`
+- `GET /v1/jobs/{job_id}/logs?offset=<int>&max_bytes=<int>`
+- `GET /v1/jobs/{job_id}/result`
 
 ### Notes
 
 - Endpoints with `start_pipeline=true` require `OPENAI_API_KEY` (can be set in .env file).
 - The current scene-confirmation flow can block while waiting for feedback from the `scene_feedback.json` mechanism.
+- Unity integration should use the job flow (`/v1/jobs/start` + polling `/status`, `/logs`, `/result`) instead of spawning `unityconnector.py`.
+- `unityconnector.py` remains available as a local CLI smoke-test entrypoint.
 - Run backend API tests: `python -m pytest tests/test_backend_api.py`
 
 ## Directory overview
