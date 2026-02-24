@@ -22,6 +22,9 @@ class JobManager:
         self.current_job: JobInfo | None = None
         self.lock = asyncio.Lock()
         self._jobs: dict[str, JobInfo] = {}
+        self.active_job_id: str | None = None
+        self.active_stream_result: Any | None = None
+        self._cancel_requested_job_id: str | None = None
 
     async def start_job(self, request_data: Mapping[str, Any]) -> JobInfo:
         """Create and register a new job if no active job is running."""
@@ -53,6 +56,9 @@ class JobManager:
 
             self.current_job = job
             self._jobs[job_id] = job
+            self.active_job_id = job_id
+            self.active_stream_result = None
+            self._cancel_requested_job_id = None
             self.write_meta(job=job, request_data=request_data)
             return job
 
@@ -74,3 +80,37 @@ class JobManager:
         if request_data is not None:
             payload["request"] = dict(request_data)
         meta_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def set_active_stream(self, job_id: str, stream_result: Any) -> None:
+        """Register the current streamed run handle for cancellation."""
+        if self.active_job_id == job_id:
+            self.active_stream_result = stream_result
+
+    def get_active_stream(self, job_id: str) -> Any | None:
+        """Return active stream handle for a job if available."""
+        if self.active_job_id != job_id:
+            return None
+        return self.active_stream_result
+
+    def request_cancel(self, job_id: str) -> bool:
+        """Mark an active job as cancellation-requested."""
+        if self.active_job_id != job_id:
+            return False
+        self._cancel_requested_job_id = job_id
+        return True
+
+    def is_cancel_requested(self, job_id: str) -> bool:
+        """Check whether cancellation was requested for a job."""
+        return self._cancel_requested_job_id == job_id
+
+    def clear_cancel_request(self, job_id: str) -> None:
+        """Clear cancellation marker for job runtime cleanup."""
+        if self._cancel_requested_job_id == job_id:
+            self._cancel_requested_job_id = None
+
+    def clear_active_runtime(self, job_id: str) -> None:
+        """Release active runtime state once a job has reached terminal status."""
+        if self.active_job_id == job_id:
+            self.active_job_id = None
+            self.active_stream_result = None
+            self._cancel_requested_job_id = None

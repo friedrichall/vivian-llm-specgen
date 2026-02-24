@@ -1,6 +1,7 @@
 """Background runner for executing run_vivian jobs."""
 
 import asyncio
+from collections.abc import Callable
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,7 +43,10 @@ def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
     return path.resolve()
 
 
-async def _execute_pipeline(request_data: Mapping[str, Any]) -> str:
+async def _execute_pipeline(
+    request_data: Mapping[str, Any],
+    on_stream_start: Callable[[Any], None] | None = None,
+) -> str:
     """Prepare Unity-style pipeline input and execute run_vivian."""
     extra = _coerce_dict(request_data.get("extra"))
 
@@ -159,6 +163,7 @@ async def _execute_pipeline(request_data: Mapping[str, Any]) -> str:
             start_pipeline=start_pipeline,
             only_scene_analysis=only_scene_analysis,
             use_mock_scene_analysis=use_mock_scene_analysis,
+            on_stream_start=on_stream_start,
         )
 
         if result is None and start_pipeline:
@@ -170,31 +175,66 @@ async def _execute_pipeline(request_data: Mapping[str, Any]) -> str:
 async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobManager) -> None:
     """Run one job while holding the manager lock for the full execution."""
     async with manager.lock:
+        if manager.is_cancel_requested(job.job_id):
+            job.status = JobStatus.CANCELLED
+            job.error = "Cancelled by user."
+            job.output_path = None
+            job.finished_at = datetime.now(timezone.utc)
+            manager.write_meta(job=job)
+            manager.clear_active_runtime(job.job_id)
+            return
+
         job.status = JobStatus.RUNNING
         job.started_at = datetime.now(timezone.utc)
         manager.write_meta(job=job)
 
+        def _on_stream_start(stream_result: Any) -> None:
+            manager.set_active_stream(job.job_id, stream_result)
+
         log_path = Path(job.log_path)
+        cancelled_by_user = False
         try:
             with capture_job_output(log_path):
                 print(f"[job:{job.job_id}] Starting Vivian pipeline run.")
-                output_path = await _execute_pipeline(request_data)
+                output_path = await _execute_pipeline(
+                    request_data=request_data,
+                    on_stream_start=_on_stream_start,
+                )
                 print(f"[job:{job.job_id}] Run completed. output_path={output_path}")
 
-            job.status = JobStatus.SUCCEEDED
-            job.output_path = output_path
-            job.error = None
+            if manager.is_cancel_requested(job.job_id):
+                cancelled_by_user = True
+                job.status = JobStatus.CANCELLED
+                job.output_path = None
+                job.error = "Cancelled by user."
+            else:
+                job.status = JobStatus.SUCCEEDED
+                job.output_path = output_path
+                job.error = None
         except Exception as exc:  # pragma: no cover - defensive path
-            trace = traceback.format_exc()
-            job.status = JobStatus.FAILED
-            job.output_path = None
-            job.error = f"{type(exc).__name__}: {exc}\n{trace}"
+            if manager.is_cancel_requested(job.job_id):
+                cancelled_by_user = True
+                job.status = JobStatus.CANCELLED
+                job.output_path = None
+                job.error = "Cancelled by user."
 
-            with capture_job_output(log_path):
-                print(f"[job:{job.job_id}] Run failed: {type(exc).__name__}: {exc}")
-                print(trace)
+                with capture_job_output(log_path):
+                    print(f"[job:{job.job_id}] Run cancelled by user.")
+            else:
+                trace = traceback.format_exc()
+                job.status = JobStatus.FAILED
+                job.output_path = None
+                job.error = f"{type(exc).__name__}: {exc}\n{trace}"
+
+                with capture_job_output(log_path):
+                    print(f"[job:{job.job_id}] Run failed: {type(exc).__name__}: {exc}")
+                    print(trace)
         finally:
+            if cancelled_by_user and not job.error:
+                job.error = "Cancelled by user."
             job.finished_at = datetime.now(timezone.utc)
             manager.write_meta(job=job)
+            manager.clear_active_runtime(job.job_id)
+            manager.clear_cancel_request(job.job_id)
 
         await asyncio.sleep(0)

@@ -14,6 +14,9 @@ client = TestClient(app)
 def _reset_job_manager_state() -> None:
     job_manager.current_job = None
     job_manager._jobs.clear()  # pylint: disable=protected-access
+    job_manager.active_job_id = None
+    job_manager.active_stream_result = None
+    job_manager._cancel_requested_job_id = None  # pylint: disable=protected-access
 
 
 def test_health_endpoint() -> None:
@@ -94,3 +97,67 @@ def test_start_rejects_second_job_while_active(monkeypatch: pytest.MonkeyPatch) 
 def test_unknown_job_returns_404() -> None:
     response = client.get("/v1/jobs/does-not-exist/status")
     assert response.status_code == 404
+
+
+def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    assert first.status_code == 202
+    job_id = first.json()["job_id"]
+
+    cancelled = {"called": False}
+
+    class FakeStreamResult:
+        def cancel(self, mode: str = "immediate") -> None:
+            assert mode == "immediate"
+            cancelled["called"] = True
+
+    job = job_manager.assert_job_exists(job_id)
+    job.status = JobStatus.RUNNING
+    job_manager.active_job_id = job_id
+    job_manager.active_stream_result = FakeStreamResult()
+
+    cancel = client.post(f"/v1/jobs/{job_id}/cancel")
+    assert cancel.status_code == 202
+    payload = cancel.json()
+    assert payload["job_id"] == job_id
+    assert payload["status"] == "RUNNING"
+    assert cancelled["called"] is True
+
+
+def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    assert first.status_code == 202
+    first_job_id = first.json()["job_id"]
+
+    class FakeStreamResult:
+        def cancel(self, mode: str = "immediate") -> None:
+            assert mode == "immediate"
+
+    first_job = job_manager.assert_job_exists(first_job_id)
+    first_job.status = JobStatus.RUNNING
+    job_manager.active_job_id = first_job_id
+    job_manager.active_stream_result = FakeStreamResult()
+
+    cancel = client.post(f"/v1/jobs/{first_job_id}/cancel")
+    assert cancel.status_code == 202
+
+    # Simulate runner finalization after stream cancellation.
+    first_job.status = JobStatus.CANCELLED
+    first_job.finished_at = datetime.now(timezone.utc)
+    first_job.error = "Cancelled by user."
+    job_manager.clear_active_runtime(first_job_id)
+
+    second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    assert second.status_code == 202

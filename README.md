@@ -34,6 +34,7 @@
 
 - `GET /`
 - `GET /health`
+- `POST /v1/jobs/{job_id}/cancel`
 - `POST /v1/jobs/start`
 - `GET /v1/jobs/{job_id}/status`
 - `GET /v1/jobs/{job_id}/logs?offset=<int>&max_bytes=<int>`
