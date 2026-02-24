@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 import json
 import os
 import sys
@@ -113,6 +114,7 @@ async def run_vivian(
     start_pipeline: bool = True,
     only_scene_analysis: bool = False,
     use_mock_scene_analysis: bool = False,
+    on_stream_start: Callable[[Any], None] | None = None,
 ) -> FunctionalSpecification | str | None:
     """Run the Vivian orchestration pipeline and optionally persist artifacts.
 
@@ -131,6 +133,8 @@ async def run_vivian(
         only_scene_analysis: Whether to stop after scene analysis/confirmation.
         use_mock_scene_analysis: Whether to preload scene understanding from
             mock JSON and skip scene analysis execution.
+        on_stream_start: Optional callback that receives the active streamed
+            run handle as soon as it is created.
 
     Returns:
         A ``FunctionalSpecification`` for full manager runs, a ``str`` for the
@@ -189,6 +193,7 @@ async def run_vivian(
             user_input,
             label=manager_agent.name,
             context=context,
+            on_stream_start=on_stream_start,
         )
         final_output = getattr(result, "final_output", None)
         if isinstance(final_output, str):
@@ -203,6 +208,7 @@ async def run_vivian(
         user_input,
         label="manager_agent",
         context=context,
+        on_stream_start=on_stream_start,
     )
 
     final_output = getattr(result, "final_output", None)

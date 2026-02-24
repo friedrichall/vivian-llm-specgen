@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, Dict, List, Optional
 
 from agents import Agent, ItemHelpers, Runner
@@ -13,6 +14,7 @@ async def _stream_agent_run(
     *,
     label: str,
     context: Optional[VivianRunContext] = None,
+    on_stream_start: Callable[[Any], None] | None = None,
 ) -> Any:
     """Run an agent in streamed mode and emit diagnostic output for each event.
 
@@ -55,6 +57,11 @@ async def _stream_agent_run(
     last_tool_call: Optional[Dict[str, Any]] = None
     try:
         result = Runner.run_streamed(agent, input=user_input, context=context)
+        if on_stream_start is not None:
+            try:
+                on_stream_start(result)
+            except Exception as callback_exc:
+                print(f"[{label}] Failed to register stream handle: {callback_exc}")
         async for event in result.stream_events():
             if event.type == "raw_response_event":
                 #print(f"[{label}] raw_response_event")

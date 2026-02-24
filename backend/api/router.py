@@ -1,168 +1,156 @@
-"""Top-level API router and Vivian pipeline endpoints."""
+"""Top-level API router and job endpoints."""
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
-from backend.schemas.vivian import (
-    EmptyRunResponse,
-    FunctionalSpecificationRunResponse,
-    SceneUnderstandingRunResponse,
-    TextRunResponse,
-    VivianInputRequest,
-    VivianRunRequest,
-    VivianRunResponse,
-)
-from model.output_type_FuncSpec import FunctionalSpecification
-from model.output_type_SceneUnderstanding import SceneUnderstanding
-from vivian_pipeline.agents_vivian import run_vivian
+from backend.jobs.manager import JobManager
+from backend.jobs.models import JobStatus
+from backend.jobs.runner import run_job
+
+MAX_LOG_CHUNK_BYTES = 64 * 1024
+
+
+class StartJobRequest(BaseModel):
+    """Input required to start one backend pipeline job."""
+
+    scene_json_path: str = Field(min_length=1)
+    views_manifest_path: str | None = None
+    scene_dir: str | None = None
+    extra: dict[str, Any] | None = None
+
+
+class StartJobResponse(BaseModel):
+    """Response returned immediately after accepting a job."""
+
+    job_id: str
+    status: JobStatus
+
+
+class JobStatusResponse(BaseModel):
+    """State response for status polling."""
+
+    job_id: str
+    status: JobStatus
+    error: str | None
+
+
+class JobLogsResponse(BaseModel):
+    """Incremental log chunk response."""
+
+    job_id: str
+    status: JobStatus
+    chunk: str
+    next_offset: int
+
+
+class JobResultResponse(BaseModel):
+    """Final result contract for finished jobs."""
+
+    job_id: str
+    status: JobStatus
+    output_path: str | None
+    error: str | None
+
+
+class CancelJobResponse(BaseModel):
+    """Response sent after cancellation is requested."""
+
+    job_id: str
+    status: JobStatus
+    message: str
+
 
 api_router = APIRouter()
+job_manager = JobManager()
 
 
-def _to_optional_path(raw_path: str | None) -> Path | None:
-    """Convert a non-empty string path to Path."""
-    if raw_path is None:
-        return None
-    value = raw_path.strip()
-    return Path(value) if value else None
+def _read_log_chunk(log_path: Path, offset: int, max_bytes: int) -> tuple[str, int]:
+    """Read one UTF-8 text chunk from a byte offset."""
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0")
+    if max_bytes <= 0:
+        raise HTTPException(status_code=400, detail="max_bytes must be > 0")
+
+    if not log_path.exists():
+        return "", 0
+
+    file_size = log_path.stat().st_size
+    safe_offset = min(offset, file_size)
+
+    with log_path.open("rb") as handle:
+        handle.seek(safe_offset)
+        data = handle.read(max_bytes)
+        next_offset = handle.tell()
+
+    return data.decode("utf-8", errors="replace"), next_offset
 
 
-def _wrap_result(result: Any) -> VivianRunResponse:
-    """Normalize mixed pipeline outputs into a stable response envelope."""
-    if isinstance(result, FunctionalSpecification):
-        return FunctionalSpecificationRunResponse(
-            result_type="functional_specification",
-            result=result,
-        )
-    if isinstance(result, SceneUnderstanding):
-        return SceneUnderstandingRunResponse(
-            result_type="scene_understanding",
-            result=result,
-        )
-    if isinstance(result, str):
-        return TextRunResponse(
-            result_type="text",
-            result=result,
-        )
-    if result is None:
-        return EmptyRunResponse(result_type="none")
-    raise HTTPException(
-        status_code=500,
-        detail=(
-            "run_vivian returned an unsupported output type: "
-            f"{type(result).__name__}"
-        ),
+@api_router.post("/jobs/start", response_model=StartJobResponse, status_code=202, tags=["jobs"])
+async def start_job(request: StartJobRequest) -> StartJobResponse:
+    """Create a job and schedule pipeline execution in the background."""
+    request_data = request.model_dump()
+    job = await job_manager.start_job(request_data=request_data)
+    asyncio.create_task(run_job(job=job, request_data=request_data, manager=job_manager))
+    return StartJobResponse(job_id=job.job_id, status=job.status)
+
+
+@api_router.get("/jobs/{job_id}/status", response_model=JobStatusResponse, tags=["jobs"])
+def get_job_status(job_id: str) -> JobStatusResponse:
+    """Return current status for one job."""
+    job = job_manager.assert_job_exists(job_id)
+    return JobStatusResponse(job_id=job.job_id, status=job.status, error=job.error)
+
+
+@api_router.get("/jobs/{job_id}/logs", response_model=JobLogsResponse, tags=["jobs"])
+def get_job_logs(
+    job_id: str,
+    offset: int = Query(default=0, ge=0),
+    max_bytes: int = Query(default=MAX_LOG_CHUNK_BYTES, ge=1, le=MAX_LOG_CHUNK_BYTES),
+) -> JobLogsResponse:
+    """Return new log text since the provided byte offset."""
+    job = job_manager.assert_job_exists(job_id)
+    chunk, next_offset = _read_log_chunk(Path(job.log_path), offset=offset, max_bytes=max_bytes)
+    return JobLogsResponse(
+        job_id=job.job_id,
+        status=job.status,
+        chunk=chunk,
+        next_offset=next_offset,
     )
 
 
-async def _run_pipeline(request: VivianRunRequest) -> VivianRunResponse:
-    """Execute run_vivian and convert output to API response format."""
-    kwargs = {
-        "user_input": request.user_input,
-        "start_pipeline": request.start_pipeline,
-        "only_scene_analysis": request.only_scene_analysis,
-        "use_mock_scene_analysis": request.use_mock_scene_analysis,
-    }
-
-    output_dir = _to_optional_path(request.output_dir)
-    if output_dir is not None:
-        kwargs["output_dir"] = output_dir
-
-    scene_json_path = _to_optional_path(request.scene_json_path)
-    if scene_json_path is not None:
-        kwargs["scene_json_path"] = scene_json_path
-
-    try:
-        result = await run_vivian(**kwargs)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"run_vivian failed: {type(exc).__name__}: {exc}",
-        ) from exc
-
-    return _wrap_result(result)
-
-
-@api_router.post("/vivian/run", response_model=VivianRunResponse, tags=["pipeline"])
-async def vivian_run(request: VivianRunRequest) -> VivianRunResponse:
-    """Run the full Vivian orchestration with all available arguments."""
-    return await _run_pipeline(request)
-
-
-@api_router.post("/specs/generate", response_model=VivianRunResponse, tags=["pipeline"])
-async def generate_specs(request: VivianInputRequest) -> VivianRunResponse:
-    """Generate a full spec run with live scene analysis."""
-    return await _run_pipeline(
-        VivianRunRequest(
-            user_input=request.user_input,
-            output_dir=request.output_dir,
-            scene_json_path=request.scene_json_path,
-            start_pipeline=True,
-            only_scene_analysis=False,
-            use_mock_scene_analysis=False,
-        )
+@api_router.get("/jobs/{job_id}/result", response_model=JobResultResponse, tags=["jobs"])
+def get_job_result(job_id: str) -> JobResultResponse:
+    """Return final output path for finished jobs."""
+    job = job_manager.assert_job_exists(job_id)
+    if job.status in {JobStatus.QUEUED, JobStatus.RUNNING}:
+        raise HTTPException(status_code=409, detail="Job is still running.")
+    return JobResultResponse(
+        job_id=job.job_id,
+        status=job.status,
+        output_path=job.output_path,
+        error=job.error,
     )
 
 
-@api_router.post("/specs/generate/mock-scene", response_model=VivianRunResponse, tags=["pipeline"])
-async def generate_specs_with_mock_scene(request: VivianInputRequest) -> VivianRunResponse:
-    """Generate specs using mock scene analysis input."""
-    return await _run_pipeline(
-        VivianRunRequest(
-            user_input=request.user_input,
-            output_dir=request.output_dir,
-            scene_json_path=request.scene_json_path,
-            start_pipeline=True,
-            only_scene_analysis=False,
-            use_mock_scene_analysis=True,
-        )
-    )
+@api_router.post("/jobs/{job_id}/cancel", response_model=CancelJobResponse, status_code=202, tags=["jobs"])
+async def cancel_job(job_id: str) -> CancelJobResponse:
+    """Cancel one active job via the streamed run handle."""
+    job = job_manager.assert_job_exists(job_id)
+    if job.status not in {JobStatus.QUEUED, JobStatus.RUNNING}:
+        raise HTTPException(status_code=409, detail="Job is not active.")
+    if not job_manager.request_cancel(job_id):
+        raise HTTPException(status_code=409, detail="Only the active job can be cancelled.")
 
+    stream_result = job_manager.get_active_stream(job_id)
+    if stream_result is not None:
+        stream_result.cancel(mode="immediate")
 
-@api_router.post("/scene/analyze", response_model=VivianRunResponse, tags=["pipeline"])
-async def analyze_scene(request: VivianInputRequest) -> VivianRunResponse:
-    """Run scene-analysis mode (pipeline stops after analysis flow)."""
-    return await _run_pipeline(
-        VivianRunRequest(
-            user_input=request.user_input,
-            output_dir=request.output_dir,
-            scene_json_path=request.scene_json_path,
-            start_pipeline=True,
-            only_scene_analysis=True,
-            use_mock_scene_analysis=False,
-        )
-    )
-
-
-@api_router.post("/scene/analyze/mock", response_model=VivianRunResponse, tags=["pipeline"])
-async def analyze_scene_with_mock(request: VivianInputRequest) -> VivianRunResponse:
-    """Run scene-analysis mode using mock scene understanding."""
-    return await _run_pipeline(
-        VivianRunRequest(
-            user_input=request.user_input,
-            output_dir=request.output_dir,
-            scene_json_path=request.scene_json_path,
-            start_pipeline=True,
-            only_scene_analysis=True,
-            use_mock_scene_analysis=True,
-        )
-    )
-
-
-@api_router.post("/pipeline/prepare-only", response_model=VivianRunResponse, tags=["pipeline"])
-async def prepare_pipeline_only(request: VivianInputRequest) -> VivianRunResponse:
-    """Run preflight/logging without starting manager orchestration."""
-    return await _run_pipeline(
-        VivianRunRequest(
-            user_input=request.user_input,
-            output_dir=request.output_dir,
-            scene_json_path=request.scene_json_path,
-            start_pipeline=False,
-            only_scene_analysis=False,
-            use_mock_scene_analysis=False,
-        )
+    return CancelJobResponse(
+        job_id=job.job_id,
+        status=job.status,
+        message="Cancellation requested.",
     )
