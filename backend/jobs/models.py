@@ -2,8 +2,10 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 
 class JobStatus(str, Enum):
@@ -34,10 +36,21 @@ class StartJobRequest(BaseModel):
 
     scene_json_path: str = Field(min_length=1)
     views_manifest_path: str | None = None
-    scene_dir: str | None = None
+    scene_dir: str = Field(min_length=1)
     start_pipeline: bool = True
     only_scene_analysis: bool = False
     use_mock_scene_analysis: bool = False
+
+    @field_validator("views_manifest_path", mode="before")
+    @classmethod
+    def reject_null_views_manifest_path(cls, value: Any) -> Any:
+        """Reject explicit null for views_manifest_path while allowing omission."""
+        if value is None:
+            raise PydanticCustomError(
+                "views_manifest_path_null",
+                "views_manifest_path must not be null when provided.",
+            )
+        return value
 
 
 class StartJobResponse(BaseModel):

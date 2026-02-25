@@ -58,17 +58,16 @@ async def _execute_pipeline(
     on_stream_start: Callable[[Any], None] | None = None,
 ) -> str:
     """Prepare backend pipeline input and execute run_vivian."""
-    explicit_scene_dir: Path | None = None
     raw_scene_dir = request_data.get("scene_dir")
-    if isinstance(raw_scene_dir, str) and raw_scene_dir.strip():
-        explicit_scene_dir = Path(raw_scene_dir).expanduser().resolve()
+    if not isinstance(raw_scene_dir, str) or not raw_scene_dir.strip():
+        raise ValueError("scene_dir must be provided.")
+    scene_dir = Path(raw_scene_dir).expanduser().resolve()
 
     raw_scene_json_path = request_data.get("scene_json_path")
     if not isinstance(raw_scene_json_path, str) or not raw_scene_json_path.strip():
         raise ValueError("scene_json_path must be provided.")
 
-    scene_json_path = _resolve_path(raw_scene_json_path, base_dir=explicit_scene_dir)
-    scene_dir = explicit_scene_dir or scene_json_path.parent
+    scene_json_path = _resolve_path(raw_scene_json_path, base_dir=scene_dir)
 
     scene_data, scene_json_text = load_scene_json(scene_json_path)
 

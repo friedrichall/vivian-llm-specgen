@@ -1,3 +1,5 @@
+"""Tests for backend job API endpoints."""
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,9 +12,12 @@ from backend.jobs.models import JobStatus
 from backend.main import app
 
 client = TestClient(app)
+START_JOB_BASE = {"scene_json_path": "scene.json", "scene_dir": "."}
+
 
 @pytest.fixture(autouse=True)
 def _reset_job_manager_state() -> None:
+    """Reset shared in-memory manager state between tests."""
     job_manager.current_job = None
     job_manager._jobs.clear()  # pylint: disable=protected-access
     job_manager.active_job_id = None
@@ -21,22 +26,21 @@ def _reset_job_manager_state() -> None:
 
 
 def test_health_endpoint() -> None:
+    """Health endpoint should return a stable OK payload."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
 def test_start_poll_logs_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start, poll logs, and read result for one job lifecycle."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    response = client.post(
-        "/v1/jobs/start",
-        json={"scene_json_path": "scene.json"},
-    )
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert response.status_code == 202
     payload = response.json()
     assert payload["status"] == "QUEUED"
@@ -80,34 +84,37 @@ def test_start_poll_logs_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_start_rejects_second_job_while_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A second start request should be rejected while one job is active."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     first_job_id = first.json()["job_id"]
 
-    second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    second = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert second.status_code == 409
     job_manager.assert_job_exists(first_job_id).status = JobStatus.SUCCEEDED
 
 
 def test_unknown_job_returns_404() -> None:
+    """Unknown job IDs should return 404."""
     response = client.get("/v1/jobs/does-not-exist/status")
     assert response.status_code == 404
 
 
 def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cancel endpoint should cancel the active stream result."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     job_id = first.json()["job_id"]
 
@@ -132,13 +139,14 @@ def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A new job should be startable after cancellation cleanup."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     first_job_id = first.json()["job_id"]
 
@@ -154,24 +162,24 @@ def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) 
     cancel = client.post(f"/v1/jobs/{first_job_id}/cancel")
     assert cancel.status_code == 202
 
-    # Simulate runner finalization after stream cancellation.
     first_job.status = JobStatus.CANCELLED
     first_job.finished_at = datetime.now(timezone.utc)
     first_job.error = "Cancelled by user."
     job_manager.clear_active_runtime(first_job_id)
 
-    second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    second = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert second.status_code == 202
 
 
 def test_start_job_request_uses_flag_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Defaults should be persisted for omitted optional flags."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    response = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert response.status_code == 202
     job_id = response.json()["job_id"]
     job = job_manager.assert_job_exists(job_id)
@@ -187,6 +195,7 @@ def test_start_job_request_uses_flag_defaults(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Explicit flag values should be persisted unchanged."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
@@ -196,7 +205,7 @@ def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatc
     response = client.post(
         "/v1/jobs/start",
         json={
-            "scene_json_path": "scene.json",
+            **START_JOB_BASE,
             "start_pipeline": False,
             "only_scene_analysis": True,
             "use_mock_scene_analysis": True,
@@ -213,3 +222,25 @@ def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatc
     assert request["start_pipeline"] is False
     assert request["only_scene_analysis"] is True
     assert request["use_mock_scene_analysis"] is True
+
+
+def test_start_job_rejects_null_scene_dir() -> None:
+    """scene_dir must be present and must not be null."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={"scene_json_path": "scene.json", "scene_dir": None},
+    )
+    assert response.status_code == 422
+
+
+def test_start_job_rejects_null_views_manifest_path() -> None:
+    """views_manifest_path may be omitted but must not be null when present."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={
+            **START_JOB_BASE,
+            "views_manifest_path": None,
+        },
+    )
+    assert response.status_code == 422
+
