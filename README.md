@@ -10,10 +10,9 @@
   - Transitions
 - Provide Pydantic schemas for all FuncSpec files so agent outputs are validated and JSON structure stays stable
 - Keep Vivian domain rules in `docs/` and load them into agent instructions so docs remain source of truth
-- Include a Unity-facing connector (`unityconnector.py`) 
 - Turn exported scene/preview data into specs 
 - Capturing prompt/error logs in `logs/`
-- Mock Unity export end-to-end: `python unityconnector_mock.py`.
+- Run scene processing through the backend job API.
 
 ## Setup
 
@@ -44,8 +43,7 @@
 
 - Endpoints with `start_pipeline=true` require `OPENAI_API_KEY` (can be set in .env file).
 - The current scene-confirmation flow can block while waiting for feedback from the `scene_feedback.json` mechanism.
-- Unity integration should use the job flow (`/v1/jobs/start` + polling `/status`, `/logs`, `/result`) instead of spawning `unityconnector.py`.
-- `unityconnector.py` remains available as a local CLI smoke-test entrypoint.
+- Use the job flow (`/v1/jobs/start` + polling `/status`, `/logs`, `/result`) for scene processing and spec generation.
 - Run backend API tests: `python -m pytest tests/test_backend_api.py`
 
 ## Directory overview
