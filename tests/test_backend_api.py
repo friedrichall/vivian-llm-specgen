@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -161,3 +162,54 @@ def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) 
 
     second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
     assert second.status_code == 202
+
+
+def test_start_job_request_uses_flag_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+    job = job_manager.assert_job_exists(job_id)
+
+    meta_path = Path(job.log_path).parent / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    request = meta["request"]
+
+    assert request["start_pipeline"] is True
+    assert request["only_scene_analysis"] is False
+    assert request["use_mock_scene_analysis"] is False
+    assert "extra" not in request
+
+
+def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post(
+        "/v1/jobs/start",
+        json={
+            "scene_json_path": "scene.json",
+            "start_pipeline": False,
+            "only_scene_analysis": True,
+            "use_mock_scene_analysis": True,
+        },
+    )
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+    job = job_manager.assert_job_exists(job_id)
+
+    meta_path = Path(job.log_path).parent / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    request = meta["request"]
+
+    assert request["start_pipeline"] is False
+    assert request["only_scene_analysis"] is True
+    assert request["use_mock_scene_analysis"] is True

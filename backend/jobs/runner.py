@@ -45,13 +45,6 @@ def _coerce_bool(value: Any, default: bool) -> bool:
     return default
 
 
-def _coerce_dict(value: Any) -> dict[str, Any]:
-    """Return a dictionary fallback for optional JSON objects."""
-    if isinstance(value, dict):
-        return value
-    return {}
-
-
 def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
     """Resolve paths while supporting relative paths from an explicit scene_dir."""
     path = Path(raw_path).expanduser()
@@ -65,8 +58,6 @@ async def _execute_pipeline(
     on_stream_start: Callable[[Any], None] | None = None,
 ) -> str:
     """Prepare backend pipeline input and execute run_vivian."""
-    extra = _coerce_dict(request_data.get("extra"))
-
     explicit_scene_dir: Path | None = None
     raw_scene_dir = request_data.get("scene_dir")
     if isinstance(raw_scene_dir, str) and raw_scene_dir.strip():
@@ -94,22 +85,13 @@ async def _execute_pipeline(
     else:
         print(f"views_manifest.json missing at {manifest_path}; continuing without images.")
 
-    group = str(extra.get("group_name") or scene_data.get("groupName") or scene_dir.name or "GeneratedGroup")
-    description = str(
-        extra.get("description")
-        or scene_data.get("description")
-        or "Generate a complete functional specification."
-    )
+    group = str(scene_data.get("groupName") or scene_dir.name or "GeneratedGroup")
+    description = str(scene_data.get("description") or "Generate a complete functional specification.")
+    object_interactions: dict[str, str] = {}
 
-    raw_interactions = extra.get("object_interactions")
-    if isinstance(raw_interactions, dict):
-        object_interactions = {str(key): str(value) for key, value in raw_interactions.items()}
-    else:
-        object_interactions = {}
-
-    start_pipeline = _coerce_bool(extra.get("start_pipeline"), True)
-    only_scene_analysis = _coerce_bool(extra.get("only_scene_analysis"), False)
-    use_mock_scene_analysis = _coerce_bool(extra.get("use_mock_scene_analysis"), False)
+    start_pipeline = _coerce_bool(request_data.get("start_pipeline"), True)
+    only_scene_analysis = _coerce_bool(request_data.get("only_scene_analysis"), False)
+    use_mock_scene_analysis = _coerce_bool(request_data.get("use_mock_scene_analysis"), False)
 
     manifest_objects = manifest_data.get("objects", []) if manifest_data else []
     selected_manifest_objects = manifest_objects

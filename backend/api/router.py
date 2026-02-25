@@ -2,7 +2,6 @@
 
 import asyncio
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -20,7 +19,9 @@ class StartJobRequest(BaseModel):
     scene_json_path: str = Field(min_length=1)
     views_manifest_path: str | None = None
     scene_dir: str | None = None
-    extra: dict[str, Any] | None = None
+    start_pipeline: bool = True
+    only_scene_analysis: bool = False
+    use_mock_scene_analysis: bool = False
 
 
 class StartJobResponse(BaseModel):
