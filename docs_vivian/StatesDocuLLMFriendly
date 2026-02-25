@@ -1,0 +1,99 @@
+1. **File name and location**
+   1.1. When defining states, you must produce a JSON file named `States.json`.
+   1.2. You must assume this file is stored in the virtual prototype’s `FunctionalSpecification` folder.
+
+2. **Top-level JSON structure**
+   2.1. You must always output a single JSON object with exactly one top-level key: `"States"`.
+   2.2. The value of `"States"` must be an array.
+   2.3. Each entry in the `"States"` array must be a JSON object representing exactly one state.
+   2.4. The general structure must be:
+
+   * `{ "States": [ { ...state 1... }, { ...state 2... } ] }`
+
+3. **Structure of a state**
+   3.1. Each state object must contain a `"Name"` field.
+   3.2. `"Name"` must be a string that uniquely identifies the state within `States.json`.
+   3.3. The state name in `"Name"` must follow these naming conventions:
+   3.3.1. The name must be camelCase.
+   3.3.2. The name must end with `.state`.
+   3.4. Each state object must contain a `"Conditions"` field.
+   3.5. `"Conditions"` must be an array of condition objects.
+   3.6. You must only place supported condition objects inside `"Conditions"`.
+   3.7. A state must follow this pattern:
+
+   * `{ "Name": "example.state", "Conditions": [ { ...condition 1... }, { ...condition 2... } ] }`
+
+4. **Allowed condition types (overview)**
+   4.1. You must only use the following condition types:
+   4.1.1. `"FloatValueVisualization"`
+   4.1.2. `"ScreenContentVisualization"`
+   4.1.3. `"ValueOfInteractionElementVisualization"`
+   4.1.4. `"InteractionElementCondition"`
+   4.2. Every condition object must contain a `"Type"` field with its type name as a string.
+   4.3. For each type, you must include all required fields exactly as specified below.
+   4.4. You must not invent new condition types unless explicitly instructed to extend the schema.
+
+5. **Condition type: `FloatValueVisualization`**
+   5.1. Use `FloatValueVisualization` when you need to assign a numeric value to a visualization element (for example, intensity or visibility).
+   5.2. A `FloatValueVisualization` condition object must have the following fields:
+   5.2.1. `"Type"`: must be the string `"FloatValueVisualization"`.
+   5.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
+   5.2.3. `"Value"`: a numeric value (float) such as `0.0`, `0.5`, or `1.0`.
+   5.3. Example structure (conceptual):
+   - `{ "Type": "FloatValueVisualization", "VisualizationElement": "Light1", "Value": 0.5 }`
+
+6. **Condition type: `ScreenContentVisualization`**
+   6.1. Use `ScreenContentVisualization` when you need to define which content appears on a screen or UI surface.
+   6.2. A `ScreenContentVisualization` condition object must have the following fields:
+   6.2.1. `"Type"`: must be the string `"ScreenContentVisualization"`.
+   6.2.2. `"VisualizationElement"`: the name (string) of the target screen or surface.
+   6.2.3. `"FileName"`: a string specifying the file name or file path of the content (for example, an image or video).
+   6.3. Example structure (conceptual):
+   - `{ "Type": "ScreenContentVisualization", "VisualizationElement": "MainScreen", "FileName": "welcome.png" }`
+
+7. **Condition type: `ValueOfInteractionElementVisualization`**
+   7.1. Use `ValueOfInteractionElementVisualization` when you need a visualization element’s state to mirror the current value of an interaction element.
+   7.2. A `ValueOfInteractionElementVisualization` condition object must have the following fields:
+   7.2.1. `"Type"`: must be the string `"ValueOfInteractionElementVisualization"`.
+   7.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
+   7.2.3. `"InteractionElement"`: the name (string) of the source interaction element whose value is used.
+   7.3. Example structure (conceptual):
+   - `{ "Type": "ValueOfInteractionElementVisualization", "VisualizationElement": "Light2", "InteractionElement": "Slider1" }`
+
+8. **Condition type: `InteractionElementCondition`**
+   8.1. Use `InteractionElementCondition` when you need to set or constrain an attribute of an interaction element.
+   8.2. An `InteractionElementCondition` object must have the following fields:
+   8.2.1. `"Type"`: must be the string `"InteractionElementCondition"`.
+   8.2.2. `"InteractionElement"`: the name (string) of the target interaction element.
+   8.2.3. `"Attribute"`: must be one of the strings `"FIXED"`, `"VALUE"`, or `"POSITION"`.
+   8.2.4. `"Value"`:
+   8.2.4.1. May be a static value (for example, `"true"`, `0.2`, or a coordinate string).
+   8.2.4.2. Or may be the name (string) of another element whose value is referenced.
+   8.3. When `"Attribute"` is `"FIXED"`:
+   8.3.1. `"Value"` must define whether the element is fixed or not (for example, `"true"` or `"false"` as strings).
+   8.4. When `"Attribute"` is `"VALUE"`:
+   8.4.1. `"Value"` may be a numeric value (for example, `0.2`) or the name of another interaction element whose value is used.
+   8.5. When `"Attribute"` is `"POSITION"`:
+   8.5.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
+   8.6. Example structures (conceptual):
+   8.6.1. `{ "Type": "InteractionElementCondition", "InteractionElement": "Door", "Attribute": "FIXED", "Value": "false" }`
+   8.6.2. `{ "Type": "InteractionElementCondition", "InteractionElement": "Slider2", "Attribute": "VALUE", "Value": "Slider1" }`
+   8.6.3. `{ "Type": "InteractionElementCondition", "InteractionElement": "ObjectX", "Attribute": "POSITION", "Value": "(0.2,0.0,0.5)" }`
+
+9. **Combining multiple conditions in a state**
+   9.1. You may include multiple conditions in the `"Conditions"` array of a state.
+   9.2. Each condition in `"Conditions"` must be an independent condition object of one of the allowed types.
+   9.3. You must not nest conditions within each other; only the `"Conditions"` array may contain condition objects.
+   9.4. When several conditions affect the same element, you must ensure that they do not contradict each other.
+   9.5. If a conflict arises between conditions, you must resolve it according to the user’s intent and the specification, for example by adjusting values so that they are consistent.
+
+10. **Validation and error handling**
+    10.1. When generating or editing `States.json`, you must ensure that:
+    10.1.1. The overall JSON is syntactically valid.
+    10.1.2. The top-level object contains a `"States"` array.
+    10.1.3. Every state has both `"Name"` and `"Conditions"` fields.
+    10.1.4. Every condition object within `"Conditions"` has a valid `"Type"` and all required fields for that type.
+    10.2. If user instructions conflict with the documented structure or allowed values, you must either:
+    10.2.1. Adjust the output to satisfy the specification while maintaining the user’s intent as closely as possible, and clearly reflect the valid structure; or
+    10.2.2. Explain which part of the request violates the specification and provide a corrected example that follows the rules.
+    10.3. You must not add extra fields or use different field names for states or conditions unless the user explicitly requests a schema extension and acknowledges that it deviates from this specification.

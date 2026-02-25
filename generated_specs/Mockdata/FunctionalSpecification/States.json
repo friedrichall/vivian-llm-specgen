@@ -1,0 +1,56 @@
+{
+    "States": [
+        {
+            "Name": "toaster3.idle",
+            "Conditions": [
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "LED",
+                    "Value": 0.0
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "Heating_resistors",
+                    "Value": 0.0
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Handle",
+                    "Attribute": "POSITION",
+                    "Value": "(0.0,0.0,0.0)"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "Toasts_outside",
+                    "Value": 1.0
+                }
+            ]
+        },
+        {
+            "Name": "toaster3.toasting",
+            "Conditions": [
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "LED",
+                    "Value": 1.0
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "Heating_resistors",
+                    "Value": 1.0
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Handle",
+                    "Attribute": "POSITION",
+                    "Value": "(0.0,-0.05,0.0)"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "VisualizationElement": "Toasts_outside",
+                    "Value": 1.0
+                }
+            ]
+        }
+    ]
+}
