@@ -106,7 +106,7 @@ async def _prompt_scene_feedback() -> str:
         raise
 
 
-#Entrypoint from unityconnector.py
+# Entrypoint used by backend job execution.
 async def run_vivian(
     user_input: str | List[Dict[str, Any]],
     output_dir: Path | None = OUTPUT_DIR,
