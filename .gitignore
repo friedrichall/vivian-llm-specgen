@@ -6,7 +6,10 @@
 /generated_specs/VisualizationElements.json
 /vivian-windows-test-project/Packages/vivian-example-prototypes/Resources/Cubes
 /.env
-
+/scripts/dtos
+/scripts/openapi
+/scene_understanding.json
+/scene_understanding_summary.txt
 # Created by https://www.toptal.com/developers/gitignore/api/pycharm,git,python,unity,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=pycharm,git,python,unity,windows
 
