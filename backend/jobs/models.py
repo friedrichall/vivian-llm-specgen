@@ -1,4 +1,4 @@
-"""Pydantic models for backend job state."""
+"""Pydantic models_funcspec for backend job state."""
 
 from datetime import datetime
 from enum import Enum

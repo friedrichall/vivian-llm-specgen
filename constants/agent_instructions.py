@@ -54,7 +54,7 @@ MANAGER_INSTRUCTIONS: str = """
           - State names must be valid and referenced correctly in transitions.
           - Guards must match allowed guard types and field constraints.
         - Reject impossible or ambiguous designs and request clarification from the user when required.
-        - Ensure every output is valid structured JSON matching the provided output_type Pydantic models.
+        - Ensure every output is valid structured JSON matching the provided output_type Pydantic models_funcspec.
         - Produce only valid structured responses, never free-form text, whenever an output_type is active.
 
         Output requirements:
