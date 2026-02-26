@@ -35,14 +35,15 @@ class JobManager:
             if self.current_job and self.current_job.status in {JobStatus.QUEUED, JobStatus.RUNNING}:
                 raise HTTPException(status_code=409, detail="A job is already running.")
 
+            now = datetime.now(timezone.utc)
             job_id = uuid4().hex
-            job_dir = (self.base_dir / job_id).resolve()
+            job_dir_name = f"{now.strftime('%Y%m%d-%H%M%S')}-{job_id}"
+            job_dir = (self.base_dir / job_dir_name).resolve()
             job_dir.mkdir(parents=True, exist_ok=True)
 
             log_path = job_dir / "run.log"
             log_path.touch(exist_ok=True)
 
-            now = datetime.now(timezone.utc)
             job = JobInfo(
                 job_id=job_id,
                 status=JobStatus.QUEUED,

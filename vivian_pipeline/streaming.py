@@ -96,7 +96,7 @@ async def _stream_agent_run(
                         payload = raw["output"]
                     else:
                         payload = raw or event.item
-                    print(f"-- Tool output from {tool_name}: {payload}")
+                    print(f"-- Got tool output from {tool_name}")
                 elif event.item.type == "message_output_item":
                     print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
                 else:

@@ -2,9 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
 
@@ -34,21 +32,21 @@ class JobInfo(BaseModel):
 class StartJobRequest(BaseModel):
     """Input required to start one backend pipeline job."""
 
-    scene_json_path: str = Field(min_length=1)
-    views_manifest_path: str | None = None
-    scene_dir: str = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    group_path: str = Field(min_length=1)
     start_pipeline: bool = True
     only_scene_analysis: bool = False
     use_mock_scene_analysis: bool = False
 
-    @field_validator("views_manifest_path", mode="before")
+    @field_validator("group_path")
     @classmethod
-    def reject_null_views_manifest_path(cls, value: Any) -> Any:
-        """Reject explicit null for views_manifest_path while allowing omission."""
-        if value is None:
+    def reject_blank_group_path(cls, value: str) -> str:
+        """Require a non-blank group_path."""
+        if not value.strip():
             raise PydanticCustomError(
-                "views_manifest_path_null",
-                "views_manifest_path must not be null when provided.",
+                "group_path_blank",
+                "group_path must not be blank.",
             )
         return value
 

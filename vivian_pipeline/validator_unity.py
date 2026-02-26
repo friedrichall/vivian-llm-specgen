@@ -13,8 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 def _unity_project_path() -> Path:
     """Return the path to the local Unity test project."""
-    return PROJECT_ROOT / "vivian-windows-test-project"
-
+    #TODO Remove hard coded Path - get Path from Frontend
+    return Path("C:/Users/Friedrich Allenhof/BA/vivian-framework/vivian-windows-test-project")
 
 def _unity_validator_source_path() -> Path:
     """Return the path to the validator runner source file."""

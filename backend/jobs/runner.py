@@ -14,7 +14,7 @@ from backend.jobs.manager import JobManager
 from backend.jobs.models import JobInfo, JobStatus
 from backend.pipeline.input_items import build_input_items
 from backend.pipeline.models import InputBundle
-from backend.pipeline.output_paths import resolve_output_dirs, safe_dir_name
+from backend.pipeline.output_paths import resolve_output_dirs
 from backend.pipeline.scene_io import (
     load_scene_json,
     load_views_manifest,
@@ -46,7 +46,7 @@ def _coerce_bool(value: Any, default: bool) -> bool:
 
 
 def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
-    """Resolve paths while supporting relative paths from an explicit scene_dir."""
+    """Resolve paths while optionally anchoring relative values to base_dir."""
     path = Path(raw_path).expanduser()
     if not path.is_absolute() and base_dir is not None:
         path = base_dir / path
@@ -57,32 +57,30 @@ async def _execute_pipeline(
     request_data: Mapping[str, Any],
     on_stream_start: Callable[[Any], None] | None = None,
 ) -> str:
-    """Prepare backend pipeline input and execute run_vivian."""
-    raw_scene_dir = request_data.get("scene_dir")
-    if not isinstance(raw_scene_dir, str) or not raw_scene_dir.strip():
-        raise ValueError("scene_dir must be provided.")
-    scene_dir = Path(raw_scene_dir).expanduser().resolve()
+    """Prepare backend pipeline input and execute run_vivian.
 
-    raw_scene_json_path = request_data.get("scene_json_path")
-    if not isinstance(raw_scene_json_path, str) or not raw_scene_json_path.strip():
-        raise ValueError("scene_json_path must be provided.")
+    Required inputs are discovered from ``group_path``:
+        - ``<group_path>/scene.json``
+        - ``<group_path>/views_manifest.json``
+    """
 
-    scene_json_path = _resolve_path(raw_scene_json_path, base_dir=scene_dir)
+    raw_group_path = request_data.get("group_path")
+    if not isinstance(raw_group_path, str) or not raw_group_path.strip():
+        raise ValueError("group_path must be provided.")
+    group_path = _resolve_path(raw_group_path)
+    scene_dir = group_path
+    scene_json_path = (scene_dir / "scene.json").resolve()
+    if not scene_json_path.exists():
+        raise FileNotFoundError(f"Required file missing: {scene_json_path}")
+    manifest_path = (scene_dir / "views_manifest.json").resolve()
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Required file missing: {manifest_path}")
 
     scene_data, scene_json_text = load_scene_json(scene_json_path)
 
-    raw_manifest_path = request_data.get("views_manifest_path")
-    if isinstance(raw_manifest_path, str) and raw_manifest_path.strip():
-        manifest_path = _resolve_path(raw_manifest_path, base_dir=scene_dir)
-    else:
-        manifest_path = (scene_dir / "views_manifest.json").resolve()
-
     manifest_data: dict[str, Any] | None = None
     views_manifest_text = ""
-    if manifest_path.exists():
-        manifest_data, views_manifest_text = load_views_manifest(manifest_path)
-    else:
-        print(f"views_manifest.json missing at {manifest_path}; continuing without images.")
+    manifest_data, views_manifest_text = load_views_manifest(manifest_path)
 
     group = str(scene_data.get("groupName") or scene_dir.name or "GeneratedGroup")
     description = str(scene_data.get("description") or "Generate a complete functional specification.")
@@ -115,14 +113,14 @@ async def _execute_pipeline(
     if not start_pipeline and total_images > 0:
         skip_images_note = "Image uploads skipped because start_pipeline is false."
 
-    _, fs_dir = resolve_output_dirs(group)
+    _, fs_dir = resolve_output_dirs(group_path)
     batches = (
         chunk_object_selections(object_selections, MAX_OBJECTS_PER_RUN)
         if object_selections
         else [[]]
     )
 
-    for index, batch in enumerate(batches, start=1):
+    for batch in batches:
         batch_images = [image for selection in batch for image in selection.images]
         batch_objects = build_batch_object_interactions(
             batch=batch,
@@ -146,13 +144,7 @@ async def _execute_pipeline(
             skip_images_note=skip_images_note,
         )
 
-        if len(batches) > 1:
-            batch_label = "_".join(safe_dir_name(selection.object_name) for selection in batch)
-            if not batch_label:
-                batch_label = f"batch_{index}"
-            output_dir = fs_dir / batch_label
-        else:
-            output_dir = fs_dir
+        output_dir = fs_dir
 
         result = await run_vivian(
             user_input=content,

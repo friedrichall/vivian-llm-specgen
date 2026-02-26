@@ -1,6 +1,7 @@
 """Tests for backend job API endpoints."""
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from backend.jobs.models import JobStatus
 from backend.main import app
 
 client = TestClient(app)
-START_JOB_BASE = {"scene_json_path": "scene.json", "scene_dir": "."}
+START_JOB_BASE = {"group_path": "output_group"}
 
 
 @pytest.fixture(autouse=True)
@@ -224,23 +225,50 @@ def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatc
     assert request["use_mock_scene_analysis"] is True
 
 
-def test_start_job_rejects_null_scene_dir() -> None:
-    """scene_dir must be present and must not be null."""
+def test_start_job_rejects_missing_group_path() -> None:
+    """group_path is required and must be provided explicitly."""
     response = client.post(
         "/v1/jobs/start",
-        json={"scene_json_path": "scene.json", "scene_dir": None},
+        json={},
     )
     assert response.status_code == 422
 
 
-def test_start_job_rejects_null_views_manifest_path() -> None:
-    """views_manifest_path may be omitted but must not be null when present."""
+def test_start_job_rejects_blank_group_path() -> None:
+    """group_path must not be blank."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={"group_path": "   "},
+    )
+    assert response.status_code == 422
+
+
+def test_start_job_rejects_legacy_redundant_fields() -> None:
+    """Legacy redundant path fields should be rejected."""
     response = client.post(
         "/v1/jobs/start",
         json={
-            **START_JOB_BASE,
-            "views_manifest_path": None,
+            "group_path": "output_group",
+            "scene_json_path": "scene.json",
+            "views_manifest_path": "views_manifest.json",
         },
     )
     assert response.status_code == 422
 
+
+def test_start_job_uses_datetime_prefixed_job_directory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Job artifact directory should be <date-time-jobId>."""
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+
+    job = job_manager.assert_job_exists(job_id)
+    job_dir_name = Path(job.log_path).parent.name
+    assert job_dir_name.endswith(f"-{job_id}")
+    assert re.match(r"^\d{8}-\d{6}-[0-9a-f]{32}$", job_dir_name) is not None
