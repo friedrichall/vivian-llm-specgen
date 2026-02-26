@@ -1,5 +1,0 @@
-Scene: (unknown scene)
-Objects detected: 0
-Diagnostics:
-- ERROR: No scene JSON provided. The agent requires a SCENE_JSON (and optionally VIEWS_MANIFEST_JSON or images) to build an object-level functional specification.
-- INFO: Provide the scene JSON exported from the Unity scene (including object names, paths, roles, interactionParams, transforms, materials, and worldAabb) to generate a complete functional specification.

@@ -1,3 +1,7 @@
+"""Tests for backend job API endpoints."""
+
+import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,9 +13,12 @@ from backend.jobs.models import JobStatus
 from backend.main import app
 
 client = TestClient(app)
+START_JOB_BASE = {"group_path": "output_group"}
+
 
 @pytest.fixture(autouse=True)
 def _reset_job_manager_state() -> None:
+    """Reset shared in-memory manager state between tests."""
     job_manager.current_job = None
     job_manager._jobs.clear()  # pylint: disable=protected-access
     job_manager.active_job_id = None
@@ -20,22 +27,21 @@ def _reset_job_manager_state() -> None:
 
 
 def test_health_endpoint() -> None:
+    """Health endpoint should return a stable OK payload."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
 def test_start_poll_logs_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start, poll logs, and read result for one job lifecycle."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    response = client.post(
-        "/v1/jobs/start",
-        json={"scene_json_path": "scene.json"},
-    )
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert response.status_code == 202
     payload = response.json()
     assert payload["status"] == "QUEUED"
@@ -79,34 +85,37 @@ def test_start_poll_logs_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_start_rejects_second_job_while_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A second start request should be rejected while one job is active."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     first_job_id = first.json()["job_id"]
 
-    second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    second = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert second.status_code == 409
     job_manager.assert_job_exists(first_job_id).status = JobStatus.SUCCEEDED
 
 
 def test_unknown_job_returns_404() -> None:
+    """Unknown job IDs should return 404."""
     response = client.get("/v1/jobs/does-not-exist/status")
     assert response.status_code == 404
 
 
 def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cancel endpoint should cancel the active stream result."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     job_id = first.json()["job_id"]
 
@@ -131,13 +140,14 @@ def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A new job should be startable after cancellation cleanup."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
 
     monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
 
-    first = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    first = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert first.status_code == 202
     first_job_id = first.json()["job_id"]
 
@@ -153,11 +163,112 @@ def test_can_start_new_job_after_cancelled_job(monkeypatch: pytest.MonkeyPatch) 
     cancel = client.post(f"/v1/jobs/{first_job_id}/cancel")
     assert cancel.status_code == 202
 
-    # Simulate runner finalization after stream cancellation.
     first_job.status = JobStatus.CANCELLED
     first_job.finished_at = datetime.now(timezone.utc)
     first_job.error = "Cancelled by user."
     job_manager.clear_active_runtime(first_job_id)
 
-    second = client.post("/v1/jobs/start", json={"scene_json_path": "scene.json"})
+    second = client.post("/v1/jobs/start", json=START_JOB_BASE)
     assert second.status_code == 202
+
+
+def test_start_job_request_uses_flag_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Defaults should be persisted for omitted optional flags."""
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+    job = job_manager.assert_job_exists(job_id)
+
+    meta_path = Path(job.log_path).parent / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    request = meta["request"]
+
+    assert request["start_pipeline"] is True
+    assert request["only_scene_analysis"] is False
+    assert request["use_mock_scene_analysis"] is False
+    assert "extra" not in request
+
+
+def test_start_job_request_accepts_explicit_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Explicit flag values should be persisted unchanged."""
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post(
+        "/v1/jobs/start",
+        json={
+            **START_JOB_BASE,
+            "start_pipeline": False,
+            "only_scene_analysis": True,
+            "use_mock_scene_analysis": True,
+        },
+    )
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+    job = job_manager.assert_job_exists(job_id)
+
+    meta_path = Path(job.log_path).parent / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    request = meta["request"]
+
+    assert request["start_pipeline"] is False
+    assert request["only_scene_analysis"] is True
+    assert request["use_mock_scene_analysis"] is True
+
+
+def test_start_job_rejects_missing_group_path() -> None:
+    """group_path is required and must be provided explicitly."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={},
+    )
+    assert response.status_code == 422
+
+
+def test_start_job_rejects_blank_group_path() -> None:
+    """group_path must not be blank."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={"group_path": "   "},
+    )
+    assert response.status_code == 422
+
+
+def test_start_job_rejects_legacy_redundant_fields() -> None:
+    """Legacy redundant path fields should be rejected."""
+    response = client.post(
+        "/v1/jobs/start",
+        json={
+            "group_path": "output_group",
+            "scene_json_path": "scene.json",
+            "views_manifest_path": "views_manifest.json",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_start_job_uses_datetime_prefixed_job_directory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Job artifact directory should be <date-time-jobId>."""
+    async def fake_run_job(job, request_data, manager) -> None:
+        _ = (job, request_data, manager)
+        return None
+
+    monkeypatch.setattr("backend.api.router.run_job", fake_run_job)
+
+    response = client.post("/v1/jobs/start", json=START_JOB_BASE)
+    assert response.status_code == 202
+    job_id = response.json()["job_id"]
+
+    job = job_manager.assert_job_exists(job_id)
+    job_dir_name = Path(job.log_path).parent.name
+    assert job_dir_name.endswith(f"-{job_id}")
+    assert re.match(r"^\d{8}-\d{6}-[0-9a-f]{32}$", job_dir_name) is not None

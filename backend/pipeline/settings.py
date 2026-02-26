@@ -1,8 +1,5 @@
 """Configuration values for backend pipeline preparation."""
 
-from pathlib import Path
-
-DEFAULT_OUTPUT_ROOT = Path("generated_specs")
 ORDERED_VIEW_NAMES = [
     "front",
     "back",

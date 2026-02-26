@@ -2,66 +2,22 @@
 
 import asyncio
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
 
 from backend.jobs.manager import JobManager
-from backend.jobs.models import JobStatus
+from backend.jobs.models import (
+    CancelJobResponse,
+    JobLogsResponse,
+    JobResultResponse,
+    JobStatus,
+    JobStatusResponse,
+    StartJobRequest,
+    StartJobResponse,
+)
 from backend.jobs.runner import run_job
 
 MAX_LOG_CHUNK_BYTES = 64 * 1024
-
-
-class StartJobRequest(BaseModel):
-    """Input required to start one backend pipeline job."""
-
-    scene_json_path: str = Field(min_length=1)
-    views_manifest_path: str | None = None
-    scene_dir: str | None = None
-    extra: dict[str, Any] | None = None
-
-
-class StartJobResponse(BaseModel):
-    """Response returned immediately after accepting a job."""
-
-    job_id: str
-    status: JobStatus
-
-
-class JobStatusResponse(BaseModel):
-    """State response for status polling."""
-
-    job_id: str
-    status: JobStatus
-    error: str | None
-
-
-class JobLogsResponse(BaseModel):
-    """Incremental log chunk response."""
-
-    job_id: str
-    status: JobStatus
-    chunk: str
-    next_offset: int
-
-
-class JobResultResponse(BaseModel):
-    """Final result contract for finished jobs."""
-
-    job_id: str
-    status: JobStatus
-    output_path: str | None
-    error: str | None
-
-
-class CancelJobResponse(BaseModel):
-    """Response sent after cancellation is requested."""
-
-    job_id: str
-    status: JobStatus
-    message: str
 
 
 api_router = APIRouter()

@@ -39,6 +39,10 @@
 - `GET /v1/jobs/{job_id}/logs?offset=<int>&max_bytes=<int>`
 - `GET /v1/jobs/{job_id}/result`
 
+### Data Transfer Objects
+- run the script `generate_dtos.py` with `python scripts/generate_dtos.py` to auto-generate DTOs.
+- path: `/scripts/dtos/`
+
 ### Notes
 
 - Endpoints with `start_pipeline=true` require `OPENAI_API_KEY` (can be set in .env file).
