@@ -40,7 +40,7 @@ def _read_scene_feedback(path: Path) -> Optional[Dict[str, Any]]:
 
 
 def _load_mock_scene_understanding(project_root: Path) -> SceneUnderstanding:
-    """Load mock scene understanding JSON and validate it against the model."""
+    """Load mock scene understanding JSON and validate it against the model-v1."""
     mock_path = project_root / MOCK_SCENE_UNDERSTANDING_FILENAME
     try:
         raw = mock_path.read_text(encoding="utf-8")

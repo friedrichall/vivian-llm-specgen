@@ -130,7 +130,7 @@ def _write_prompt_error_log(
         "error_type": type(error).__name__,
         "error": str(error),
         "agent": agent_name,
-        "model": model,
+        "model-v1": model,
         "user_input_summary": _summarize_user_input(user_input),
         "user_input": _sanitize_user_input_for_log(user_input),
         "agent_instructions": AGENT_INSTRUCTIONS_BY_NAME.get(agent_name),
