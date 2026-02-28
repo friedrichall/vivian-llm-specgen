@@ -28,6 +28,16 @@ class Registry(StrictModel):
     states: StatesFile
     transitions: TransitionsFile
 
+    @classmethod
+    def empty(cls) -> "Registry":
+        return cls(
+            interaction_elements=InteractionElementsFile(Elements=[]),
+            visualization_elements=VisualizationElementsFile(Elements=[]),
+            screens=ScreensRegistry(files=[]),
+            states=StatesFile(States=[]),
+            transitions=TransitionsFile(Transitions=[]),
+        )
+
     @model_validator(mode="after")
     def validate_cross_references(self) -> "Registry":
         interaction_names = {element.Name for element in self.interaction_elements.Elements}
