@@ -1,39 +1,24 @@
-import asyncio
+from collections.abc import Awaitable
 from collections.abc import Callable
 import json
-import os
 import sys
-import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
 from model.output_type_FuncSpec import FunctionalSpecification
 from vivian_pipeline.agents_setup import (
-    BASE_MODEL,
     build_manager_agent,
     build_vivian_prompt,
-    interaction_elements_agent,
-    scene_analysis_agent,
-    states_agent,
-    transitions_agent,
-    visualization_arrays_agent,
-    visualization_elements_agent,
 )
 from vivian_pipeline.context import (
     MOCK_SCENE_UNDERSTANDING_FILENAME,
-    SCENE_FEEDBACK_FILENAME,
-    SCENE_SUMMARY_FILENAME,
+    SceneReviewDecision,
     VivianRunContext,
     _resolve_scene_dir,
-    _scene_feedback_path,
-    _scene_summary_path,
 )
 from vivian_pipeline.scene_confirmation import (
-    _append_scene_context_to_input,
     _load_mock_scene_understanding,
-    _read_scene_feedback,
-    _write_scene_summary,
     await_scene_confirmation,
     scene_analysis_tool,
 )
@@ -79,30 +64,6 @@ def _read_bool_flag(flag_name: str, default: bool) -> bool:
     return default
 
 
-async def _prompt_scene_feedback() -> str:
-    """Prompt for scene feedback from env var or interactive stdin."""
-    #TODO remove env var
-    env_feedback = os.getenv("VIVIAN_SCENE_FEEDBACK")
-    if env_feedback is not None:
-        print("[scene_feedback] Using VIVIAN_SCENE_FEEDBACK from environment.")
-        return env_feedback
-    prompt = (
-        "\nPlease review the scene summary above.\n"
-        "Reply with corrections (e.g., \"Button X controls Light Y\") "
-        "or type 'ok' to continue: "
-    )
-    print(f"[scene_feedback] Waiting for user input... (stdin isatty={sys.stdin.isatty()})")
-    try:
-        return await asyncio.to_thread(input, prompt)
-    except EOFError as exc:
-        print(f"[scene_feedback] input() failed with EOFError; auto-confirming. ({exc!r})", file=sys.stderr)
-        return "ok"
-    except Exception as exc:
-        print(f"[scene_feedback] input() failed: {exc!r}", file=sys.stderr)
-        traceback.print_exc()
-        raise
-
-
 # Entrypoint used by backend job execution.
 async def run_vivian(
     user_input: str | List[Dict[str, Any]],
@@ -112,6 +73,9 @@ async def run_vivian(
     only_scene_analysis: bool = False,
     use_mock_scene_analysis: bool = False,
     on_stream_start: Callable[[Any], None] | None = None,
+    publish_scene_review: Callable[[int, str, Dict[str, Any]], None] | None = None,
+    await_scene_decision: Callable[[int], Awaitable[SceneReviewDecision]] | None = None,
+    on_phase_change: Callable[[str], None] | None = None,
 ) -> FunctionalSpecification | str | None:
     """Run the Vivian orchestration pipeline and optionally persist artifacts.
 
@@ -156,6 +120,13 @@ async def run_vivian(
     if not start_pipeline:
         print("[pipeline] --start-pipeline is disabled; stopping before manager_agent execution.")
         return None
+    if (
+        not use_mock_scene_analysis
+        and (publish_scene_review is None or await_scene_decision is None)
+    ):
+        raise RuntimeError(
+            "Scene confirmation bridge is required for non-mock scene confirmation."
+        )
 
     scene_dir = _resolve_scene_dir(scene_json_path)
 
@@ -164,6 +135,9 @@ async def run_vivian(
         user_input=user_input,
         scene_dir=scene_dir,
         only_scene_analysis=only_scene_analysis,
+        publish_scene_review=publish_scene_review,
+        await_scene_decision=await_scene_decision,
+        on_phase_change=on_phase_change,
     )
 
     # 3 for mockdata
@@ -201,6 +175,8 @@ async def run_vivian(
             return context.scene_understanding
         return final_output
     if isinstance(final_output, FunctionalSpecification) and output_dir:
+        if on_phase_change is not None:
+            on_phase_change("GENERATING_SPECS")
         output_dir.mkdir(parents=True, exist_ok=True)
         file_map = {
             "InteractionElements.json": final_output.interaction_elements.model_dump(),
@@ -213,6 +189,8 @@ async def run_vivian(
             path = output_dir / filename
             path.write_text(json.dumps(payload, indent=4, ensure_ascii=False), encoding="utf-8")
             print(f"Wrote {path}")
+        if on_phase_change is not None:
+            on_phase_change("VALIDATING_OUTPUT")
         context.validation_errors = _run_vivian_validator(output_dir)
 
     return final_output

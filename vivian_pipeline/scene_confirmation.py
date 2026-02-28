@@ -1,4 +1,3 @@
-import asyncio
 import json
 import time
 from pathlib import Path
@@ -18,25 +17,8 @@ from vivian_pipeline.agents_setup import scene_analysis_agent
 from vivian_pipeline.context import (
     MOCK_SCENE_UNDERSTANDING_FILENAME,
     VivianRunContext,
-    _scene_feedback_path,
     _scene_summary_path,
 )
-
-
-def _read_scene_feedback(path: Path) -> Optional[Dict[str, Any]]:
-    """Read and normalize scene feedback payload from disk."""
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return None
-    except Exception:
-        return None
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        if raw.strip():
-            return {"confirmed": False, "feedback": raw.strip()}
-    return None
 
 
 def _load_mock_scene_understanding(project_root: Path) -> SceneUnderstanding:
@@ -90,6 +72,8 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
     ``SceneUnderstanding`` output on the shared ``VivianRunContext`` instance.
     """
     state: VivianRunContext = ctx.context
+    if state.on_phase_change is not None:
+        state.on_phase_change("ANALYZING_SCENE")
     print("[scene_analysis_agent] Starting streamed analysis...")
     result = Runner.run_streamed(scene_analysis_agent, input=state.user_input, context=state)
     last_heartbeat = time.time()
@@ -119,20 +103,25 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
     name_override="await_scene_confirmation",
     description_override=(
         "Blocks until the Unity UI confirms the scene understanding. "
-        "Writes a summary file and waits for scene_feedback.json."
+        "Writes a summary file and waits for scene-review API decisions."
     ),
 )
 async def await_scene_confirmation(ctx: ToolContext) -> str:
     """Wait for scene confirmation feedback and return scene context text.
 
     The function writes the latest scene-understanding JSON and summary files,
-    then polls ``scene_feedback.json`` until feedback is provided. Feedback
-    updates are applied to the in-memory scene understanding; confirmation
-    marks the context as confirmed and returns the rendered scene context.
+    publishes review revisions through the configured confirmation bridge, and
+    awaits user decisions from the backend API flow. Feedback updates are
+    applied to the in-memory scene understanding; confirmation marks the
+    context as confirmed and returns the rendered scene context.
     """
     state: VivianRunContext = ctx.context
     if state.scene_understanding is None:
         return "ERROR: scene_understanding missing. Call scene_analysis_agent first."
+    if state.publish_scene_review is None or state.await_scene_decision is None:
+        raise RuntimeError("Scene confirmation bridge is not configured.")
+    if state.on_phase_change is not None:
+        state.on_phase_change("AWAITING_SCENE_CONFIRMATION")
 
     scene_dir = state.scene_dir
     log_path = write_scene_understanding(
@@ -143,23 +132,15 @@ async def await_scene_confirmation(ctx: ToolContext) -> str:
     print(f"[scene_confirmation] Wrote {log_path}")
     _write_scene_summary(state.scene_understanding, scene_dir)
 
-    feedback_path = _scene_feedback_path(scene_dir)
-    if feedback_path is None:
-        raise RuntimeError("Scene feedback path is not configured.")
-
-    print(f"[scene_confirmation] Waiting for confirmation at {feedback_path} ...")
+    revision = 1
     while True:
-        payload = _read_scene_feedback(feedback_path)
-        if payload is None:
-            await asyncio.sleep(1.0)
-            continue
-        try:
-            feedback_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+        summary = summarize_scene_understanding(state.scene_understanding)
+        scene_payload = state.scene_understanding.model_dump()
+        state.publish_scene_review(revision, summary, scene_payload)
+        print(f"[scene_confirmation] Waiting for scene-review decision (revision={revision}) ...")
 
-        confirmed = bool(payload.get("confirmed", False))
-        feedback = (payload.get("feedback") or "").strip()
+        decision = await state.await_scene_decision(revision)
+        feedback = (decision.feedback or "").strip()
         if feedback:
             apply_scene_feedback(state.scene_understanding, feedback)
             write_scene_understanding(
@@ -167,13 +148,14 @@ async def await_scene_confirmation(ctx: ToolContext) -> str:
                 extra_dir=scene_dir,
                 extra_filename="scene_understanding.json",
             )
+            _write_scene_summary(state.scene_understanding, scene_dir)
 
-        if confirmed:
+        if decision.confirmed:
             state.scene_confirmed = True
             _write_scene_summary(state.scene_understanding, scene_dir)
             return build_scene_context(state.scene_understanding)
 
-        _write_scene_summary(state.scene_understanding, scene_dir)
+        revision += 1
 
 
 def _append_scene_context_to_input(

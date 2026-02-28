@@ -2,7 +2,9 @@
 
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 
@@ -16,11 +18,34 @@ class JobStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class JobPhase(str, Enum):
+    """Current phase of pipeline execution for one job."""
+
+    QUEUED = "QUEUED"
+    PREPARING_INPUT = "PREPARING_INPUT"
+    ANALYZING_SCENE = "ANALYZING_SCENE"
+    AWAITING_SCENE_CONFIRMATION = "AWAITING_SCENE_CONFIRMATION"
+    GENERATING_SPECS = "GENERATING_SPECS"
+    VALIDATING_OUTPUT = "VALIDATING_OUTPUT"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class SceneReviewState(str, Enum):
+    """Lifecycle state of the scene review subflow."""
+
+    PENDING = "PENDING"
+    PROCESSING_FEEDBACK = "PROCESSING_FEEDBACK"
+    CONFIRMED = "CONFIRMED"
+
+
 class JobInfo(BaseModel):
     """In-memory representation of a single job."""
 
     job_id: str
     status: JobStatus
+    phase: JobPhase
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
@@ -63,6 +88,7 @@ class JobStatusResponse(BaseModel):
 
     job_id: str
     status: JobStatus
+    phase: JobPhase
     error: str | None
 
 
@@ -89,4 +115,56 @@ class CancelJobResponse(BaseModel):
 
     job_id: str
     status: JobStatus
+    message: str
+
+
+class SceneReviewPayload(BaseModel):
+    """Snapshot returned to clients for review/confirmation."""
+
+    revision: int = Field(ge=1)
+    summary: str
+    scene_understanding: dict[str, Any]
+    updated_at: datetime
+
+
+class SceneReviewResponse(BaseModel):
+    """Current scene-review state for one job."""
+
+    job_id: str
+    status: JobStatus
+    phase: JobPhase
+    review_state: SceneReviewState | None
+    scene_review: SceneReviewPayload | None
+    error: str | None
+
+
+class SceneReviewDecisionRequest(BaseModel):
+    """User decision payload for one scene review revision."""
+
+    revision: int = Field(ge=1)
+    confirmed: bool
+    feedback: str | None = None
+
+    @model_validator(mode="after")
+    def validate_feedback_requirement(self) -> "SceneReviewDecisionRequest":
+        """Require non-empty feedback when not confirming."""
+        if self.confirmed:
+            return self
+        feedback = (self.feedback or "").strip()
+        if not feedback:
+            raise PydanticCustomError(
+                "feedback_required",
+                "feedback is required when confirmed is false.",
+            )
+        return self
+
+
+class SceneReviewDecisionResponse(BaseModel):
+    """Acknowledgement returned when a scene-review decision is accepted."""
+
+    job_id: str
+    status: JobStatus
+    phase: JobPhase
+    review_state: SceneReviewState
+    accepted_revision: int
     message: str
