@@ -27,6 +27,7 @@ AGENT_INSTRUCTIONS_BY_NAME = {
 }
 
 
+# log user input like text, images, ...
 def _summarize_user_input(user_input: Any) -> str:
     if isinstance(user_input, str):
         return user_input

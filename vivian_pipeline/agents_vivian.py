@@ -9,11 +9,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from model.output_type_FuncSpec import FunctionalSpecification
-from scene_feedback_agent import write_scene_feedback
 from vivian_pipeline.agents_setup import (
     BASE_MODEL,
-    MANAGER_AGENT_VARIANT,
-    build_active_manager_agent,
     build_manager_agent,
     build_vivian_prompt,
     interaction_elements_agent,
@@ -161,11 +158,15 @@ async def run_vivian(
         return None
 
     scene_dir = _resolve_scene_dir(scene_json_path)
+
+    # mutable per-run context
     context = VivianRunContext(
         user_input=user_input,
         scene_dir=scene_dir,
         only_scene_analysis=only_scene_analysis,
     )
+
+    # 3 for mockdata
     if use_mock_scene_analysis:
         mock_path = PROJECT_ROOT / MOCK_SCENE_UNDERSTANDING_FILENAME
         context.scene_understanding = _load_mock_scene_understanding(PROJECT_ROOT)
@@ -175,34 +176,13 @@ async def run_vivian(
             "Skipping scene_analysis_agent."
         )
 
-    if MANAGER_AGENT_VARIANT == "manager":
-        manager_agent = build_manager_agent(
-            scene_analysis_tool=scene_analysis_tool,
-            await_scene_confirmation=await_scene_confirmation,
-            only_scene_analysis=only_scene_analysis,
-        )
-    else:
-        manager_agent = build_active_manager_agent(
-            only_scene_analysis=only_scene_analysis,
-            scene_analysis_tool=scene_analysis_tool,
-            await_scene_confirmation=await_scene_confirmation,
-        )
-    if MANAGER_AGENT_VARIANT != "manager":
-        result = await _stream_agent_run(
-            manager_agent,
-            user_input,
-            label=manager_agent.name,
-            context=context,
-            on_stream_start=on_stream_start,
-        )
-        final_output = getattr(result, "final_output", None)
-        if isinstance(final_output, str):
-            print(f"Scene feedback:\n{final_output}")
-            path = write_scene_feedback(final_output)
-            print(f"Wrote {path}")
-        return final_output
-
+    manager_agent = build_manager_agent(
+        scene_analysis_tool=scene_analysis_tool,
+        await_scene_confirmation=await_scene_confirmation,
+        only_scene_analysis=only_scene_analysis,
+    )
     print("[manager_agent] Starting orchestrated run...")
+
     result = await _stream_agent_run(
         manager_agent,
         user_input,
@@ -212,7 +192,7 @@ async def run_vivian(
     )
 
     final_output = getattr(result, "final_output", None)
-    if not context.scene_confirmed and MANAGER_AGENT_VARIANT == "manager":
+    if not context.scene_confirmed:
         print("[manager_agent] Scene understanding not confirmed; aborting.", file=sys.stderr)
         return None
     if only_scene_analysis:
