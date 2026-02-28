@@ -8,10 +8,16 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from vivian_pipeline.agents_vivian import build_vivian_prompt, run_vivian
+from vivian_pipeline.context import SceneReviewDecision
 
 from backend.jobs.log_capture import capture_job_output
 from backend.jobs.manager import JobManager
-from backend.jobs.models import JobInfo, JobStatus
+from backend.jobs.models import (
+    JobInfo,
+    JobPhase,
+    JobStatus,
+    SceneReviewPayload,
+)
 from backend.pipeline.input_items import build_input_items
 from backend.pipeline.models import InputBundle
 from backend.pipeline.output_paths import resolve_output_dirs
@@ -55,6 +61,9 @@ def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
 
 async def _execute_pipeline(
     request_data: Mapping[str, Any],
+    *,
+    job: JobInfo,
+    manager: JobManager,
     on_stream_start: Callable[[Any], None] | None = None,
 ) -> str:
     """Prepare backend pipeline input and execute run_vivian.
@@ -63,6 +72,8 @@ async def _execute_pipeline(
         - ``<group_path>/scene.json``
         - ``<group_path>/views_manifest.json``
     """
+    manager.update_phase(job.job_id, JobPhase.PREPARING_INPUT)
+    manager.write_meta(job=job)
 
     raw_group_path = request_data.get("group_path")
     if not isinstance(raw_group_path, str) or not raw_group_path.strip():
@@ -146,6 +157,38 @@ async def _execute_pipeline(
 
         output_dir = fs_dir
 
+        def _on_phase_change(phase_name: str) -> None:
+            manager.update_phase(job.job_id, JobPhase(phase_name))
+            manager.write_meta(job=job)
+
+        def _publish_scene_review(
+            revision: int,
+            summary: str,
+            scene_understanding: dict[str, Any],
+        ) -> None:
+            manager.publish_scene_review(
+                job_id=job.job_id,
+                payload=SceneReviewPayload(
+                    revision=revision,
+                    summary=summary,
+                    scene_understanding=scene_understanding,
+                    updated_at=datetime.now(timezone.utc),
+                ),
+            )
+            manager.update_phase(job.job_id, JobPhase.AWAITING_SCENE_CONFIRMATION)
+            manager.write_meta(job=job)
+
+        async def _await_scene_decision(revision: int) -> SceneReviewDecision:
+            decision = await manager.await_scene_decision(
+                job_id=job.job_id,
+                expected_revision=revision,
+            )
+            return SceneReviewDecision(
+                revision=decision.revision,
+                confirmed=decision.confirmed,
+                feedback=decision.feedback,
+            )
+
         result = await run_vivian(
             user_input=content,
             output_dir=output_dir,
@@ -154,6 +197,9 @@ async def _execute_pipeline(
             only_scene_analysis=only_scene_analysis,
             use_mock_scene_analysis=use_mock_scene_analysis,
             on_stream_start=on_stream_start,
+            publish_scene_review=_publish_scene_review,
+            await_scene_decision=_await_scene_decision,
+            on_phase_change=_on_phase_change,
         )
 
         if result is None and start_pipeline:
@@ -167,6 +213,7 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
     async with manager.lock:
         if manager.is_cancel_requested(job.job_id):
             job.status = JobStatus.CANCELLED
+            job.phase = JobPhase.CANCELLED
             job.error = "Cancelled by user."
             job.output_path = None
             job.finished_at = datetime.now(timezone.utc)
@@ -175,6 +222,7 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
             return
 
         job.status = JobStatus.RUNNING
+        job.phase = JobPhase.PREPARING_INPUT
         job.started_at = datetime.now(timezone.utc)
         manager.write_meta(job=job)
 
@@ -188,6 +236,8 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
                 print(f"[job:{job.job_id}] Starting Vivian pipeline run.")
                 output_path = await _execute_pipeline(
                     request_data=request_data,
+                    job=job,
+                    manager=manager,
                     on_stream_start=_on_stream_start,
                 )
                 print(f"[job:{job.job_id}] Run completed. output_path={output_path}")
@@ -195,16 +245,19 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
             if manager.is_cancel_requested(job.job_id):
                 cancelled_by_user = True
                 job.status = JobStatus.CANCELLED
+                job.phase = JobPhase.CANCELLED
                 job.output_path = None
                 job.error = "Cancelled by user."
             else:
                 job.status = JobStatus.SUCCEEDED
+                job.phase = JobPhase.COMPLETED
                 job.output_path = output_path
                 job.error = None
         except Exception as exc:  # pragma: no cover - defensive path
             if manager.is_cancel_requested(job.job_id):
                 cancelled_by_user = True
                 job.status = JobStatus.CANCELLED
+                job.phase = JobPhase.CANCELLED
                 job.output_path = None
                 job.error = "Cancelled by user."
 
@@ -213,6 +266,7 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
             else:
                 trace = traceback.format_exc()
                 job.status = JobStatus.FAILED
+                job.phase = JobPhase.FAILED
                 job.output_path = None
                 job.error = f"{type(exc).__name__}: {exc}\n{trace}"
 

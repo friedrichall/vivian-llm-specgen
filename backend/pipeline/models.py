@@ -16,7 +16,7 @@ class ImagePayload:
 
 @dataclass
 class InputBundle:
-    """Input data bundle used to build model-v1 request items."""
+    """Input data bundle used to build model request items."""
 
     group_name: str
     interaction_description: str

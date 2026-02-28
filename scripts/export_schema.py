@@ -19,7 +19,7 @@ def get_root_model(module_name: str) -> type[BaseModel]:
     ]
 
     if not model_classes:
-        raise ValueError(f"No Pydantic model-v1 class found in {module_name}")
+        raise ValueError(f"No Pydantic model class found in {module_name}")
 
     return model_classes[-1]
 
@@ -29,12 +29,12 @@ def main() -> None:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-    model_dir = repo_root / "model-v1"
+    model_dir = repo_root / "model"
     schema_dir = repo_root / "schemas"
     schema_dir.mkdir(parents=True, exist_ok=True)
 
     for model_file in sorted(model_dir.glob("*.py")):
-        module_name = f"model-v1.{model_file.stem}"
+        module_name = f"model.{model_file.stem}"
         model_class = get_root_model(module_name)
         schema = model_class.model_json_schema()
 

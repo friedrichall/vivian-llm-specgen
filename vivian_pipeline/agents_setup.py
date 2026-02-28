@@ -19,12 +19,10 @@ from model.output_type_States import States
 from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationArrays import VisualizationArrays
 from model.output_type_VisualizationElements import VisualizationElements
-from scene_feedback_agent import build_scene_feedback_agent
 from vivian_pipeline.context import VivianRunContext
 from vivian_pipeline.scene_analysis import build_scene_analysis_agent
 
 BASE_MODEL = "gpt-5-mini-2025-08-07"
-MANAGER_AGENT_VARIANT = "manager"  # options: "manager", "scene_feedback"
 
 interaction_elements_agent = Agent(
     name="interaction_elements_agent",
@@ -98,6 +96,7 @@ def build_manager_agent(
         state: VivianRunContext = ctx.context
         return state.scene_confirmed and not state.only_scene_analysis
 
+    # define tools for manager
     analysis_tool = scene_analysis_tool
     analysis_tool.is_enabled = _analysis_enabled
     confirmation_tool = await_scene_confirmation
@@ -138,31 +137,3 @@ def build_manager_agent(
         ],
         output_type=FunctionalSpecification if not only_scene_analysis else None,
     )
-
-
-def build_active_manager_agent(
-    *,
-    only_scene_analysis: bool = False,
-    scene_analysis_tool: Any = None,
-    await_scene_confirmation: Any = None,
-) -> Agent:
-    """Return the active manager variant configured for the current run."""
-    if MANAGER_AGENT_VARIANT == "manager":
-        if scene_analysis_tool is None or await_scene_confirmation is None:
-            from vivian_pipeline.scene_confirmation import (
-                await_scene_confirmation as default_await_scene_confirmation,
-            )
-            from vivian_pipeline.scene_confirmation import (
-                scene_analysis_tool as default_scene_analysis_tool,
-            )
-
-            if scene_analysis_tool is None:
-                scene_analysis_tool = default_scene_analysis_tool
-            if await_scene_confirmation is None:
-                await_scene_confirmation = default_await_scene_confirmation
-        return build_manager_agent(
-            scene_analysis_tool=scene_analysis_tool,
-            await_scene_confirmation=await_scene_confirmation,
-            only_scene_analysis=only_scene_analysis,
-        )
-    return build_scene_feedback_agent(BASE_MODEL)

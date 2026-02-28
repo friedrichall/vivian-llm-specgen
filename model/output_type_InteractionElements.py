@@ -102,7 +102,7 @@ InteractionElement = Annotated[
     Field(discriminator="Type")]
 
 
-# ---- Top-level InteractionElements.json model-v1 ----
+# ---- Top-level InteractionElements.json model ----
 
 class InteractionElements(BaseModel):
     Elements: List[InteractionElement]

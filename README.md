@@ -38,6 +38,8 @@
 - `GET /v1/jobs/{job_id}/status`
 - `GET /v1/jobs/{job_id}/logs?offset=<int>&max_bytes=<int>`
 - `GET /v1/jobs/{job_id}/result`
+- `GET /v1/jobs/{job_id}/scene-review`
+- `POST /v1/jobs/{job_id}/scene-review`
 
 ### Data Transfer Objects
 - run the script `generate_dtos.py` with `python scripts/generate_dtos.py` to auto-generate DTOs.
@@ -46,9 +48,10 @@
 ### Notes
 
 - Endpoints with `start_pipeline=true` require `OPENAI_API_KEY` (can be set in .env file).
-- The current scene-confirmation flow can block while waiting for feedback from the `scene_feedback.json` mechanism.
+- Scene confirmation is API-driven via `/v1/jobs/{job_id}/scene-review` (no filesystem feedback handoff).
 - Use the job flow (`/v1/jobs/start` + polling `/status`, `/logs`, `/result`) for scene processing and spec generation.
 - Run backend API tests: `python -m pytest tests/test_backend_api.py`
+- `vivian_pipeline/pipeline_orchestrator.py` now includes a scene-only hook that runs `scene_analysis_tool` then `await_scene_confirmation` per attempt and writes `scene_raw.json` / `scene_confirmed.json` under `logs/orchestrator/runs/<run_id>/attempts/<k>/artifacts/`.
 
 ## Directory overview
 

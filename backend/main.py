@@ -16,11 +16,11 @@ from backend.schemas.vivian import ErrorResponse, HealthResponse, ServiceInfoRes
 API_V1_PREFIX = "/v1"
 DEFAULT_ERROR_RESPONSES = {
     422: {
-        "model-v1": ErrorResponse,
+        "model": ErrorResponse,
         "description": "Request validation error",
     },
     500: {
-        "model-v1": ErrorResponse,
+        "model": ErrorResponse,
         "description": "Internal server error",
     },
 }
