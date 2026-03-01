@@ -86,7 +86,7 @@ This page is auto-generated from the Pydantic model schema.
 | `Type` | `'InteractionElementCondition'` | yes |  |
 | `InteractionElement` | `string` | yes |  |
 | `Attribute` | `string` | yes |  |
-| `Value` | `string | number` | yes |  |
+| `Value` | `string` | yes |  |
 
 ### InteractionElements
 

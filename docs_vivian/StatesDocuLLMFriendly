@@ -67,12 +67,12 @@
    8.2.2. `"InteractionElement"`: the name (string) of the target interaction element.
    8.2.3. `"Attribute"`: must be one of the strings `"FIXED"`, `"VALUE"`, or `"POSITION"`.
    8.2.4. `"Value"`:
-   8.2.4.1. May be a static value (for example, `"true"`, `0.2`, or a coordinate string).
+   8.2.4.1. Must always be a JSON string (for example, `"true"`, `"0.2"`, or a coordinate string).
    8.2.4.2. Or may be the name (string) of another element whose value is referenced.
    8.3. When `"Attribute"` is `"FIXED"`:
    8.3.1. `"Value"` must define whether the element is fixed or not (for example, `"true"` or `"false"` as strings).
    8.4. When `"Attribute"` is `"VALUE"`:
-   8.4.1. `"Value"` may be a numeric value (for example, `0.2`) or the name of another interaction element whose value is used.
+   8.4.1. `"Value"` must be a string. Use a numeric string (for example, `"0.2"`) or the name of another interaction element.
    8.5. When `"Attribute"` is `"POSITION"`:
    8.5.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
    8.6. Example structures (conceptual):

@@ -78,7 +78,7 @@ class PipelineConfig:
         *,
         run_id: str | None = None,
         job_id: str | None = None,
-        max_attempts: int = 1,
+        max_attempts: int = 3,
         final_output_dir: Path | None = None,
         scene_dir: Path | None = None,
         publish_scene_review: PublishSceneReviewFn | None = None,
@@ -518,6 +518,34 @@ class PipelineOrchestrator:
                     names.add(condition.FileName)
         return sorted(names)
 
+    @staticmethod
+    def _coerce_interaction_condition_values_to_str(raw_payload: Any) -> Any:
+        """Normalize InteractionElementCondition.Value to string in raw states payload."""
+        if not isinstance(raw_payload, dict):
+            return raw_payload
+        raw_states = raw_payload.get("States")
+        if not isinstance(raw_states, list):
+            return raw_payload
+
+        for state in raw_states:
+            if not isinstance(state, dict):
+                continue
+            conditions = state.get("Conditions")
+            if not isinstance(conditions, list):
+                continue
+            for condition in conditions:
+                if not isinstance(condition, dict):
+                    continue
+                if condition.get("Type") != "InteractionElementCondition":
+                    continue
+                if "Value" not in condition:
+                    continue
+                value = condition["Value"]
+                if isinstance(value, str):
+                    continue
+                condition["Value"] = str(value)
+        return raw_payload
+
     def _run_registry_full_gate(self, *, attempt_index: int) -> None:
         # Screens are ignored as a generation step; sync referenced filenames from states
         # so Registry-level validation can still run deterministically.
@@ -734,6 +762,7 @@ class PipelineOrchestrator:
 
         raw_payload = self._to_json_payload(raw_output)
         self._write_artifact(attempt_index, "states_raw.json", raw_payload)
+        raw_payload = self._coerce_interaction_condition_values_to_str(raw_payload)
 
         if hasattr(StatesFile, "model_validate"):
             parsed = StatesFile.model_validate(raw_payload)
