@@ -112,7 +112,7 @@ async def _execute_pipeline(
     object_interactions: dict[str, str] = {}
 
     start_pipeline = _coerce_bool(request_data.get("start_pipeline"), True)
-    max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 1))
+    max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 3))
 
     manifest_objects = manifest_data.get("objects", []) if manifest_data else []
     selected_manifest_objects = manifest_objects
