@@ -63,6 +63,7 @@ class JobManager:
                 finished_at=None,
                 log_path=str(log_path),
                 output_path=None,
+                successful_attempt=None,
                 error=None,
             )
 

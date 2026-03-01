@@ -233,7 +233,12 @@ def _run_json_schema_validation(input_dir: Path, schema_path: Path) -> List[Dict
     return errors
 
 
-def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
+def _run_vivian_validator(
+    output_dir: Path,
+    *,
+    error_package_path: Path | None = None,
+    unity_log_path: Path | None = None,
+) -> Optional[List[Dict[str, Any]]]:
     """Run schema and Unity validation for generated specs and return errors.
 
     The function validates the generated Vivian JSON files in two stages:
@@ -287,8 +292,10 @@ def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
     temp_root = log_dir / "tmp-unity-projects"
     temp_run_root = temp_root / run_id
     temp_unity_project = temp_run_root / "vivian-windows-test-project"
-    error_package_path = run_dir / "error-package.json"
-    unity_log = log_dir / f"unity-validator-{run_id}.log"
+    resolved_error_package_path = error_package_path or (run_dir / "error-package.json")
+    resolved_unity_log = unity_log_path or (log_dir / f"unity-validator-{run_id}.log")
+    resolved_error_package_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_unity_log.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         _create_temp_unity_project(source_unity_project, temp_unity_project)
@@ -316,13 +323,13 @@ def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
         "-executeMethod",
         "VivianValidatorRunner.Run",
         "-logFile",
-        str(unity_log),
+        str(resolved_unity_log),
         "-validatorInputDir",
         str(output_dir.resolve()),
         "-validatorSchemaPath",
         str(schema_path.resolve()),
         "-validatorOut",
-        str(error_package_path.resolve()),
+        str(resolved_error_package_path.resolve()),
     ]
 
     try:
@@ -343,7 +350,7 @@ def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
             if stderr:
                 print(f"[validator] Unity stderr:\n{stderr}", file=sys.stderr)
 
-        if not error_package_path.exists():
+        if not resolved_error_package_path.exists():
             if result.returncode != 0:
                 fallback_errors = [{
                     "file": "unity-validator.log",
@@ -351,23 +358,23 @@ def _run_vivian_validator(output_dir: Path) -> Optional[List[Dict[str, Any]]]:
                     "message": "Unity validation failed; see unity log",
                 }]
                 try:
-                    error_package_path.write_text(
+                    resolved_error_package_path.write_text(
                         json.dumps(fallback_errors, indent=2, ensure_ascii=False),
                         encoding="utf-8",
                     )
                 except Exception as exc:
                     print(
-                        f"[validator] Failed to write fallback error package {error_package_path}: {exc!r}",
+                        f"[validator] Failed to write fallback error package {resolved_error_package_path}: {exc!r}",
                         file=sys.stderr,
                     )
                 all_errors.extend(fallback_errors)
                 return all_errors
 
-            print(f"[validator] Missing error package at {error_package_path}", file=sys.stderr)
+            print(f"[validator] Missing error package at {resolved_error_package_path}", file=sys.stderr)
             return all_errors if all_errors else None
 
         try:
-            errors = json.loads(error_package_path.read_text(encoding="utf-8"))
+            errors = json.loads(resolved_error_package_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             print(f"[validator] Error package JSON invalid: {exc}", file=sys.stderr)
             all_errors.append({
