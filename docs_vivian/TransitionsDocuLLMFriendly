@@ -64,6 +64,9 @@ Guards: general rules
 7.4.1. The transition is allowed only if every guard in the array is satisfied.
 7.5. You must not nest guards inside each other; only the "Guards" array may contain guard objects.
 7.6. Guards must not contradict each other (for example, one guard requiring a value > 5 and another requiring the same value < 3); if a conflict would arise, you must adjust the guards to match the user’s intent while keeping them logically consistent.
+7.7. Do not include a "Type" field in guard objects. The guard kind is inferred by keys:
+7.7.1. Event parameter guard if "EventParameter" is present.
+7.7.2. Interaction element attribute guard if "InteractionElement" and "Attribute" are present.
 
 Event parameter guards
 8.1. Use an event parameter guard when the condition depends on properties of the event itself (for example, touch coordinates or input values).
@@ -105,6 +108,7 @@ Validation rules and error handling
 11.1.3. Every transition object has "SourceState" and "DestinationState" as strings.
 11.1.4. Each transition uses either "Timeout" or "Event"/"InteractionElement", but not both.
 11.1.5. Every guard object in "Guards" follows either the event parameter guard structure or the interaction element attribute guard structure.
+11.1.6. Guard objects must not contain a "Type" field.
 11.2. If the user’s instructions conflict with this policy or would lead to an invalid structure, you must either:
 11.2.1. Adjust the transitions to satisfy this specification while preserving the user’s intent as closely as possible; or
 11.2.2. If the user asks for an explanation instead of pure JSON, explain which constraints are violated and propose a corrected transition definition.

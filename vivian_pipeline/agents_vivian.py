@@ -2,6 +2,7 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 import json
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -79,6 +80,10 @@ async def run_vivian(
 ) -> FunctionalSpecification | str | None:
     """Run the Vivian orchestration pipeline and optionally persist artifacts.
 
+    Deprecated:
+        This manager-agent orchestration path is kept temporarily for migration.
+        New backend job runs should use ``PipelineOrchestrator`` instead.
+
     This entrypoint logs raw user input, initializes run context, executes the
     selected manager variant in streamed mode, and conditionally writes
     generated FunctionalSpecification files plus validator results.
@@ -102,6 +107,11 @@ async def run_vivian(
         scene-feedback manager variant, or ``None`` when execution is skipped
         or aborted before a final output is available.
     """
+    warnings.warn(
+        "run_vivian manager-agent flow is deprecated. Use PipelineOrchestrator instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if isinstance(user_input, str):
         try:
             parsed = json.loads(user_input)

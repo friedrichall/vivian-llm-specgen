@@ -28,7 +28,7 @@ class InteractionElementCondition(BaseModel):
     Type: Literal["InteractionElementCondition"]
     InteractionElement: str
     Attribute: str      # FIXED, VALUE, POSITION
-    Value: Union[str, float]   # string, numeric, position tuple-string, or element name
+    Value: str          # always string (e.g. "true", "0.2", "(0,0,0)", or element name)
 
 
 # -------------------------------

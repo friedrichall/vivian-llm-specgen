@@ -14,12 +14,12 @@ from constants.agent_instructions import (
     VISUALIZATION_ELEMENTS_INSTRUCTIONS,
 )
 from model.output_type_FuncSpec import FunctionalSpecification
-from model.output_type_InteractionElements import InteractionElements
-from model.output_type_States import States
-from model.output_type_Transitions import Transitions
 from model.output_type_VisualizationArrays import VisualizationArrays
-from model.output_type_VisualizationElements import VisualizationElements
 from vivian_pipeline.context import VivianRunContext
+from vivian_pipeline.models_funcspec.interaction_elements import InteractionElementsFile
+from vivian_pipeline.models_funcspec.states import StatesFile
+from vivian_pipeline.models_funcspec.transitions import TransitionsFile
+from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
 from vivian_pipeline.scene_analysis import build_scene_analysis_agent
 
 BASE_MODEL = "gpt-5-mini-2025-08-07"
@@ -28,25 +28,25 @@ interaction_elements_agent = Agent(
     name="interaction_elements_agent",
     model=BASE_MODEL,
     instructions=INTERACTION_ELEMENTS_INSTRUCTIONS,
-    output_type=InteractionElements,
+    output_type=InteractionElementsFile,
 )
 transitions_agent = Agent(
     name="transitions_agent",
     model=BASE_MODEL,
     instructions=TRANSITIONS_INSTRUCTIONS,
-    output_type=Transitions,
+    output_type=TransitionsFile,
 )
 states_agent = Agent(
     name="states_agent",
     model=BASE_MODEL,
     instructions=STATES_INSTRUCTIONS,
-    output_type=States,
+    output_type=StatesFile,
 )
 visualization_elements_agent = Agent(
     name="visualization_elements_agent",
     model=BASE_MODEL,
     instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
-    output_type=VisualizationElements,
+    output_type=VisualizationElementsFile,
 )
 visualization_arrays_agent = Agent(
     name="visualization_arrays_agent",

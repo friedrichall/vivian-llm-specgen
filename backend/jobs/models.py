@@ -27,6 +27,7 @@ class JobPhase(str, Enum):
     AWAITING_SCENE_CONFIRMATION = "AWAITING_SCENE_CONFIRMATION"
     GENERATING_SPECS = "GENERATING_SPECS"
     VALIDATING_OUTPUT = "VALIDATING_OUTPUT"
+    PUBLISHING = "PUBLISHING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
@@ -51,6 +52,7 @@ class JobInfo(BaseModel):
     finished_at: datetime | None
     log_path: str
     output_path: str | None
+    successful_attempt: int | None
     error: str | None
 
 
@@ -106,6 +108,8 @@ class JobResultResponse(BaseModel):
 
     job_id: str
     status: JobStatus
+    success: bool
+    successful_attempt: int | None
     output_path: str | None
     error: str | None
 

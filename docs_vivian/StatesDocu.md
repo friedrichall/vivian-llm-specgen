@@ -99,7 +99,7 @@ The following condition types are supported:
 - `Type`: `"InteractionElementCondition"`
 - `InteractionElement`: Target element name
 - `Attribute`: Can be `"FIXED"`, `"VALUE"`, or `"POSITION"`
-- `Value`: A static value (e.g., `"true"`, `0.2`) or another element reference
+- `Value`: Must always be a string (e.g., `"true"`, `"0.2"`, another element name, or a position string)
 
 **Examples:**
 ```json

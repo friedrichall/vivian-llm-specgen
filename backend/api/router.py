@@ -22,6 +22,7 @@ from backend.jobs.models import (
     StartJobResponse,
 )
 from backend.jobs.runner import run_job
+from vivian_pipeline.context import SceneReviewDecision
 from vivian_pipeline.pipeline_orchestrator import PipelineConfig, run_pipeline
 
 MAX_LOG_CHUNK_BYTES = 64 * 1024
@@ -162,6 +163,8 @@ def get_job_result(job_id: str) -> JobResultResponse:
     return JobResultResponse(
         job_id=job.job_id,
         status=job.status,
+        success=(job.status == JobStatus.SUCCEEDED),
+        successful_attempt=job.successful_attempt,
         output_path=job.output_path,
         error=job.error,
     )
@@ -195,7 +198,24 @@ def run_orchestrator_test(
     """Run the pipeline orchestrator directly for debugging."""
     LOGGER.info("POST /orchestrator/test max_attempts=%d", max_attempts)
     run_id = f"debug-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    config = PipelineConfig.default(run_id=run_id, max_attempts=max_attempts)
+
+    def _publish_scene_review(revision: int, summary: str, scene_understanding: dict[str, object]) -> None:
+        LOGGER.info(
+            "orchestrator/test review published revision=%d summary_len=%d payload_keys=%d",
+            revision,
+            len(summary),
+            len(scene_understanding),
+        )
+
+    async def _auto_confirm(revision: int) -> SceneReviewDecision:
+        return SceneReviewDecision(revision=revision, confirmed=True, feedback=None)
+
+    config = PipelineConfig.default(
+        run_id=run_id,
+        max_attempts=max_attempts,
+        publish_scene_review=_publish_scene_review,
+        await_scene_decision=_auto_confirm,
+    )
     result = run_pipeline(config)
     return {
         "run_id": run_id,

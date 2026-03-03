@@ -6,18 +6,47 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agents.tool_context import ToolContext
 
 from model.output_type_SceneUnderstanding import SceneUnderstanding
-from vivian_pipeline.agents_setup import interaction_elements_agent
-from vivian_pipeline.context import VivianRunContext
-from vivian_pipeline.models_funcspec import InteractionElementsFile, Registry
-from vivian_pipeline.scene_analysis import build_scene_context
-from vivian_pipeline.scene_confirmation import await_scene_confirmation, scene_analysis_tool
+from vivian_pipeline.agents_setup import (
+    interaction_elements_agent,
+    states_agent,
+    transitions_agent,
+    visualization_elements_agent,
+)
+from vivian_pipeline.context import (
+    AwaitSceneDecisionFn,
+    PhaseUpdateFn,
+    PublishSceneReviewFn,
+    SceneReviewDecision,
+    VivianRunContext,
+)
+from vivian_pipeline.scene_analysis import apply_scene_feedback, summarize_scene_understanding
+from vivian_pipeline.scene_confirmation import scene_analysis_tool
 from vivian_pipeline.streaming import _stream_agent_run
+from vivian_pipeline.validator_unity import _run_vivian_validator
+from vivian_pipeline.rerun_policy import (
+    STEP_ORDER,
+    expand_dirty_steps,
+    map_errors_to_dirty_steps,
+    normalize_error_package,
+)
+from vivian_pipeline.models_funcspec import (
+    FloatValueVisualization,
+    InteractionElementsFile,
+    InteractionElementCondition,
+    Registry as RegistryFull,
+    ScreenContentVisualization,
+    StatesFile,
+    TransitionsFile,
+    ValueOfInteractionElementVisualization,
+    VisualizationElementsFile,
+)
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_USER_INPUT = "Analyze the Unity scene and return SceneUnderstanding."
@@ -36,17 +65,44 @@ class PipelineConfig:
     paths: PipelinePaths
     max_attempts: int
     run_id: str
+    job_id: str | None = None
+    final_output_dir: Path | None = None
+    scene_dir: Path | None = None
+    publish_scene_review: PublishSceneReviewFn | None = None
+    await_scene_decision: AwaitSceneDecisionFn | None = None
+    on_phase_change: PhaseUpdateFn | None = None
 
     @classmethod
-    def default(cls, *, run_id: str, max_attempts: int = 1) -> "PipelineConfig":
-        workspace_root = Path.cwd()
+    def default(
+        cls,
+        *,
+        run_id: str | None = None,
+        job_id: str | None = None,
+        max_attempts: int = 3,
+        final_output_dir: Path | None = None,
+        scene_dir: Path | None = None,
+        publish_scene_review: PublishSceneReviewFn | None = None,
+        await_scene_decision: AwaitSceneDecisionFn | None = None,
+        on_phase_change: PhaseUpdateFn | None = None,
+    ) -> "PipelineConfig":
+        resolved_run_id = (run_id or job_id or "orchestrator-run").strip()
+        if not resolved_run_id:
+            raise ValueError("run_id must not be empty.")
+        resolved_job_id = (job_id or resolved_run_id).strip()
+        workspace_root = Path.cwd().resolve()
         return cls(
             paths=PipelinePaths(
                 workspace_root=workspace_root,
                 runs_root=workspace_root / "logs" / "orchestrator" / "runs",
             ),
             max_attempts=max_attempts,
-            run_id=run_id,
+            run_id=resolved_run_id,
+            job_id=resolved_job_id,
+            final_output_dir=final_output_dir,
+            scene_dir=scene_dir,
+            publish_scene_review=publish_scene_review,
+            await_scene_decision=await_scene_decision,
+            on_phase_change=on_phase_change,
         )
 
 
@@ -54,8 +110,26 @@ class PipelineConfig:
 class PipelineRunResult:
     success: bool
     run_id: str
+    job_id: str | None
     max_attempts: int
     attempts_completed: int
+
+
+def publish_final(registry: RegistryFull, final_dir: Path) -> None:
+    """Publish final FunctionalSpecification JSON files from registry snapshot."""
+    final_dir.mkdir(parents=True, exist_ok=True)
+    file_map = {
+        "InteractionElements.json": registry.interaction_elements.model_dump(),
+        "VisualizationElements.json": registry.visualization_elements.model_dump(),
+        "States.json": registry.states.model_dump(),
+        "Transitions.json": registry.transitions.model_dump(),
+    }
+    for filename, payload in file_map.items():
+        path = final_dir / filename
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
 
 class PipelineOrchestrator:
@@ -64,10 +138,19 @@ class PipelineOrchestrator:
             raise ValueError("max_attempts must be >= 1")
 
         self.config = config
-        # Start from a known-empty registry for deterministic orchestration state.
-        self.registry = Registry.empty()
-        # Canonical scene object for downstream phases (not implemented yet).
+        self._registry_change_seq = 0
+        self.registry = RegistryFull.empty()
+        self._record_registry_change(reason="initialize_registry", attempt_index=None)
+        # Canonical scene object for downstream phases once implemented.
         self.scene_confirmed: SceneUnderstanding | None = None
+
+    @property
+    def registry(self) -> RegistryFull:
+        return self._registry
+
+    @registry.setter
+    def registry(self, value: RegistryFull) -> None:
+        self._registry = value
 
     @property
     def run_root(self) -> Path:
@@ -75,6 +158,26 @@ class PipelineOrchestrator:
 
     def _attempt_root(self, attempt_index: int) -> Path:
         return self.run_root / "attempts" / str(attempt_index)
+
+    @property
+    def _registry_log_path(self) -> Path:
+        return self.run_root / "registry_log.jsonl"
+
+    def _record_registry_change(self, *, reason: str, attempt_index: int | None) -> None:
+        self.run_root.mkdir(parents=True, exist_ok=True)
+        self._registry_change_seq += 1
+        entry = {
+            "seq": self._registry_change_seq,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "run_id": self.config.run_id,
+            "job_id": self.config.job_id,
+            "attempt_index": attempt_index,
+            "reason": reason,
+            "registry": self.registry.model_dump(),
+        }
+        with self._registry_log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        LOGGER.info("Appended registry log entry: %s (reason=%s)", self._registry_log_path, reason)
 
     def _prepare_attempt_dirs(self) -> None:
         # Pre-create all attempt directories so filesystem layout is deterministic.
@@ -86,6 +189,12 @@ class PipelineOrchestrator:
 
     def _artifact_path(self, attempt_index: int, filename: str) -> Path:
         return self._attempt_root(attempt_index) / "artifacts" / filename
+
+    def _emit_phase(self, phase_name: str) -> None:
+        LOGGER.info("phase=%s run_id=%s job_id=%s", phase_name, self.config.run_id, self.config.job_id)
+        callback = self.config.on_phase_change
+        if callback is not None:
+            callback(phase_name)
 
     @staticmethod
     def _to_json_payload(value: Any) -> Any:
@@ -100,6 +209,76 @@ class PipelineOrchestrator:
             encoding="utf-8",
         )
         LOGGER.info("Wrote artifact: %s", path)
+
+    def _write_run_meta(self) -> None:
+        payload = {
+            "run_id": self.config.run_id,
+            "job_id": self.config.job_id,
+            "max_attempts": self.config.max_attempts,
+        }
+        path = self.run_root / "run_meta.json"
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        LOGGER.info("Wrote run metadata: %s", path)
+
+    async def _run_scene_analysis(self, state: VivianRunContext) -> SceneUnderstanding:
+        tool_context = ToolContext(
+            context=state,
+            tool_name=scene_analysis_tool.name,
+            tool_call_id=f"{self.config.run_id}-scene-analysis",
+            tool_arguments="{}",
+        )
+        output = await scene_analysis_tool.on_invoke_tool(tool_context, "{}")
+        if not isinstance(output, SceneUnderstanding):
+            raise TypeError("scene_analysis_tool did not return SceneUnderstanding.")
+        return output
+
+    def _build_run_context(self, user_input: str | list[dict[str, Any]]) -> VivianRunContext:
+        # Orchestrator emits authoritative phase transitions for deterministic flow.
+        return VivianRunContext(
+            user_input=user_input,
+            scene_dir=self.config.scene_dir or self.config.paths.workspace_root,
+            only_scene_analysis=True,
+            publish_scene_review=self.config.publish_scene_review,
+            await_scene_decision=self.config.await_scene_decision,
+            on_phase_change=None,
+        )
+
+    def _write_scene_meta(
+        self,
+        attempt_index: int,
+        *,
+        started_at: datetime,
+        finished_at: datetime,
+    ) -> None:
+        duration_ms = int((finished_at - started_at).total_seconds() * 1000)
+        tool_version = getattr(scene_analysis_tool, "version", None)
+        payload = {
+            "run_id": self.config.run_id,
+            "job_id": self.config.job_id,
+            "attempt_index": attempt_index,
+            "started_at_utc": started_at.isoformat(),
+            "finished_at_utc": finished_at.isoformat(),
+            "duration_ms": duration_ms,
+            "tool": {
+                "name": scene_analysis_tool.name,
+                "version": tool_version,
+            },
+        }
+        self._write_artifact(attempt_index, "scene_meta.json", payload)
+
+    @staticmethod
+    def _ensure_unique_interaction_element_names(names: list[str]) -> None:
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for name in names:
+            if name in seen:
+                duplicates.add(name)
+            seen.add(name)
+        if duplicates:
+            raise ValueError(
+                "Duplicate InteractionElement names are not allowed: "
+                + ", ".join(sorted(duplicates))
+            )
 
     def _write_interaction_elements_draft(
         self,
@@ -120,9 +299,7 @@ class PipelineOrchestrator:
         LOGGER.info("Wrote draft snapshot: %s", draft_path)
 
     @staticmethod
-    def _ensure_unique_interaction_element_names(
-        names: list[str],
-    ) -> None:
+    def _ensure_unique_visualization_element_names(names: list[str]) -> None:
         seen: set[str] = set()
         duplicates: set[str] = set()
         for name in names:
@@ -131,41 +308,358 @@ class PipelineOrchestrator:
             seen.add(name)
         if duplicates:
             raise ValueError(
-                "Duplicate InteractionElement names are not allowed: "
+                "Duplicate VisualizationElement names are not allowed: "
                 + ", ".join(sorted(duplicates))
             )
 
-    async def _run_scene_analysis(self, state: VivianRunContext) -> SceneUnderstanding:
-        tool_context = ToolContext(
-            context=state,
-            tool_name=scene_analysis_tool.name,
-            tool_call_id=f"{self.config.run_id}-scene-analysis",
-            tool_arguments="{}",
+    def _write_visualization_elements_draft(
+        self,
+        attempt_index: int,
+        visualization_elements: VisualizationElementsFile,
+    ) -> None:
+        draft_path = (
+            self._attempt_root(attempt_index)
+            / "draft_snapshot"
+            / "FunctionalSpecification"
+            / "VisualizationElements.json"
         )
-        output = await scene_analysis_tool.on_invoke_tool(tool_context, "{}")
-        if not isinstance(output, SceneUnderstanding):
-            raise TypeError("scene_analysis_tool did not return SceneUnderstanding.")
-        return output
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        draft_path.write_text(
+            json.dumps(visualization_elements.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote draft snapshot: %s", draft_path)
 
-    async def _run_scene_confirmation(self, state: VivianRunContext) -> SceneUnderstanding:
-        tool_context = ToolContext(
-            context=state,
-            tool_name=await_scene_confirmation.name,
-            tool_call_id=f"{self.config.run_id}-scene-confirmation",
-            tool_arguments="{}",
+    def _write_states_draft(
+        self,
+        attempt_index: int,
+        states: StatesFile,
+    ) -> None:
+        draft_path = (
+            self._attempt_root(attempt_index)
+            / "draft_snapshot"
+            / "FunctionalSpecification"
+            / "States.json"
         )
-        await await_scene_confirmation.on_invoke_tool(tool_context, "{}")
-        if state.scene_understanding is None:
-            raise TypeError("await_scene_confirmation finished without scene_understanding.")
-        return state.scene_understanding
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        draft_path.write_text(
+            json.dumps(states.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote draft snapshot: %s", draft_path)
+
+    def _write_transitions_draft(
+        self,
+        attempt_index: int,
+        transitions: TransitionsFile,
+    ) -> None:
+        draft_path = (
+            self._attempt_root(attempt_index)
+            / "draft_snapshot"
+            / "FunctionalSpecification"
+            / "Transitions.json"
+        )
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        draft_path.write_text(
+            json.dumps(transitions.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote draft snapshot: %s", draft_path)
+
+    def _write_visualization_arrays_placeholder_draft(self, attempt_index: int) -> None:
+        draft_path = (
+            self._attempt_root(attempt_index)
+            / "draft_snapshot"
+            / "FunctionalSpecification"
+            / "VisualizationArrays.json"
+        )
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        draft_path.write_text(
+            json.dumps({"Elements": []}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote draft snapshot placeholder: %s", draft_path)
+
+    def _draft_funcspec_dir(self, attempt_index: int) -> Path:
+        return (
+            self._attempt_root(attempt_index)
+            / "draft_snapshot"
+            / "FunctionalSpecification"
+        )
+
+    @staticmethod
+    def _interaction_elements_subset(registry_snapshot: RegistryFull) -> list[dict[str, str]]:
+        return [
+            {
+                "Name": element.Name,
+                "Type": element.Type,
+            }
+            for element in registry_snapshot.interaction_elements.Elements
+        ]
+
+    @staticmethod
+    def _visualization_elements_subset(registry_snapshot: RegistryFull) -> list[dict[str, str]]:
+        return [
+            {
+                "Name": element.Name,
+                "Type": element.Type,
+            }
+            for element in registry_snapshot.visualization_elements.Elements
+        ]
+
+    @staticmethod
+    def _state_names_subset(registry_snapshot: RegistryFull) -> list[str]:
+        return [state.Name for state in registry_snapshot.states.States]
+
+    @staticmethod
+    def _validate_states_cross_refs(
+        states_file: StatesFile,
+        registry_snapshot: RegistryFull,
+    ) -> None:
+        interaction_names = {
+            element.Name
+            for element in registry_snapshot.interaction_elements.Elements
+        }
+        visualization_names = {
+            element.Name
+            for element in registry_snapshot.visualization_elements.Elements
+        }
+        errors: list[str] = []
+
+        for state in states_file.States:
+            for condition in state.Conditions:
+                if isinstance(
+                    condition,
+                    (
+                        FloatValueVisualization,
+                        ScreenContentVisualization,
+                        ValueOfInteractionElementVisualization,
+                    ),
+                ):
+                    if condition.VisualizationElement not in visualization_names:
+                        errors.append(
+                            "State '{state}' condition '{ctype}' references unknown "
+                            "VisualizationElement '{name}'.".format(
+                                state=state.Name,
+                                ctype=condition.Type,
+                                name=condition.VisualizationElement,
+                            )
+                        )
+                if isinstance(
+                    condition,
+                    (
+                        InteractionElementCondition,
+                        ValueOfInteractionElementVisualization,
+                    ),
+                ):
+                    if condition.InteractionElement not in interaction_names:
+                        errors.append(
+                            "State '{state}' condition '{ctype}' references unknown "
+                            "InteractionElement '{name}'.".format(
+                                state=state.Name,
+                                ctype=condition.Type,
+                                name=condition.InteractionElement,
+                            )
+                        )
+
+        if errors:
+            raise ValueError("\n".join(errors))
+
+    @staticmethod
+    def _validate_transitions_cross_refs(
+        transitions_file: TransitionsFile,
+        registry_snapshot: RegistryFull,
+    ) -> None:
+        state_names = {
+            state.Name
+            for state in registry_snapshot.states.States
+        }
+        interaction_names = {
+            element.Name
+            for element in registry_snapshot.interaction_elements.Elements
+        }
+        errors: list[str] = []
+
+        for index, transition in enumerate(transitions_file.Transitions):
+            if transition.SourceState not in state_names:
+                errors.append(
+                    "Transition[{index}] references unknown SourceState '{name}'.".format(
+                        index=index,
+                        name=transition.SourceState,
+                    )
+                )
+            if transition.DestinationState not in state_names:
+                errors.append(
+                    "Transition[{index}] references unknown DestinationState '{name}'.".format(
+                        index=index,
+                        name=transition.DestinationState,
+                    )
+                )
+            if (
+                transition.InteractionElement is not None
+                and transition.InteractionElement not in interaction_names
+            ):
+                errors.append(
+                    "Transition[{index}] references unknown InteractionElement '{name}'.".format(
+                        index=index,
+                        name=transition.InteractionElement,
+                    )
+                )
+
+        if errors:
+            raise ValueError("\n".join(errors))
+
+    @staticmethod
+    def _collect_screen_files_from_states(states_file: StatesFile) -> list[str]:
+        names: set[str] = set()
+        for state in states_file.States:
+            for condition in state.Conditions:
+                if isinstance(condition, ScreenContentVisualization):
+                    names.add(condition.FileName)
+        return sorted(names)
+
+    @staticmethod
+    def _coerce_interaction_condition_values_to_str(raw_payload: Any) -> Any:
+        """Normalize InteractionElementCondition.Value to string in raw states payload."""
+        if not isinstance(raw_payload, dict):
+            return raw_payload
+        raw_states = raw_payload.get("States")
+        if not isinstance(raw_states, list):
+            return raw_payload
+
+        for state in raw_states:
+            if not isinstance(state, dict):
+                continue
+            conditions = state.get("Conditions")
+            if not isinstance(conditions, list):
+                continue
+            for condition in conditions:
+                if not isinstance(condition, dict):
+                    continue
+                if condition.get("Type") != "InteractionElementCondition":
+                    continue
+                if "Value" not in condition:
+                    continue
+                value = condition["Value"]
+                if isinstance(value, str):
+                    continue
+                condition["Value"] = str(value)
+        return raw_payload
+
+    def _run_registry_full_gate(self, *, attempt_index: int) -> None:
+        # Screens are ignored as a generation step; sync referenced filenames from states
+        # so Registry-level validation can still run deterministically.
+        self.registry.screens.files = self._collect_screen_files_from_states(self.registry.states)
+        self._record_registry_change(
+            reason="sync_screens_for_registry_gate",
+            attempt_index=attempt_index,
+        )
+
+        if hasattr(RegistryFull, "model_validate"):
+            validated = RegistryFull.model_validate(self.registry.model_dump())
+        else:  # pragma: no cover - pydantic v1 compatibility
+            validated = RegistryFull.parse_obj(self.registry.model_dump())
+
+        self.registry = validated
+        self._record_registry_change(
+            reason="registry_full_gate_passed",
+            attempt_index=attempt_index,
+        )
+
+    def _run_unity_validator(self, *, attempt_index: int) -> list[tuple[str, str, str]]:
+        funcspec_dir = self._draft_funcspec_dir(attempt_index)
+        error_package_path = self._attempt_root(attempt_index) / "error-package.json"
+        validator_log_path = self._attempt_root(attempt_index) / "validator.log"
+
+        self._emit_phase("VALIDATING_OUTPUT")
+        errors = _run_vivian_validator(
+            funcspec_dir,
+            error_package_path=error_package_path,
+            unity_log_path=validator_log_path,
+        )
+        normalized_errors = normalize_error_package(errors)
+
+        if errors:
+            error_package_path.write_text(
+                json.dumps(errors, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+        if not error_package_path.exists():
+            error_package_path.write_text("[]", encoding="utf-8")
+        if not validator_log_path.exists():
+            validator_log_path.write_text(
+                "[validator] No Unity log produced (validator may have been skipped).",
+                encoding="utf-8",
+            )
+
+        return normalized_errors
+
+    def _attempt_file_path(self, attempt_index: int, filename: str) -> Path:
+        return self._attempt_root(attempt_index) / filename
+
+    def _write_attempt_file(self, attempt_index: int, filename: str, payload: Any) -> None:
+        path = self._attempt_file_path(attempt_index, filename)
+        path.write_text(
+            json.dumps(self._to_json_payload(payload), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote attempt file: %s", path)
+
+    def _write_fix_plan(
+        self,
+        *,
+        attempt_index: int,
+        dirty_steps: set[str],
+        reasons: list[str],
+    ) -> None:
+        self._write_attempt_file(
+            attempt_index,
+            "fix-plan.json",
+            {
+                "attempt_index": attempt_index,
+                "dirty_steps": [step for step in STEP_ORDER if step in dirty_steps],
+                "reason_summary": reasons,
+            },
+        )
+
+    def _write_patch_log(
+        self,
+        *,
+        attempt_index: int,
+        executed_steps: list[str],
+        skipped_steps: list[str],
+        scene_mode: str,
+        status: str,
+        validator_errors: list[tuple[str, str, str]] | None = None,
+        next_dirty_steps: set[str] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "attempt_index": attempt_index,
+            "mode": "rerun_only",
+            "scene_mode": scene_mode,
+            "status": status,
+            "executed_steps": executed_steps,
+            "skipped_steps": skipped_steps,
+        }
+        if validator_errors is not None:
+            payload["validator_errors"] = [
+                {"file": file_name, "stage": stage, "message": message}
+                for file_name, stage, message in validator_errors
+            ]
+        if next_dirty_steps is not None:
+            payload["next_dirty_steps"] = [step for step in STEP_ORDER if step in next_dirty_steps]
+        self._write_attempt_file(attempt_index, "patch-log.json", payload)
 
     async def run_interaction_elements(
         self,
+        *,
+        attempt_index: int,
         scene_confirmed: SceneUnderstanding,
-        attempt_index: int | None = None,
     ) -> InteractionElementsFile:
         interaction_input = (
-            f"{build_scene_context(scene_confirmed)}\n\n"
+            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
+            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
             "Generate InteractionElements.json for the confirmed scene context."
         )
         result = await _stream_agent_run(
@@ -178,6 +672,8 @@ class PipelineOrchestrator:
             raise TypeError("interaction_elements_agent returned no output.")
 
         raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "interaction_elements_raw.json", raw_payload)
+
         if isinstance(raw_payload, dict):
             elements = raw_payload.get("Elements")
             if isinstance(elements, list):
@@ -187,74 +683,457 @@ class PipelineOrchestrator:
                     if isinstance(item, dict) and isinstance(item.get("Name"), str)
                 ]
                 self._ensure_unique_interaction_element_names(raw_names)
-        if attempt_index is not None:
-            self._write_artifact(attempt_index, "interaction_elements_raw.json", raw_payload)
+
         if hasattr(InteractionElementsFile, "model_validate"):
-            parsed_output = InteractionElementsFile.model_validate(raw_payload)
+            parsed = InteractionElementsFile.model_validate(raw_payload)
         else:  # pragma: no cover - pydantic v1 compatibility
-            parsed_output = InteractionElementsFile.parse_obj(raw_payload)
-        return parsed_output
+            parsed = InteractionElementsFile.parse_obj(raw_payload)
+        return parsed
 
-    async def _run_attempt(self, attempt_index: int, user_input: str | list[dict[str, Any]]) -> bool:
-        state = VivianRunContext(
-            user_input=user_input,
-            scene_dir=self.config.paths.workspace_root,
-            only_scene_analysis=True,
+    async def run_visualization_elements(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+        registry_snapshot: RegistryFull,
+    ) -> VisualizationElementsFile:
+        interaction_subset = self._interaction_elements_subset(registry_snapshot)
+        visualization_input = (
+            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
+            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
+            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
+            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
+            "Generate VisualizationElements.json for the confirmed scene context."
         )
+        result = await _stream_agent_run(
+            visualization_elements_agent,
+            visualization_input,
+            label="visualization_elements_agent",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("visualization_elements_agent returned no output.")
 
-        LOGGER.info("Attempt %d: running scene analyzer", attempt_index)
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "visualization_elements_raw.json", raw_payload)
+
+        if isinstance(raw_payload, dict):
+            elements = raw_payload.get("Elements")
+            if isinstance(elements, list):
+                raw_names = [
+                    item.get("Name")
+                    for item in elements
+                    if isinstance(item, dict) and isinstance(item.get("Name"), str)
+                ]
+                self._ensure_unique_visualization_element_names(raw_names)
+
+        if hasattr(VisualizationElementsFile, "model_validate"):
+            parsed = VisualizationElementsFile.model_validate(raw_payload)
+        else:  # pragma: no cover - pydantic v1 compatibility
+            parsed = VisualizationElementsFile.parse_obj(raw_payload)
+        return parsed
+
+    async def run_states(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+        registry_snapshot: RegistryFull,
+    ) -> StatesFile:
+        interaction_subset = self._interaction_elements_subset(registry_snapshot)
+        visualization_subset = self._visualization_elements_subset(registry_snapshot)
+        states_input = (
+            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
+            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
+            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
+            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
+            f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n"
+            f"{json.dumps(visualization_subset, indent=2, ensure_ascii=False)}\n\n"
+            "Generate States.json for the confirmed scene context."
+        )
+        result = await _stream_agent_run(
+            states_agent,
+            states_input,
+            label="states_agent",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("states_agent returned no output.")
+
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "states_raw.json", raw_payload)
+        raw_payload = self._coerce_interaction_condition_values_to_str(raw_payload)
+
+        if hasattr(StatesFile, "model_validate"):
+            parsed = StatesFile.model_validate(raw_payload)
+        else:  # pragma: no cover - pydantic v1 compatibility
+            parsed = StatesFile.parse_obj(raw_payload)
+
+        # Deterministic cross-reference checks against known registry entities.
+        # Screen file references are intentionally ignored in Phase 4C.
+        self._validate_states_cross_refs(parsed, registry_snapshot)
+        return parsed
+
+    async def run_transitions(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+        registry_snapshot: RegistryFull,
+    ) -> TransitionsFile:
+        interaction_subset = self._interaction_elements_subset(registry_snapshot)
+        state_names_subset = self._state_names_subset(registry_snapshot)
+        transitions_input = (
+            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
+            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
+            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
+            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
+            f"STATE_NAMES_JSON:\n"
+            f"{json.dumps(state_names_subset, indent=2, ensure_ascii=False)}\n\n"
+            "Generate Transitions.json for the confirmed scene context."
+        )
+        result = await _stream_agent_run(
+            transitions_agent,
+            transitions_input,
+            label="transitions_agent",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("transitions_agent returned no output.")
+
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "transitions_raw.json", raw_payload)
+
+        if hasattr(TransitionsFile, "model_validate"):
+            parsed = TransitionsFile.model_validate(raw_payload)
+        else:  # pragma: no cover - pydantic v1 compatibility
+            parsed = TransitionsFile.parse_obj(raw_payload)
+
+        # XOR and related event/timeout rules are enforced by Transitions model validators.
+        self._validate_transitions_cross_refs(parsed, registry_snapshot)
+        return parsed
+
+    def _clone_scene_understanding(self, scene_understanding: SceneUnderstanding) -> SceneUnderstanding:
+        if hasattr(scene_understanding, "model_copy"):
+            return scene_understanding.model_copy(deep=True)
+        return scene_understanding.copy(deep=True)
+
+    async def await_scene_confirmation(
+        self,
+        *,
+        attempt_index: int,
+        scene_raw: SceneUnderstanding,
+    ) -> SceneUnderstanding:
+        publish_review = self.config.publish_scene_review
+        await_decision = self.config.await_scene_decision
+        if publish_review is None or await_decision is None:
+            raise RuntimeError("Scene confirmation bridge is not configured.")
+
+        scene_current = self._clone_scene_understanding(scene_raw)
+        request_history: list[dict[str, Any]] = []
+        response_history: list[dict[str, Any]] = []
+        revision = 1
+
+        while True:
+            summary = summarize_scene_understanding(scene_current)
+            scene_payload = scene_current.model_dump()
+            review_payload = {
+                "revision": revision,
+                "summary": summary,
+                "scene_understanding": scene_payload,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            get_response_shape = {
+                "job_id": self.config.job_id,
+                "status": "RUNNING",
+                "phase": "AWAITING_SCENE_CONFIRMATION",
+                "review_state": "PENDING",
+                "scene_review": review_payload,
+                "error": None,
+            }
+            request_history.append(get_response_shape)
+            self._write_artifact(
+                attempt_index,
+                "scene_review_request.json",
+                {
+                    "latest": get_response_shape,
+                    "history": request_history,
+                },
+            )
+
+            publish_review(revision, summary, scene_payload)
+            decision: SceneReviewDecision = await await_decision(revision)
+            response_payload = {
+                "revision": decision.revision,
+                "confirmed": decision.confirmed,
+                "feedback": decision.feedback,
+            }
+            response_history.append(response_payload)
+            self._write_artifact(
+                attempt_index,
+                "scene_review_response.json",
+                {
+                    "latest": response_payload,
+                    "history": response_history,
+                },
+            )
+
+            feedback = (decision.feedback or "").strip()
+            if feedback:
+                apply_scene_feedback(scene_current, feedback)
+
+            if decision.confirmed:
+                self._emit_phase("GENERATING_SPECS")
+                self._write_artifact(attempt_index, "scene_confirmed.json", scene_current)
+                return scene_current
+
+            revision += 1
+
+    async def _obtain_scene_confirmed(
+        self,
+        *,
+        attempt_index: int,
+        user_input: str | list[dict[str, Any]],
+    ) -> tuple[SceneUnderstanding, str]:
+        if self.scene_confirmed is not None:
+            self._write_artifact(attempt_index, "scene_confirmed.json", self.scene_confirmed)
+            return self.scene_confirmed, "reused"
+
+        # Deterministic per-run scene execution; later attempts reuse this result.
+        state = self._build_run_context(user_input)
+        LOGGER.info("Attempt %d: phase ANALYZING_SCENE", attempt_index)
+        self._emit_phase("ANALYZING_SCENE")
+        started_at = datetime.now(timezone.utc)
         scene_raw = await self._run_scene_analysis(state)
+        finished_at = datetime.now(timezone.utc)
         self._write_artifact(attempt_index, "scene_raw.json", scene_raw)
-
-        LOGGER.info("Attempt %d: running scene confirmation", attempt_index)
-        scene_confirmed = await self._run_scene_confirmation(state)
-        self._write_artifact(attempt_index, "scene_confirmed.json", scene_confirmed)
-
-        # This object is canonical for later phases once they are implemented.
-        self.scene_confirmed = scene_confirmed
-        LOGGER.info("Attempt %d: generating InteractionElements", attempt_index)
-        interaction_elements = await self.run_interaction_elements(
-            scene_confirmed=scene_confirmed,
-            attempt_index=attempt_index,
+        self._write_scene_meta(
+            attempt_index,
+            started_at=started_at,
+            finished_at=finished_at,
         )
-        # Replace the section in the registry with the validated output.
-        self.registry.interaction_elements = interaction_elements
-        self._write_interaction_elements_draft(attempt_index, interaction_elements)
-        return state.scene_confirmed
 
-    def run(self, user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT) -> PipelineRunResult:
-        LOGGER.info("Starting deterministic pipeline run (scene + interaction step).")
-        LOGGER.info("run_id=%s max_attempts=%d", self.config.run_id, self.config.max_attempts)
+        LOGGER.info("Attempt %d: phase AWAITING_SCENE_CONFIRMATION", attempt_index)
+        self._emit_phase("AWAITING_SCENE_CONFIRMATION")
+        scene_confirmed = await self.await_scene_confirmation(
+            attempt_index=attempt_index,
+            scene_raw=scene_raw,
+        )
+        self.scene_confirmed = scene_confirmed
+        return scene_confirmed, "executed"
+
+    async def _run_dirty_funcspec_steps(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+        dirty_steps: set[str],
+    ) -> tuple[list[str], list[str]]:
+        executed_steps: list[str] = []
+        skipped_steps: list[str] = []
+
+        for step in STEP_ORDER:
+            if step not in dirty_steps:
+                skipped_steps.append(step)
+                continue
+
+            self._emit_phase("GENERATING_SPECS")
+            if step == "interaction":
+                LOGGER.info("Attempt %d: rerun step interaction", attempt_index)
+                interaction_elements = await self.run_interaction_elements(
+                    attempt_index=attempt_index,
+                    scene_confirmed=scene_confirmed,
+                )
+                self.registry.interaction_elements = interaction_elements
+                self._record_registry_change(
+                    reason="set_interaction_elements",
+                    attempt_index=attempt_index,
+                )
+                executed_steps.append(step)
+                continue
+
+            if step == "visualization":
+                LOGGER.info("Attempt %d: rerun step visualization", attempt_index)
+                visualization_elements = await self.run_visualization_elements(
+                    attempt_index=attempt_index,
+                    scene_confirmed=scene_confirmed,
+                    registry_snapshot=self.registry,
+                )
+                self.registry.visualization_elements = visualization_elements
+                self._record_registry_change(
+                    reason="set_visualization_elements",
+                    attempt_index=attempt_index,
+                )
+                executed_steps.append(step)
+                continue
+
+            if step == "states":
+                LOGGER.info("Attempt %d: rerun step states", attempt_index)
+                states = await self.run_states(
+                    attempt_index=attempt_index,
+                    scene_confirmed=scene_confirmed,
+                    registry_snapshot=self.registry,
+                )
+                self.registry.states = states
+                self._record_registry_change(
+                    reason="set_states",
+                    attempt_index=attempt_index,
+                )
+                executed_steps.append(step)
+                continue
+
+            if step == "transitions":
+                LOGGER.info("Attempt %d: rerun step transitions", attempt_index)
+                transitions = await self.run_transitions(
+                    attempt_index=attempt_index,
+                    scene_confirmed=scene_confirmed,
+                    registry_snapshot=self.registry,
+                )
+                self.registry.transitions = transitions
+                self._record_registry_change(
+                    reason="set_transitions",
+                    attempt_index=attempt_index,
+                )
+                executed_steps.append(step)
+                continue
+
+        return executed_steps, skipped_steps
+
+    def _write_full_draft_snapshot(self, *, attempt_index: int) -> None:
+        self._write_interaction_elements_draft(
+            attempt_index,
+            self.registry.interaction_elements,
+        )
+        self._write_visualization_elements_draft(
+            attempt_index,
+            self.registry.visualization_elements,
+        )
+        self._write_states_draft(
+            attempt_index,
+            self.registry.states,
+        )
+        self._write_transitions_draft(
+            attempt_index,
+            self.registry.transitions,
+        )
+        self._write_visualization_arrays_placeholder_draft(attempt_index)
+
+    async def run_vivian(
+        self,
+        user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT,
+    ) -> PipelineRunResult:
+        LOGGER.info("Starting deterministic pipeline run (attempt-loop skeleton).")
+        LOGGER.info(
+            "run_id=%s job_id=%s max_attempts=%d",
+            self.config.run_id,
+            self.config.job_id,
+            self.config.max_attempts,
+        )
         LOGGER.info("run_root=%s", self.run_root)
 
         self.run_root.mkdir(parents=True, exist_ok=True)
+        # Reset per-run registry state deterministically.
+        self.registry = RegistryFull.empty()
+        self._record_registry_change(reason="reset_registry_for_run", attempt_index=None)
         self._prepare_attempt_dirs()
+        self._write_run_meta()
 
         attempts_completed = 0
+        dirty_steps: set[str] = set(STEP_ORDER)
+        reason_summary: list[str] = ["initial_full_generation"]
         for attempt_index in range(1, self.config.max_attempts + 1):
             attempts_completed = attempt_index
-            # run attempt k
-            is_confirmed = asyncio.run(self._run_attempt(attempt_index, user_input))
-            if is_confirmed:
+            self._write_fix_plan(
+                attempt_index=attempt_index,
+                dirty_steps=dirty_steps,
+                reasons=reason_summary,
+            )
+
+            scene_confirmed, scene_mode = await self._obtain_scene_confirmed(
+                attempt_index=attempt_index,
+                user_input=user_input,
+            )
+            executed_steps, skipped_steps = await self._run_dirty_funcspec_steps(
+                attempt_index=attempt_index,
+                scene_confirmed=scene_confirmed,
+                dirty_steps=dirty_steps,
+            )
+            self._write_full_draft_snapshot(attempt_index=attempt_index)
+            self._run_registry_full_gate(attempt_index=attempt_index)
+
+            validator_errors = self._run_unity_validator(attempt_index=attempt_index)
+            if not validator_errors:
+                self._write_patch_log(
+                    attempt_index=attempt_index,
+                    executed_steps=executed_steps,
+                    skipped_steps=skipped_steps,
+                    scene_mode=scene_mode,
+                    status="validation_passed",
+                )
+                final_dir = self.config.final_output_dir or (self.run_root / "final_output")
+                self._emit_phase("PUBLISHING")
+                publish_final(self.registry, final_dir)
+                self._emit_phase("COMPLETED")
                 LOGGER.info(
-                    "Scene confirmed at attempt %d; later phases are not implemented yet.",
+                    "Pipeline completed successfully at attempt %d.",
                     attempt_index,
                 )
                 return PipelineRunResult(
                     success=True,
                     run_id=self.config.run_id,
+                    job_id=self.config.job_id,
                     max_attempts=self.config.max_attempts,
                     attempts_completed=attempts_completed,
                 )
 
-        LOGGER.info("Scene was not confirmed within max_attempts.")
+            mapped_dirty_steps = map_errors_to_dirty_steps(validator_errors)
+            next_dirty_steps = expand_dirty_steps(mapped_dirty_steps)
+            if not next_dirty_steps:
+                next_dirty_steps = set(STEP_ORDER)
+
+            reason_summary = [
+                f"{file_name or '<unknown>'} [{stage}]: {message}"
+                for file_name, stage, message in validator_errors
+            ][:20]
+            self._write_patch_log(
+                attempt_index=attempt_index,
+                executed_steps=executed_steps,
+                skipped_steps=skipped_steps,
+                scene_mode=scene_mode,
+                status="validation_failed",
+                validator_errors=validator_errors,
+                next_dirty_steps=next_dirty_steps,
+            )
+
+            LOGGER.info(
+                "Attempt %d validator failed. next_dirty_steps=%s",
+                attempt_index,
+                ",".join(sorted(next_dirty_steps)),
+            )
+            dirty_steps = next_dirty_steps
+
+        self._emit_phase("FAILED")
+        LOGGER.info("Pipeline failed after max_attempts=%d.", self.config.max_attempts)
         return PipelineRunResult(
             success=False,
             run_id=self.config.run_id,
+            job_id=self.config.job_id,
             max_attempts=self.config.max_attempts,
             attempts_completed=attempts_completed,
         )
 
+    def run(self, user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT) -> PipelineRunResult:
+        return asyncio.run(self.run_vivian(user_input=user_input))
 
-def run_pipeline(config: PipelineConfig) -> PipelineRunResult:
-    return PipelineOrchestrator(config).run()
+async def run_pipeline_async(
+    config: PipelineConfig,
+    user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT,
+) -> PipelineRunResult:
+    return await PipelineOrchestrator(config).run_vivian(user_input=user_input)
+
+
+def run_pipeline(
+    config: PipelineConfig,
+    user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT,
+) -> PipelineRunResult:
+    return PipelineOrchestrator(config).run(user_input=user_input)
