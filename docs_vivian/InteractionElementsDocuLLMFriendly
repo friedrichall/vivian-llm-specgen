@@ -19,12 +19,13 @@ General rules for interaction elements
 4.1. Every element object must contain a "Type" field.
 4.2. "Type" must be one of the following strings: "Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable".
 4.3. Every element object must contain a "Name" field.
-4.4. "Name" must be a string that uniquely identifies the element within InteractionElements.json.
-4.5. You must not create two elements with the same "Name" in the same file.
-4.6. You must not add fields to an element that are not described for its type in this policy, unless the user explicitly instructs you to extend the schema and acknowledges that this deviates from the Vivian specification.
-4.7. When coordinates or vectors are required, you must use objects with keys "x", "y", and "z", each containing numeric values (for example: 0, 0.0, -0.05).
-4.8. When attribute lists are required, you must use an array under the key "InitialAttributeValues", where each entry is an object with keys "Attribute" and "Value".
-4.9. When snap poses are required, you must use an array under the key "SnapPoses", where each entry is an object containing at least "Position" and optionally "Rotation", both expressed as strings in the form "(x, y, z)" or "(rx, ry, rz)".
+4.4. "Name" must be a string copied verbatim and case-sensitively from the "name" field of the corresponding entry in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. You must not invent names, rename, abbreviate, add prefixes or suffixes, or paraphrase Unity object names. Only names that appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects are valid.
+4.5. "Name" must uniquely identify the element within InteractionElements.json.
+4.6. You must not create two elements with the same "Name" in the same file.
+4.7. You must not add fields to an element that are not described for its type in this policy, unless the user explicitly instructs you to extend the schema and acknowledges that this deviates from the Vivian specification.
+4.8. When coordinates or vectors are required, you must use objects with keys "x", "y", and "z", each containing numeric values (for example: 0, 0.0, -0.05).
+4.9. When attribute lists are required, you must use an array under the key "InitialAttributeValues", where each entry is an object with keys "Attribute" and "Value".
+4.10. When snap poses are required, you must use an array under the key "SnapPoses", where each entry is an object containing at least "Position" and optionally "Rotation", both expressed as strings in the form "(x, y, z)" or "(rx, ry, rz)".
 
 Button configuration ("Type": "Button")
 5.1. A Button represents a simple clickable element without persistent state.
@@ -134,3 +135,11 @@ Validation rules and conflict handling
 11.6.1. Adjust the configuration to satisfy the Vivian specification while preserving the user’s intent as closely as possible, and clearly reflect the correct structure in the JSON you output; or
 11.6.2. Explain which constraints are violated and propose a corrected configuration that follows this policy, if you are asked to explain instead of outputting pure JSON.
 11.7. When the user requests only the JSON file content, you must not include any natural language explanation; you must return only the JSON structure that satisfies all applicable rules in this policy.
+11.8. You must verify that every element "Name" in the output exactly matches one of the "name" values from CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. Any "Name" that does not appear in that list is invalid and must not appear in the output.
+
+Source of element names
+12.1. The authoritative source for all element "Name" values is the CONFIRMED_SCENE_UNDERSTANDING_JSON provided in the input, specifically the "name" field of each entry in the "objects" array.
+12.2. You must use the exact string from "objects[*].name" — character-for-character, including capitalisation, underscores, and spacing.
+12.3. You must not invent names, rename objects, use shortened versions, add prefixes or suffixes, or paraphrase Unity object names.
+12.4. You must not create an element whose "Name" does not appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects.
+12.5. Name consistency across files: names used here will be referenced by States.json and Transitions.json. A single typo or renamed element will break cross-file consistency. This makes exact name copying a strict requirement, not a suggestion.

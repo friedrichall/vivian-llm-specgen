@@ -38,6 +38,7 @@ from vivian_pipeline.rerun_policy import (
 )
 from vivian_pipeline.models_funcspec import (
     FloatValueVisualization,
+    InteractionElementAttributeGuard,
     InteractionElementsFile,
     InteractionElementCondition,
     Registry as RegistryFull,
@@ -50,6 +51,14 @@ from vivian_pipeline.models_funcspec import (
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_USER_INPUT = "Analyze the Unity scene and return SceneUnderstanding."
+
+
+class ElementNameMismatchError(ValueError):
+    """Raised when an agent produces an element Name not present in SceneUnderstanding.objects."""
+
+    def __init__(self, message: str, step: str) -> None:
+        super().__init__(message)
+        self.step = step
 
 
 @dataclass(frozen=True)
@@ -519,6 +528,17 @@ class PipelineOrchestrator:
                         name=transition.InteractionElement,
                     )
                 )
+            for guard in transition.Guards or []:
+                if (
+                    isinstance(guard, InteractionElementAttributeGuard)
+                    and guard.InteractionElement not in interaction_names
+                ):
+                    errors.append(
+                        "Transition[{index}] guard references unknown InteractionElement '{name}'.".format(
+                            index=index,
+                            name=guard.InteractionElement,
+                        )
+                    )
 
         if errors:
             raise ValueError("\n".join(errors))
@@ -702,11 +722,14 @@ class PipelineOrchestrator:
             parsed = InteractionElementsFile.model_validate(raw_payload)
         else:  # pragma: no cover - pydantic v1 compatibility
             parsed = InteractionElementsFile.parse_obj(raw_payload)
-        self._validate_element_names_against_scene(
-            [el.Name for el in parsed.Elements],
-            scene_confirmed,
-            "InteractionElement",
-        )
+        try:
+            self._validate_element_names_against_scene(
+                [el.Name for el in parsed.Elements],
+                scene_confirmed,
+                "InteractionElement",
+            )
+        except ValueError as exc:
+            raise ElementNameMismatchError(str(exc), step="interaction") from exc
         return parsed
 
     async def run_visualization_elements(
@@ -750,11 +773,14 @@ class PipelineOrchestrator:
             parsed = VisualizationElementsFile.model_validate(raw_payload)
         else:  # pragma: no cover - pydantic v1 compatibility
             parsed = VisualizationElementsFile.parse_obj(raw_payload)
-        self._validate_element_names_against_scene(
-            [el.Name for el in parsed.Elements],
-            scene_confirmed,
-            "VisualizationElement",
-        )
+        try:
+            self._validate_element_names_against_scene(
+                [el.Name for el in parsed.Elements],
+                scene_confirmed,
+                "VisualizationElement",
+            )
+        except ValueError as exc:
+            raise ElementNameMismatchError(str(exc), step="visualization") from exc
         return parsed
 
     async def run_states(
@@ -795,7 +821,10 @@ class PipelineOrchestrator:
 
         # Deterministic cross-reference checks against known registry entities.
         # Screen file references are intentionally ignored in Phase 4C.
-        self._validate_states_cross_refs(parsed, registry_snapshot)
+        try:
+            self._validate_states_cross_refs(parsed, registry_snapshot)
+        except ValueError as exc:
+            raise ElementNameMismatchError(str(exc), step="states") from exc
         return parsed
 
     async def run_transitions(
@@ -834,7 +863,10 @@ class PipelineOrchestrator:
             parsed = TransitionsFile.parse_obj(raw_payload)
 
         # XOR and related event/timeout rules are enforced by Transitions model validators.
-        self._validate_transitions_cross_refs(parsed, registry_snapshot)
+        try:
+            self._validate_transitions_cross_refs(parsed, registry_snapshot)
+        except ValueError as exc:
+            raise ElementNameMismatchError(str(exc), step="transitions") from exc
         return parsed
 
     def _clone_scene_understanding(self, scene_understanding: SceneUnderstanding) -> SceneUnderstanding:
@@ -1077,11 +1109,33 @@ class PipelineOrchestrator:
                 attempt_index=attempt_index,
                 user_input=user_input,
             )
-            executed_steps, skipped_steps = await self._run_dirty_funcspec_steps(
-                attempt_index=attempt_index,
-                scene_confirmed=scene_confirmed,
-                dirty_steps=dirty_steps,
-            )
+            try:
+                executed_steps, skipped_steps = await self._run_dirty_funcspec_steps(
+                    attempt_index=attempt_index,
+                    scene_confirmed=scene_confirmed,
+                    dirty_steps=dirty_steps,
+                )
+            except ElementNameMismatchError as exc:
+                next_dirty_steps = expand_dirty_steps({exc.step})
+                LOGGER.warning(
+                    "Attempt %d element name mismatch (step=%s): %s. next_dirty_steps=%s",
+                    attempt_index,
+                    exc.step,
+                    exc,
+                    ",".join(sorted(next_dirty_steps)),
+                )
+                reason_summary = [str(exc)]
+                self._write_patch_log(
+                    attempt_index=attempt_index,
+                    executed_steps=[],
+                    skipped_steps=[],
+                    scene_mode=scene_mode,
+                    status="name_mismatch",
+                    next_dirty_steps=next_dirty_steps,
+                )
+                dirty_steps = next_dirty_steps
+                continue
+
             self._write_full_draft_snapshot(attempt_index=attempt_index)
             self._run_registry_full_gate(attempt_index=attempt_index)
 

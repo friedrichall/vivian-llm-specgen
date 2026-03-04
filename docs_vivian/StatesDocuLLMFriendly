@@ -97,3 +97,9 @@
     10.2.1. Adjust the output to satisfy the specification while maintaining the user’s intent as closely as possible, and clearly reflect the valid structure; or
     10.2.2. Explain which part of the request violates the specification and provide a corrected example that follows the rules.
     10.3. You must not add extra fields or use different field names for states or conditions unless the user explicitly requests a schema extension and acknowledges that it deviates from this specification.
+
+11. **Cross-reference and name consistency rules**
+    11.1. Every `"VisualizationElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the VisualizationElements context provided in your input. Do not invent, rename, or paraphrase element names.
+    11.2. Every `"InteractionElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase element names.
+    11.3. All element names in States.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in the corresponding elements file.
+    11.4. If a condition references an element name that does not appear in the provided elements context, you must remove or correct that condition before outputting the file.
