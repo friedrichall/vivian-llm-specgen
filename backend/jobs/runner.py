@@ -2,12 +2,12 @@
 
 import asyncio
 from collections.abc import Callable
+import textwrap
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from vivian_pipeline.agents_setup import build_vivian_prompt
 from vivian_pipeline.context import SceneReviewDecision
 from vivian_pipeline.pipeline_orchestrator import PipelineConfig, run_pipeline_async
 
@@ -71,6 +71,22 @@ def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
     if not path.is_absolute() and base_dir is not None:
         path = base_dir / path
     return path.resolve()
+
+
+def _build_vivian_prompt(description: str, objects: dict[str, str]) -> str:
+    """Build the initial pipeline prompt from scene description and interaction objects."""
+    object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
+    return textwrap.dedent(
+        f"""
+        Create a complete Vivian FunctionalSpecification for the Unity scene below.
+
+        Scene description:
+        {description or "(no description provided)"}
+
+        Interaction objects (name -> interaction type):
+        {object_lines}
+        """
+    ).strip()
 
 
 async def _execute_pipeline(
@@ -155,7 +171,7 @@ async def _execute_pipeline(
             selected_manifest_objects=selected_manifest_objects,
         )
 
-        task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{build_vivian_prompt(description, batch_objects)}"
+        task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{_build_vivian_prompt(description, batch_objects)}"
         input_bundle = InputBundle(
             group_name=group,
             interaction_description=description,
