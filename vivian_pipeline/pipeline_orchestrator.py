@@ -138,6 +138,7 @@ class PipelineOrchestrator:
             raise ValueError("max_attempts must be >= 1")
 
         self.config = config
+        self._run_started_at = datetime.now(timezone.utc)
         self._registry_change_seq = 0
         self.registry = RegistryFull.empty()
         self._record_registry_change(reason="initialize_registry", attempt_index=None)
@@ -154,7 +155,8 @@ class PipelineOrchestrator:
 
     @property
     def run_root(self) -> Path:
-        return self.config.paths.runs_root / self.config.run_id
+        timestamp = self._run_started_at.strftime("%Y%m%d-%H%M%S")
+        return self.config.paths.runs_root / f"{timestamp}-{self.config.run_id}"
 
     def _attempt_root(self, attempt_index: int) -> Path:
         return self.run_root / "attempts" / str(attempt_index)
@@ -179,13 +181,11 @@ class PipelineOrchestrator:
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
         LOGGER.info("Appended registry log entry: %s (reason=%s)", self._registry_log_path, reason)
 
-    def _prepare_attempt_dirs(self) -> None:
-        # Pre-create all attempt directories so filesystem layout is deterministic.
-        for attempt_index in range(1, self.config.max_attempts + 1):
-            attempt_root = self._attempt_root(attempt_index)
-            (attempt_root / "draft_snapshot").mkdir(parents=True, exist_ok=True)
-            (attempt_root / "artifacts").mkdir(parents=True, exist_ok=True)
-            LOGGER.info("Prepared attempt folder structure: %s", attempt_root)
+    def _prepare_attempt_dir(self, attempt_index: int) -> None:
+        attempt_root = self._attempt_root(attempt_index)
+        (attempt_root / "draft_snapshot").mkdir(parents=True, exist_ok=True)
+        (attempt_root / "artifacts").mkdir(parents=True, exist_ok=True)
+        LOGGER.info("Prepared attempt folder structure: %s", attempt_root)
 
     def _artifact_path(self, attempt_index: int, filename: str) -> Path:
         return self._attempt_root(attempt_index) / "artifacts" / filename
@@ -466,6 +466,20 @@ class PipelineOrchestrator:
             raise ValueError("\n".join(errors))
 
     @staticmethod
+    def _validate_element_names_against_scene(
+        element_names: list[str],
+        scene_confirmed: SceneUnderstanding,
+        element_kind: str,  # "InteractionElement" or "VisualizationElement"
+    ) -> None:
+        valid_names = {obj.name for obj in scene_confirmed.objects}
+        unknown = [n for n in element_names if n not in valid_names]
+        if unknown:
+            raise ValueError(
+                f"{element_kind} Name(s) not found in SceneUnderstanding.objects: "
+                + ", ".join(repr(n) for n in unknown)
+            )
+
+    @staticmethod
     def _validate_transitions_cross_refs(
         transitions_file: TransitionsFile,
         registry_snapshot: RegistryFull,
@@ -688,6 +702,11 @@ class PipelineOrchestrator:
             parsed = InteractionElementsFile.model_validate(raw_payload)
         else:  # pragma: no cover - pydantic v1 compatibility
             parsed = InteractionElementsFile.parse_obj(raw_payload)
+        self._validate_element_names_against_scene(
+            [el.Name for el in parsed.Elements],
+            scene_confirmed,
+            "InteractionElement",
+        )
         return parsed
 
     async def run_visualization_elements(
@@ -731,6 +750,11 @@ class PipelineOrchestrator:
             parsed = VisualizationElementsFile.model_validate(raw_payload)
         else:  # pragma: no cover - pydantic v1 compatibility
             parsed = VisualizationElementsFile.parse_obj(raw_payload)
+        self._validate_element_names_against_scene(
+            [el.Name for el in parsed.Elements],
+            scene_confirmed,
+            "VisualizationElement",
+        )
         return parsed
 
     async def run_states(
@@ -1035,7 +1059,6 @@ class PipelineOrchestrator:
         # Reset per-run registry state deterministically.
         self.registry = RegistryFull.empty()
         self._record_registry_change(reason="reset_registry_for_run", attempt_index=None)
-        self._prepare_attempt_dirs()
         self._write_run_meta()
 
         attempts_completed = 0
@@ -1043,6 +1066,7 @@ class PipelineOrchestrator:
         reason_summary: list[str] = ["initial_full_generation"]
         for attempt_index in range(1, self.config.max_attempts + 1):
             attempts_completed = attempt_index
+            self._prepare_attempt_dir(attempt_index)
             self._write_fix_plan(
                 attempt_index=attempt_index,
                 dirty_steps=dirty_steps,
@@ -1061,6 +1085,7 @@ class PipelineOrchestrator:
             self._write_full_draft_snapshot(attempt_index=attempt_index)
             self._run_registry_full_gate(attempt_index=attempt_index)
 
+            # Validator
             validator_errors = self._run_unity_validator(attempt_index=attempt_index)
             if not validator_errors:
                 self._write_patch_log(
