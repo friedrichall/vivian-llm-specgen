@@ -62,3 +62,26 @@ def expand_dirty_steps(dirty_steps: set[str]) -> set[str]:
         expanded.update(STEP_ORDER[start_idx:])
     return expanded
 
+
+STEP_TO_FILE_TOKEN: dict[str, str] = {
+    "interaction": "interactionelements",
+    "visualization": "visualizationelements",
+    "states": "states",
+    "transitions": "transitions",
+}
+
+
+def filter_errors_for_step(
+    errors: list[tuple[str, str, str]],
+    step: str,
+) -> list[tuple[str, str, str]]:
+    """Return only errors attributed to the given step's file."""
+    token = STEP_TO_FILE_TOKEN.get(step)
+    if not token:
+        return []
+    return [
+        (file_name, stage, message)
+        for file_name, stage, message in errors
+        if token in Path(file_name).name.lower().replace(".json", "")
+    ]
+

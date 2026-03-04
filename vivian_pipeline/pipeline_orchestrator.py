@@ -33,6 +33,7 @@ from vivian_pipeline.validator_unity import _run_vivian_validator
 from vivian_pipeline.rerun_policy import (
     STEP_ORDER,
     expand_dirty_steps,
+    filter_errors_for_step,
     map_errors_to_dirty_steps,
     normalize_error_package,
 )
@@ -147,7 +148,7 @@ class PipelineOrchestrator:
             raise ValueError("max_attempts must be >= 1")
 
         self.config = config
-        self._run_started_at = datetime.now(timezone.utc)
+        self._run_started_at = datetime.now()
         self._registry_change_seq = 0
         self.registry = RegistryFull.empty()
         self._record_registry_change(reason="initialize_registry", attempt_index=None)
@@ -600,13 +601,14 @@ class PipelineOrchestrator:
             attempt_index=attempt_index,
         )
 
-    def _run_unity_validator(self, *, attempt_index: int) -> list[tuple[str, str, str]]:
+    async def _run_unity_validator(self, *, attempt_index: int) -> list[tuple[str, str, str]]:
         funcspec_dir = self._draft_funcspec_dir(attempt_index)
         error_package_path = self._attempt_root(attempt_index) / "error-package.json"
         validator_log_path = self._attempt_root(attempt_index) / "validator.log"
 
         self._emit_phase("VALIDATING_OUTPUT")
-        errors = _run_vivian_validator(
+        errors = await asyncio.to_thread(
+            _run_vivian_validator,
             funcspec_dir,
             error_package_path=error_package_path,
             unity_log_path=validator_log_path,
@@ -690,12 +692,29 @@ class PipelineOrchestrator:
         *,
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
+        errors_for_step: list[tuple[str, str, str]] | None = None,
     ) -> InteractionElementsFile:
-        interaction_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
-            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
-            "Generate InteractionElements.json for the confirmed scene context."
-        )
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        if errors_for_step:
+            _prev_output = json.dumps(
+                self.registry.interaction_elements.model_dump(), indent=2, ensure_ascii=False
+            )
+            _errors_text = "\n".join(
+                f"- [{stage}] {file_name}: {message}"
+                for file_name, stage, message in errors_for_step
+            )
+            interaction_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
+                f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
+                "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
+                "return a valid InteractionElements.json."
+            )
+        else:
+            interaction_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                "Generate InteractionElements.json for the confirmed scene context."
+            )
         result = await _stream_agent_run(
             interaction_elements_agent,
             interaction_input,
@@ -738,15 +757,33 @@ class PipelineOrchestrator:
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
+        errors_for_step: list[tuple[str, str, str]] | None = None,
     ) -> VisualizationElementsFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
-        visualization_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
-            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
-            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
-            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
-            "Generate VisualizationElements.json for the confirmed scene context."
-        )
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
+        if errors_for_step:
+            _prev_output = json.dumps(
+                self.registry.visualization_elements.model_dump(), indent=2, ensure_ascii=False
+            )
+            _errors_text = "\n".join(
+                f"- [{stage}] {file_name}: {message}"
+                for file_name, stage, message in errors_for_step
+            )
+            visualization_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
+                f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
+                "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
+                "return a valid VisualizationElements.json."
+            )
+        else:
+            visualization_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                "Generate VisualizationElements.json for the confirmed scene context."
+            )
         result = await _stream_agent_run(
             visualization_elements_agent,
             visualization_input,
@@ -789,18 +826,37 @@ class PipelineOrchestrator:
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
+        errors_for_step: list[tuple[str, str, str]] | None = None,
     ) -> StatesFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         visualization_subset = self._visualization_elements_subset(registry_snapshot)
-        states_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
-            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
-            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
-            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
-            f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n"
-            f"{json.dumps(visualization_subset, indent=2, ensure_ascii=False)}\n\n"
-            "Generate States.json for the confirmed scene context."
-        )
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
+        _visualization_json = json.dumps(visualization_subset, indent=2, ensure_ascii=False)
+        if errors_for_step:
+            _prev_output = json.dumps(
+                self.registry.states.model_dump(), indent=2, ensure_ascii=False
+            )
+            _errors_text = "\n".join(
+                f"- [{stage}] {file_name}: {message}"
+                for file_name, stage, message in errors_for_step
+            )
+            states_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
+                f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
+                f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
+                "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
+                "return a valid States.json."
+            )
+        else:
+            states_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
+                "Generate States.json for the confirmed scene context."
+            )
         result = await _stream_agent_run(
             states_agent,
             states_input,
@@ -833,18 +889,37 @@ class PipelineOrchestrator:
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
+        errors_for_step: list[tuple[str, str, str]] | None = None,
     ) -> TransitionsFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         state_names_subset = self._state_names_subset(registry_snapshot)
-        transitions_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n"
-            f"{json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)}\n\n"
-            f"INTERACTION_ELEMENTS_SUBSET_JSON:\n"
-            f"{json.dumps(interaction_subset, indent=2, ensure_ascii=False)}\n\n"
-            f"STATE_NAMES_JSON:\n"
-            f"{json.dumps(state_names_subset, indent=2, ensure_ascii=False)}\n\n"
-            "Generate Transitions.json for the confirmed scene context."
-        )
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
+        _state_names_json = json.dumps(state_names_subset, indent=2, ensure_ascii=False)
+        if errors_for_step:
+            _prev_output = json.dumps(
+                self.registry.transitions.model_dump(), indent=2, ensure_ascii=False
+            )
+            _errors_text = "\n".join(
+                f"- [{stage}] {file_name}: {message}"
+                for file_name, stage, message in errors_for_step
+            )
+            transitions_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
+                f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
+                f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
+                "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
+                "return a valid Transitions.json."
+            )
+        else:
+            transitions_input = (
+                f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
+                "Generate Transitions.json for the confirmed scene context."
+            )
         result = await _stream_agent_run(
             transitions_agent,
             transitions_input,
@@ -984,6 +1059,7 @@ class PipelineOrchestrator:
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
         dirty_steps: set[str],
+        validator_errors: list[tuple[str, str, str]] | None = None,
     ) -> tuple[list[str], list[str]]:
         executed_steps: list[str] = []
         skipped_steps: list[str] = []
@@ -993,12 +1069,19 @@ class PipelineOrchestrator:
                 skipped_steps.append(step)
                 continue
 
+            errors_for_step = (
+                filter_errors_for_step(validator_errors, step) or None
+                if validator_errors is not None
+                else None
+            )
+
             self._emit_phase("GENERATING_SPECS")
             if step == "interaction":
                 LOGGER.info("Attempt %d: rerun step interaction", attempt_index)
                 interaction_elements = await self.run_interaction_elements(
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
+                    errors_for_step=errors_for_step,
                 )
                 self.registry.interaction_elements = interaction_elements
                 self._record_registry_change(
@@ -1014,6 +1097,7 @@ class PipelineOrchestrator:
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
+                    errors_for_step=errors_for_step,
                 )
                 self.registry.visualization_elements = visualization_elements
                 self._record_registry_change(
@@ -1029,6 +1113,7 @@ class PipelineOrchestrator:
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
+                    errors_for_step=errors_for_step,
                 )
                 self.registry.states = states
                 self._record_registry_change(
@@ -1044,6 +1129,7 @@ class PipelineOrchestrator:
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
+                    errors_for_step=errors_for_step,
                 )
                 self.registry.transitions = transitions
                 self._record_registry_change(
@@ -1095,6 +1181,7 @@ class PipelineOrchestrator:
 
         attempts_completed = 0
         dirty_steps: set[str] = set(STEP_ORDER)
+        pending_validator_errors: list[tuple[str, str, str]] | None = None
         reason_summary: list[str] = ["initial_full_generation"]
         for attempt_index in range(1, self.config.max_attempts + 1):
             attempts_completed = attempt_index
@@ -1114,6 +1201,7 @@ class PipelineOrchestrator:
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     dirty_steps=dirty_steps,
+                    validator_errors=pending_validator_errors,
                 )
             except ElementNameMismatchError as exc:
                 next_dirty_steps = expand_dirty_steps({exc.step})
@@ -1140,7 +1228,7 @@ class PipelineOrchestrator:
             self._run_registry_full_gate(attempt_index=attempt_index)
 
             # Validator
-            validator_errors = self._run_unity_validator(attempt_index=attempt_index)
+            validator_errors = await self._run_unity_validator(attempt_index=attempt_index)
             if not validator_errors:
                 self._write_patch_log(
                     attempt_index=attempt_index,
@@ -1189,6 +1277,7 @@ class PipelineOrchestrator:
                 attempt_index,
                 ",".join(sorted(next_dirty_steps)),
             )
+            pending_validator_errors = validator_errors
             dirty_steps = next_dirty_steps
 
         self._emit_phase("FAILED")
