@@ -3,12 +3,18 @@
 from agents import Agent
 
 from constants.agent_instructions import (
+    CONSISTENCY_REVIEW_INSTRUCTIONS,
+    FIXER_INSTRUCTIONS,
     INTERACTION_ELEMENTS_INSTRUCTIONS,
+    INTERACTION_PLANNING_INSTRUCTIONS,
     STATES_INSTRUCTIONS,
     TRANSITIONS_INSTRUCTIONS,
     VISUALIZATION_ELEMENTS_INSTRUCTIONS,
 )
+from vivian_pipeline.models_funcspec.consistency_review import ConsistencyReviewResult
+from vivian_pipeline.models_funcspec.fix_plan import FixPlan
 from vivian_pipeline.models_funcspec.interaction_elements import InteractionElementsFile
+from vivian_pipeline.models_funcspec.interaction_plan import InteractionPlan
 from vivian_pipeline.models_funcspec.states import StatesFile
 from vivian_pipeline.models_funcspec.transitions import TransitionsFile
 from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
@@ -39,5 +45,23 @@ visualization_elements_agent = Agent(
     model=BASE_MODEL,
     instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
     output_type=VisualizationElementsFile,
+)
+interaction_planner_agent = Agent(
+    name="interaction_planner_agent",
+    model=BASE_MODEL,
+    instructions=INTERACTION_PLANNING_INSTRUCTIONS,
+    output_type=InteractionPlan,
+)
+consistency_reviewer_agent = Agent(
+    name="consistency_reviewer_agent",
+    model=BASE_MODEL,
+    instructions=CONSISTENCY_REVIEW_INSTRUCTIONS,
+    output_type=ConsistencyReviewResult,
+)
+fixer_agent = Agent(
+    name="fixer_agent",
+    model=BASE_MODEL,
+    instructions=FIXER_INSTRUCTIONS,
+    output_type=FixPlan,
 )
 scene_analysis_agent = build_scene_analysis_agent(BASE_MODEL)

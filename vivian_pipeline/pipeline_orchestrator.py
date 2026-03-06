@@ -14,7 +14,10 @@ from agents.tool_context import ToolContext
 
 from model.output_type_SceneUnderstanding import SceneUnderstanding
 from vivian_pipeline.agents_setup import (
+    consistency_reviewer_agent,
+    fixer_agent,
     interaction_elements_agent,
+    interaction_planner_agent,
     states_agent,
     transitions_agent,
     visualization_elements_agent,
@@ -38,10 +41,13 @@ from vivian_pipeline.rerun_policy import (
     normalize_error_package,
 )
 from vivian_pipeline.models_funcspec import (
+    ConsistencyReviewResult,
+    FixPlan,
     FloatValueVisualization,
     InteractionElementAttributeGuard,
     InteractionElementsFile,
     InteractionElementCondition,
+    InteractionPlan,
     Registry as RegistryFull,
     ScreenContentVisualization,
     StatesFile,
@@ -81,6 +87,8 @@ class PipelineConfig:
     publish_scene_review: PublishSceneReviewFn | None = None
     await_scene_decision: AwaitSceneDecisionFn | None = None
     on_phase_change: PhaseUpdateFn | None = None
+    interaction_description: str | None = None
+    skip_scene_confirmation: bool = False
 
     @classmethod
     def default(
@@ -94,6 +102,8 @@ class PipelineConfig:
         publish_scene_review: PublishSceneReviewFn | None = None,
         await_scene_decision: AwaitSceneDecisionFn | None = None,
         on_phase_change: PhaseUpdateFn | None = None,
+        interaction_description: str | None = None,
+        skip_scene_confirmation: bool = False,
     ) -> "PipelineConfig":
         resolved_run_id = (run_id or job_id or "orchestrator-run").strip()
         if not resolved_run_id:
@@ -113,6 +123,8 @@ class PipelineConfig:
             publish_scene_review=publish_scene_review,
             await_scene_decision=await_scene_decision,
             on_phase_change=on_phase_change,
+            interaction_description=interaction_description,
+            skip_scene_confirmation=skip_scene_confirmation,
         )
 
 
@@ -154,6 +166,10 @@ class PipelineOrchestrator:
         self._record_registry_change(reason="initialize_registry", attempt_index=None)
         # Canonical scene object for downstream phases once implemented.
         self.scene_confirmed: SceneUnderstanding | None = None
+        # Interaction plan cached after first planning run.
+        self.interaction_plan: InteractionPlan | None = None
+        # Active steps derived from interaction plan (all by default).
+        self.active_steps: set[str] = set(STEP_ORDER)
 
     @property
     def registry(self) -> RegistryFull:
@@ -590,11 +606,13 @@ class PipelineOrchestrator:
             attempt_index=attempt_index,
         )
 
+        saved_active_files = self.registry.active_files
         if hasattr(RegistryFull, "model_validate"):
             validated = RegistryFull.model_validate(self.registry.model_dump())
         else:  # pragma: no cover - pydantic v1 compatibility
             validated = RegistryFull.parse_obj(self.registry.model_dump())
 
+        validated.active_files = saved_active_files
         self.registry = validated
         self._record_registry_change(
             reason="registry_full_gate_passed",
@@ -687,14 +705,52 @@ class PipelineOrchestrator:
             payload["next_dirty_steps"] = [step for step in STEP_ORDER if step in next_dirty_steps]
         self._write_attempt_file(attempt_index, "patch-log.json", payload)
 
+    @staticmethod
+    def _format_plan_context(interaction_plan: InteractionPlan | None) -> str:
+        """Format interaction plan as prompt context for generation agents."""
+        if interaction_plan is None:
+            return ""
+        plan_json = json.dumps(interaction_plan.model_dump(), indent=2, ensure_ascii=False)
+        return f"INTERACTION_PLAN_JSON:\n{plan_json}\n\n"
+
+    @staticmethod
+    def _format_fix_plan_context(fix_plan: FixPlan | None, step: str) -> str:
+        """Format fixer plan directives relevant to a step as prompt context."""
+        if fix_plan is None:
+            return ""
+        # Filter patches relevant to this step
+        step_file_map = {
+            "interaction": "InteractionElements",
+            "visualization": "VisualizationElements",
+            "states": "States",
+            "transitions": "Transitions",
+        }
+        target_token = step_file_map.get(step, "")
+        relevant = [p for p in fix_plan.patches if target_token.lower() in p.target_file.lower()]
+        if not relevant and step not in fix_plan.requires_full_regeneration:
+            return ""
+        fix_data = {
+            "patches": [p.model_dump() for p in relevant],
+            "requires_full_regeneration": fix_plan.requires_full_regeneration,
+            "reasoning": fix_plan.reasoning,
+        }
+        fix_json = json.dumps(fix_data, indent=2, ensure_ascii=False)
+        return (
+            f"FIX_PLAN:\n{fix_json}\n\n"
+            "Apply these fixes to correct the VALIDATION_ERRORS below.\n\n"
+        )
+
     async def run_interaction_elements(
         self,
         *,
         attempt_index: int,
         scene_confirmed: SceneUnderstanding,
         errors_for_step: list[tuple[str, str, str]] | None = None,
+        interaction_plan: InteractionPlan | None = None,
+        fix_plan: FixPlan | None = None,
     ) -> InteractionElementsFile:
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
             _prev_output = json.dumps(
                 self.registry.interaction_elements.model_dump(), indent=2, ensure_ascii=False
@@ -703,8 +759,11 @@ class PipelineOrchestrator:
                 f"- [{stage}] {file_name}: {message}"
                 for file_name, stage, message in errors_for_step
             )
+            _fix_ctx = self._format_fix_plan_context(fix_plan, "interaction")
             interaction_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"{_plan_ctx}"
+                f"{_fix_ctx}"
                 f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
                 f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
                 "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
@@ -713,6 +772,7 @@ class PipelineOrchestrator:
         else:
             interaction_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+                f"{_plan_ctx}"
                 "Generate InteractionElements.json for the confirmed scene context."
             )
         result = await _stream_agent_run(
@@ -758,10 +818,13 @@ class PipelineOrchestrator:
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
         errors_for_step: list[tuple[str, str, str]] | None = None,
+        interaction_plan: InteractionPlan | None = None,
+        fix_plan: FixPlan | None = None,
     ) -> VisualizationElementsFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
+        _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
             _prev_output = json.dumps(
                 self.registry.visualization_elements.model_dump(), indent=2, ensure_ascii=False
@@ -770,9 +833,12 @@ class PipelineOrchestrator:
                 f"- [{stage}] {file_name}: {message}"
                 for file_name, stage, message in errors_for_step
             )
+            _fix_ctx = self._format_fix_plan_context(fix_plan, "visualization")
             visualization_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"{_plan_ctx}"
+                f"{_fix_ctx}"
                 f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
                 f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
                 "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
@@ -782,6 +848,7 @@ class PipelineOrchestrator:
             visualization_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
+                f"{_plan_ctx}"
                 "Generate VisualizationElements.json for the confirmed scene context."
             )
         result = await _stream_agent_run(
@@ -827,12 +894,15 @@ class PipelineOrchestrator:
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
         errors_for_step: list[tuple[str, str, str]] | None = None,
+        interaction_plan: InteractionPlan | None = None,
+        fix_plan: FixPlan | None = None,
     ) -> StatesFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         visualization_subset = self._visualization_elements_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _visualization_json = json.dumps(visualization_subset, indent=2, ensure_ascii=False)
+        _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
             _prev_output = json.dumps(
                 self.registry.states.model_dump(), indent=2, ensure_ascii=False
@@ -841,10 +911,13 @@ class PipelineOrchestrator:
                 f"- [{stage}] {file_name}: {message}"
                 for file_name, stage, message in errors_for_step
             )
+            _fix_ctx = self._format_fix_plan_context(fix_plan, "states")
             states_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
+                f"{_plan_ctx}"
+                f"{_fix_ctx}"
                 f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
                 f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
                 "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
@@ -855,6 +928,7 @@ class PipelineOrchestrator:
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
+                f"{_plan_ctx}"
                 "Generate States.json for the confirmed scene context."
             )
         result = await _stream_agent_run(
@@ -890,12 +964,15 @@ class PipelineOrchestrator:
         scene_confirmed: SceneUnderstanding,
         registry_snapshot: RegistryFull,
         errors_for_step: list[tuple[str, str, str]] | None = None,
+        interaction_plan: InteractionPlan | None = None,
+        fix_plan: FixPlan | None = None,
     ) -> TransitionsFile:
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         state_names_subset = self._state_names_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _state_names_json = json.dumps(state_names_subset, indent=2, ensure_ascii=False)
+        _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
             _prev_output = json.dumps(
                 self.registry.transitions.model_dump(), indent=2, ensure_ascii=False
@@ -904,10 +981,13 @@ class PipelineOrchestrator:
                 f"- [{stage}] {file_name}: {message}"
                 for file_name, stage, message in errors_for_step
             )
+            _fix_ctx = self._format_fix_plan_context(fix_plan, "transitions")
             transitions_input = (
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
+                f"{_plan_ctx}"
+                f"{_fix_ctx}"
                 f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
                 f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
                 "Correct the PREVIOUS_OUTPUT_JSON to fix the VALIDATION_ERRORS and "
@@ -918,6 +998,7 @@ class PipelineOrchestrator:
                 f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
+                f"{_plan_ctx}"
                 "Generate Transitions.json for the confirmed scene context."
             )
         result = await _stream_agent_run(
@@ -1037,12 +1118,24 @@ class PipelineOrchestrator:
         started_at = datetime.now(timezone.utc)
         scene_raw = await self._run_scene_analysis(state)
         finished_at = datetime.now(timezone.utc)
+
+        # Propagate interaction_description into scene understanding
+        if self.config.interaction_description:
+            scene_raw.interaction_description = self.config.interaction_description
+
         self._write_artifact(attempt_index, "scene_raw.json", scene_raw)
         self._write_scene_meta(
             attempt_index,
             started_at=started_at,
             finished_at=finished_at,
         )
+
+        if self.config.skip_scene_confirmation:
+            LOGGER.info("Attempt %d: skip_scene_confirmation=True, using scene analysis directly", attempt_index)
+            self._emit_phase("GENERATING_SPECS")
+            self._write_artifact(attempt_index, "scene_confirmed.json", scene_raw)
+            self.scene_confirmed = scene_raw
+            return scene_raw, "auto_confirmed"
 
         LOGGER.info("Attempt %d: phase AWAITING_SCENE_CONFIRMATION", attempt_index)
         self._emit_phase("AWAITING_SCENE_CONFIRMATION")
@@ -1060,11 +1153,17 @@ class PipelineOrchestrator:
         scene_confirmed: SceneUnderstanding,
         dirty_steps: set[str],
         validator_errors: list[tuple[str, str, str]] | None = None,
+        interaction_plan: InteractionPlan | None = None,
+        fix_plan: FixPlan | None = None,
     ) -> tuple[list[str], list[str]]:
         executed_steps: list[str] = []
         skipped_steps: list[str] = []
 
         for step in STEP_ORDER:
+            # Skip steps that are not active (not needed per interaction plan)
+            if step not in self.active_steps:
+                skipped_steps.append(step)
+                continue
             if step not in dirty_steps:
                 skipped_steps.append(step)
                 continue
@@ -1082,6 +1181,8 @@ class PipelineOrchestrator:
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     errors_for_step=errors_for_step,
+                    interaction_plan=interaction_plan,
+                    fix_plan=fix_plan,
                 )
                 self.registry.interaction_elements = interaction_elements
                 self._record_registry_change(
@@ -1098,6 +1199,8 @@ class PipelineOrchestrator:
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
                     errors_for_step=errors_for_step,
+                    interaction_plan=interaction_plan,
+                    fix_plan=fix_plan,
                 )
                 self.registry.visualization_elements = visualization_elements
                 self._record_registry_change(
@@ -1114,6 +1217,8 @@ class PipelineOrchestrator:
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
                     errors_for_step=errors_for_step,
+                    interaction_plan=interaction_plan,
+                    fix_plan=fix_plan,
                 )
                 self.registry.states = states
                 self._record_registry_change(
@@ -1130,6 +1235,8 @@ class PipelineOrchestrator:
                     scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
                     errors_for_step=errors_for_step,
+                    interaction_plan=interaction_plan,
+                    fix_plan=fix_plan,
                 )
                 self.registry.transitions = transitions
                 self._record_registry_change(
@@ -1140,6 +1247,152 @@ class PipelineOrchestrator:
                 continue
 
         return executed_steps, skipped_steps
+
+    # ------------------------------------------------------------------
+    # Stage 3: Interaction Planning
+    # ------------------------------------------------------------------
+    async def run_interaction_planning(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+    ) -> InteractionPlan:
+        self._emit_phase("PLANNING_INTERACTIONS")
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        parts = [f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n"]
+        if scene_confirmed.interaction_description:
+            parts.append(
+                f"INTERACTION_DESCRIPTION:\n{scene_confirmed.interaction_description}\n"
+            )
+        parts.append(
+            "Analyze the confirmed scene and produce an InteractionPlan."
+        )
+        planning_input = "\n".join(parts)
+
+        result = await _stream_agent_run(
+            interaction_planner_agent,
+            planning_input,
+            label="interaction_planner_agent",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("interaction_planner_agent returned no output.")
+
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "interaction_plan_raw.json", raw_payload)
+
+        if hasattr(InteractionPlan, "model_validate"):
+            parsed = InteractionPlan.model_validate(raw_payload)
+        else:
+            parsed = InteractionPlan.parse_obj(raw_payload)
+
+        # Validate object_names exist in scene
+        valid_names = {obj.name for obj in scene_confirmed.objects}
+        unknown = [er.object_name for er in parsed.element_roles if er.object_name not in valid_names]
+        if unknown:
+            raise ValueError(
+                "InteractionPlan element_roles reference unknown scene objects: "
+                + ", ".join(repr(n) for n in unknown)
+            )
+
+        self._write_artifact(attempt_index, "interaction_plan.json", parsed)
+        return parsed
+
+    # ------------------------------------------------------------------
+    # Stage 5: Consistency Review
+    # ------------------------------------------------------------------
+    async def run_consistency_review(
+        self,
+        *,
+        attempt_index: int,
+        scene_confirmed: SceneUnderstanding,
+        interaction_plan: InteractionPlan,
+    ) -> ConsistencyReviewResult:
+        self._emit_phase("REVIEWING_CONSISTENCY")
+        _registry_json = json.dumps(self.registry.model_dump(), indent=2, ensure_ascii=False)
+        _plan_json = json.dumps(interaction_plan.model_dump(), indent=2, ensure_ascii=False)
+        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        review_input = (
+            f"REGISTRY_JSON:\n{_registry_json}\n\n"
+            f"INTERACTION_PLAN_JSON:\n{_plan_json}\n\n"
+            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
+            "Review the generated FunctionalSpecification for semantic consistency."
+        )
+        result = await _stream_agent_run(
+            consistency_reviewer_agent,
+            review_input,
+            label="consistency_reviewer_agent",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("consistency_reviewer_agent returned no output.")
+
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "consistency_review_raw.json", raw_payload)
+
+        if hasattr(ConsistencyReviewResult, "model_validate"):
+            parsed = ConsistencyReviewResult.model_validate(raw_payload)
+        else:
+            parsed = ConsistencyReviewResult.parse_obj(raw_payload)
+
+        self._write_artifact(attempt_index, "consistency_review.json", parsed)
+        return parsed
+
+    # ------------------------------------------------------------------
+    # Stage 6 enhancement: Fixer Agent
+    # ------------------------------------------------------------------
+    async def run_fixer_agent(
+        self,
+        *,
+        attempt_index: int,
+        validator_errors: list[tuple[str, str, str]],
+        consistency_issues: list[dict[str, Any]] | None = None,
+        interaction_plan: InteractionPlan,
+    ) -> FixPlan | None:
+        """Run the fixer agent to produce a targeted FixPlan. Returns None on failure."""
+        _errors_text = "\n".join(
+            f"- [{stage}] {file_name}: {message}"
+            for file_name, stage, message in validator_errors
+        )
+        _registry_json = json.dumps(self.registry.model_dump(), indent=2, ensure_ascii=False)
+        _plan_json = json.dumps(interaction_plan.model_dump(), indent=2, ensure_ascii=False)
+
+        parts = [
+            f"VALIDATION_ERRORS:\n{_errors_text}\n",
+            f"REGISTRY_JSON:\n{_registry_json}\n",
+            f"INTERACTION_PLAN_JSON:\n{_plan_json}\n",
+        ]
+        if consistency_issues:
+            _issues_json = json.dumps(consistency_issues, indent=2, ensure_ascii=False)
+            parts.append(f"CONSISTENCY_ISSUES:\n{_issues_json}\n")
+        parts.append("Analyze these errors and produce a FixPlan.")
+        fixer_input = "\n".join(parts)
+
+        try:
+            result = await _stream_agent_run(
+                fixer_agent,
+                fixer_input,
+                label="fixer_agent",
+            )
+            raw_output = getattr(result, "final_output", None)
+            if raw_output is None:
+                LOGGER.warning("fixer_agent returned no output; falling back to error-only retry.")
+                return None
+
+            raw_payload = self._to_json_payload(raw_output)
+            self._write_artifact(attempt_index, "fixer_plan_raw.json", raw_payload)
+
+            if hasattr(FixPlan, "model_validate"):
+                parsed = FixPlan.model_validate(raw_payload)
+            else:
+                parsed = FixPlan.parse_obj(raw_payload)
+
+            self._write_artifact(attempt_index, "fixer_plan.json", parsed)
+            return parsed
+        except Exception as exc:
+            LOGGER.warning("fixer_agent failed (%s); falling back to error-only retry.", exc)
+            self._write_artifact(attempt_index, "fixer_plan_error.json", {"error": str(exc)})
+            return None
 
     def _write_full_draft_snapshot(self, *, attempt_index: int) -> None:
         self._write_interaction_elements_draft(
@@ -1159,6 +1412,37 @@ class PipelineOrchestrator:
             self.registry.transitions,
         )
         self._write_visualization_arrays_placeholder_draft(attempt_index)
+
+    def _map_files_needed_to_steps(self, files_needed: list[str]) -> set[str]:
+        """Map InteractionPlan.files_needed tokens to STEP_ORDER step names."""
+        mapping = {
+            "InteractionElements": "interaction",
+            "VisualizationElements": "visualization",
+            "States": "states",
+            "Transitions": "transitions",
+        }
+        return {mapping[f] for f in files_needed if f in mapping}
+
+    def _map_consistency_errors_to_dirty_steps(
+        self,
+        review: ConsistencyReviewResult,
+    ) -> set[str]:
+        """Map consistency review errors to dirty steps by file name."""
+        file_to_step = {
+            "InteractionElements": "interaction",
+            "VisualizationElements": "visualization",
+            "States": "states",
+            "Transitions": "transitions",
+        }
+        dirty: set[str] = set()
+        for issue in review.issues:
+            if issue.severity != "error":
+                continue
+            for token, step in file_to_step.items():
+                if token.lower() in issue.file.lower():
+                    dirty.add(step)
+                    break
+        return dirty
 
     async def run_vivian(
         self,
@@ -1182,6 +1466,8 @@ class PipelineOrchestrator:
         attempts_completed = 0
         dirty_steps: set[str] = set(STEP_ORDER)
         pending_validator_errors: list[tuple[str, str, str]] | None = None
+        pending_fix_plan: FixPlan | None = None
+        pending_consistency_issues: list[dict[str, Any]] | None = None
         reason_summary: list[str] = ["initial_full_generation"]
         for attempt_index in range(1, self.config.max_attempts + 1):
             attempts_completed = attempt_index
@@ -1192,19 +1478,52 @@ class PipelineOrchestrator:
                 reasons=reason_summary,
             )
 
+            # Stage 1+2: Scene (cached after first attempt)
             scene_confirmed, scene_mode = await self._obtain_scene_confirmed(
                 attempt_index=attempt_index,
                 user_input=user_input,
             )
+
+            # Stage 3: Interaction Planning (cached after first attempt)
+            if self.interaction_plan is None:
+                try:
+                    self.interaction_plan = await self.run_interaction_planning(
+                        attempt_index=attempt_index,
+                        scene_confirmed=scene_confirmed,
+                    )
+                    self.active_steps = self._map_files_needed_to_steps(
+                        self.interaction_plan.files_needed
+                    )
+                    # Update registry active_files for conditional cross-ref validation
+                    self.registry.active_files = set(self.interaction_plan.files_needed)
+                    dirty_steps = dirty_steps & self.active_steps
+                    LOGGER.info(
+                        "Interaction plan produced. active_steps=%s",
+                        ",".join(sorted(self.active_steps)),
+                    )
+                except Exception as exc:
+                    LOGGER.warning(
+                        "Interaction planning failed (%s); using all steps.",
+                        exc,
+                    )
+                    self._write_artifact(
+                        attempt_index, "interaction_plan_error.json", {"error": str(exc)}
+                    )
+
+            # Stage 4: Generation (only dirty & active steps)
             try:
                 executed_steps, skipped_steps = await self._run_dirty_funcspec_steps(
                     attempt_index=attempt_index,
                     scene_confirmed=scene_confirmed,
                     dirty_steps=dirty_steps,
                     validator_errors=pending_validator_errors,
+                    interaction_plan=self.interaction_plan,
+                    fix_plan=pending_fix_plan,
                 )
             except ElementNameMismatchError as exc:
-                next_dirty_steps = expand_dirty_steps({exc.step})
+                next_dirty_steps = expand_dirty_steps(
+                    {exc.step}, active_steps=self.active_steps
+                )
                 LOGGER.warning(
                     "Attempt %d element name mismatch (step=%s): %s. next_dirty_steps=%s",
                     attempt_index,
@@ -1222,12 +1541,69 @@ class PipelineOrchestrator:
                     next_dirty_steps=next_dirty_steps,
                 )
                 dirty_steps = next_dirty_steps
+                pending_fix_plan = None
+                pending_consistency_issues = None
                 continue
 
             self._write_full_draft_snapshot(attempt_index=attempt_index)
             self._run_registry_full_gate(attempt_index=attempt_index)
 
-            # Validator
+            # Stage 5: Consistency Review
+            consistency_dirty: set[str] = set()
+            if self.interaction_plan is not None:
+                try:
+                    review = await self.run_consistency_review(
+                        attempt_index=attempt_index,
+                        scene_confirmed=scene_confirmed,
+                        interaction_plan=self.interaction_plan,
+                    )
+                    error_issues = [i for i in review.issues if i.severity == "error"]
+                    if error_issues:
+                        consistency_dirty = self._map_consistency_errors_to_dirty_steps(review)
+                        consistency_dirty = expand_dirty_steps(
+                            consistency_dirty, active_steps=self.active_steps
+                        )
+                        pending_consistency_issues = [
+                            i.model_dump() for i in error_issues
+                        ]
+                        LOGGER.info(
+                            "Consistency review found %d errors. dirty_steps=%s",
+                            len(error_issues),
+                            ",".join(sorted(consistency_dirty)),
+                        )
+                    else:
+                        pending_consistency_issues = None
+                        warning_count = len(review.issues)
+                        if warning_count:
+                            LOGGER.info(
+                                "Consistency review: %d warnings (proceeding).",
+                                warning_count,
+                            )
+                except Exception as exc:
+                    LOGGER.warning("Consistency review failed (%s); skipping.", exc)
+                    self._write_artifact(
+                        attempt_index, "consistency_review_error.json", {"error": str(exc)}
+                    )
+
+            if consistency_dirty:
+                reason_summary = [
+                    f"consistency_error: {i.get('description', '')}"
+                    for i in (pending_consistency_issues or [])
+                ][:20]
+                self._write_patch_log(
+                    attempt_index=attempt_index,
+                    executed_steps=executed_steps,
+                    skipped_steps=skipped_steps,
+                    scene_mode=scene_mode,
+                    status="consistency_review_failed",
+                    next_dirty_steps=consistency_dirty,
+                )
+                dirty_steps = consistency_dirty
+                pending_validator_errors = None
+                pending_fix_plan = None
+                continue
+
+            # Stage 6: Validation
             validator_errors = await self._run_unity_validator(attempt_index=attempt_index)
             if not validator_errors:
                 self._write_patch_log(
@@ -1253,10 +1629,22 @@ class PipelineOrchestrator:
                     attempts_completed=attempts_completed,
                 )
 
+            # Self-correction: run fixer agent
+            pending_fix_plan = None
+            if self.interaction_plan is not None:
+                pending_fix_plan = await self.run_fixer_agent(
+                    attempt_index=attempt_index,
+                    validator_errors=validator_errors,
+                    consistency_issues=pending_consistency_issues,
+                    interaction_plan=self.interaction_plan,
+                )
+
             mapped_dirty_steps = map_errors_to_dirty_steps(validator_errors)
-            next_dirty_steps = expand_dirty_steps(mapped_dirty_steps)
+            next_dirty_steps = expand_dirty_steps(
+                mapped_dirty_steps, active_steps=self.active_steps
+            )
             if not next_dirty_steps:
-                next_dirty_steps = set(STEP_ORDER)
+                next_dirty_steps = set(self.active_steps)
 
             reason_summary = [
                 f"{file_name or '<unknown>'} [{stage}]: {message}"

@@ -52,14 +52,23 @@ def map_errors_to_dirty_steps(errors: list[tuple[str, str, str]]) -> set[str]:
     return dirty
 
 
-def expand_dirty_steps(dirty_steps: set[str]) -> set[str]:
-    """Expand dirty set so upstream invalidations include downstream steps."""
+def expand_dirty_steps(
+    dirty_steps: set[str],
+    active_steps: set[str] | None = None,
+) -> set[str]:
+    """Expand dirty set so upstream invalidations include downstream steps.
+
+    If *active_steps* is given, the expanded result is intersected with it so
+    that inactive (skipped) steps are never included.
+    """
     expanded = set(dirty_steps)
     for step in list(dirty_steps):
         if step not in STEP_ORDER:
             continue
         start_idx = STEP_ORDER.index(step)
         expanded.update(STEP_ORDER[start_idx:])
+    if active_steps is not None:
+        expanded &= active_steps
     return expanded
 
 

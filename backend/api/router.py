@@ -76,7 +76,8 @@ async def start_job(request: StartJobRequest) -> StartJobResponse:
     LOGGER.info("POST /jobs/start")
     request_data = request.model_dump()
     job = await job_manager.start_job(request_data=request_data)
-    asyncio.create_task(run_job(job=job, request_data=request_data, manager=job_manager))
+    task = asyncio.create_task(run_job(job=job, request_data=request_data, manager=job_manager))
+    job_manager.set_active_task(job.job_id, task)
     return StartJobResponse(job_id=job.job_id, status=job.status)
 
 
@@ -180,9 +181,7 @@ async def cancel_job(job_id: str) -> CancelJobResponse:
     if not job_manager.request_cancel(job_id):
         raise HTTPException(status_code=409, detail="Only the active job can be cancelled.")
 
-    stream_result = job_manager.get_active_stream(job_id)
-    if stream_result is not None:
-        stream_result.cancel(mode="immediate")
+    job_manager.cancel_active_task(job_id)
 
     return CancelJobResponse(
         job_id=job.job_id,

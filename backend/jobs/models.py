@@ -25,7 +25,9 @@ class JobPhase(str, Enum):
     PREPARING_INPUT = "PREPARING_INPUT"
     ANALYZING_SCENE = "ANALYZING_SCENE"
     AWAITING_SCENE_CONFIRMATION = "AWAITING_SCENE_CONFIRMATION"
+    PLANNING_INTERACTIONS = "PLANNING_INTERACTIONS"
     GENERATING_SPECS = "GENERATING_SPECS"
+    REVIEWING_CONSISTENCY = "REVIEWING_CONSISTENCY"
     VALIDATING_OUTPUT = "VALIDATING_OUTPUT"
     PUBLISHING = "PUBLISHING"
     COMPLETED = "COMPLETED"
@@ -65,6 +67,8 @@ class StartJobRequest(BaseModel):
     start_pipeline: bool = True
     only_scene_analysis: bool = False
     use_mock_scene_analysis: bool = False
+    interaction_description: str | None = None
+    skip_scene_confirmation: bool = False
 
     @field_validator("group_path")
     @classmethod

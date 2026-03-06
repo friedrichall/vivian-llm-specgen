@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import traceback
 from typing import Any
 
@@ -26,6 +27,17 @@ DEFAULT_ERROR_RESPONSES = {
 }
 load_dotenv()
 logger = logging.getLogger("backend.api")
+
+# Register LangSmith tracing for OpenAI Agents SDK when enabled via env.
+if os.getenv("LANGSMITH_TRACING", "").lower() in ("true", "1", "yes"):
+    try:
+        from agents import set_trace_processors
+        from langsmith.integrations.openai_agents_sdk import OpenAIAgentsTracingProcessor
+
+        set_trace_processors([OpenAIAgentsTracingProcessor()])
+        logger.info("LangSmith tracing enabled for OpenAI Agents SDK.")
+    except Exception as _exc:
+        logger.warning("Failed to enable LangSmith tracing: %s", _exc)
 
 
 def _truncate(value: str, max_len: int = 4000) -> str:

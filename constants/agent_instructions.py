@@ -95,6 +95,9 @@ INTERACTION_ELEMENTS_INSTRUCTIONS = _read_doc("InteractionElementsDocuLLMFriendl
 TRANSITIONS_INSTRUCTIONS = _read_doc("TransitionsDocuLLMFriendly")
 STATES_INSTRUCTIONS = _read_doc("StatesDocuLLMFriendly")
 VISUALIZATION_ELEMENTS_INSTRUCTIONS = _read_doc("VisualizationElementsDocuLLMFriendly")
+INTERACTION_PLANNING_INSTRUCTIONS = _read_doc("InteractionPlanningDocuLLMFriendly")
+CONSISTENCY_REVIEW_INSTRUCTIONS = _read_doc("ConsistencyReviewDocuLLMFriendly")
+FIXER_INSTRUCTIONS = _read_doc("FixerDocuLLMFriendly")
 
 VISUALIZATION_ARRAYS_INSTRUCTIONS: str = (
     'Always return a VisualizationArrays.json object containing only an empty array: {"Elements": []}. '

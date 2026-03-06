@@ -688,6 +688,18 @@
             "default": null,
             "title": "Description"
         },
+        "interaction_description": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "title": "Interaction Description"
+        },
         "objects": {
             "items": {
                 "$ref": "#/$defs/ObjectEntry"

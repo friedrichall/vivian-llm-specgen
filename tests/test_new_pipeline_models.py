@@ -1,0 +1,358 @@
+"""Tests for new pipeline models: InteractionPlan, ConsistencyReviewResult, FixPlan."""
+
+import pytest
+from pydantic import ValidationError
+
+from vivian_pipeline.models_funcspec.interaction_plan import (
+    ElementRole,
+    InteractionPlan,
+    PlannedState,
+    PlannedTransition,
+)
+from vivian_pipeline.models_funcspec.consistency_review import (
+    ConsistencyIssue,
+    ConsistencyReviewResult,
+)
+from vivian_pipeline.models_funcspec.fix_plan import FixDirective, FixPlan
+
+
+# ---------------------------------------------------------------------------
+# InteractionPlan
+# ---------------------------------------------------------------------------
+
+def _make_plan(**overrides):
+    defaults = dict(
+        element_roles=[
+            ElementRole(
+                object_name="ButtonA",
+                funcspec_type="Button",
+                category="interaction",
+                rationale="Scene button",
+            ),
+            ElementRole(
+                object_name="LightB",
+                funcspec_type="Light",
+                category="visualization",
+                rationale="Status light",
+            ),
+        ],
+        planned_states=[
+            PlannedState(name="Off", description="Initial", involved_elements=["ButtonA"]),
+            PlannedState(name="On", description="Active", involved_elements=["ButtonA", "LightB"]),
+        ],
+        planned_transitions=[
+            PlannedTransition(
+                source_state="Off",
+                destination_state="On",
+                trigger_element="ButtonA",
+                trigger_description="Click button",
+            ),
+            PlannedTransition(
+                source_state="On",
+                destination_state="Off",
+                trigger_element="ButtonA",
+                trigger_description="Click button again",
+            ),
+        ],
+        files_needed=[
+            "InteractionElements",
+            "VisualizationElements",
+            "States",
+            "Transitions",
+        ],
+        reasoning="Simple toggle prototype.",
+    )
+    defaults.update(overrides)
+    return InteractionPlan(**defaults)
+
+
+def test_interaction_plan_valid():
+    plan = _make_plan()
+    assert len(plan.element_roles) == 2
+    assert set(plan.files_needed) == {
+        "InteractionElements", "VisualizationElements", "States", "Transitions"
+    }
+
+
+def test_interaction_plan_rejects_unknown_element_in_state():
+    with pytest.raises(ValidationError, match="unknown element 'Ghost'"):
+        _make_plan(
+            planned_states=[
+                PlannedState(name="S1", description="d", involved_elements=["Ghost"]),
+            ],
+            planned_transitions=[],
+        )
+
+
+def test_interaction_plan_rejects_unknown_source_state():
+    with pytest.raises(ValidationError, match="unknown source_state 'Missing'"):
+        _make_plan(
+            planned_transitions=[
+                PlannedTransition(
+                    source_state="Missing",
+                    destination_state="Off",
+                    trigger_description="x",
+                ),
+            ],
+        )
+
+
+def test_interaction_plan_rejects_unknown_destination_state():
+    with pytest.raises(ValidationError, match="unknown destination_state 'Missing'"):
+        _make_plan(
+            planned_transitions=[
+                PlannedTransition(
+                    source_state="Off",
+                    destination_state="Missing",
+                    trigger_description="x",
+                ),
+            ],
+        )
+
+
+def test_interaction_plan_rejects_unknown_trigger_element():
+    with pytest.raises(ValidationError, match="trigger_element 'Ghost'"):
+        _make_plan(
+            planned_transitions=[
+                PlannedTransition(
+                    source_state="Off",
+                    destination_state="On",
+                    trigger_element="Ghost",
+                    trigger_description="x",
+                ),
+            ],
+        )
+
+
+def test_interaction_plan_transitions_requires_states():
+    with pytest.raises(ValidationError, match="'Transitions' but not 'States'"):
+        _make_plan(files_needed=["InteractionElements", "Transitions"])
+
+
+def test_interaction_plan_states_requires_element_files():
+    with pytest.raises(ValidationError, match="'States' but no element files"):
+        _make_plan(files_needed=["States"])
+
+
+def test_interaction_plan_minimal_valid():
+    """Only interaction elements, no states/transitions."""
+    plan = InteractionPlan(
+        element_roles=[
+            ElementRole(
+                object_name="Btn",
+                funcspec_type="Button",
+                category="interaction",
+                rationale="r",
+            ),
+        ],
+        planned_states=[],
+        planned_transitions=[],
+        files_needed=["InteractionElements"],
+        reasoning="Minimal.",
+    )
+    assert plan.files_needed == ["InteractionElements"]
+
+
+# ---------------------------------------------------------------------------
+# ConsistencyReviewResult
+# ---------------------------------------------------------------------------
+
+def test_consistency_review_valid():
+    result = ConsistencyReviewResult(
+        issues=[
+            ConsistencyIssue(
+                severity="warning",
+                file="States.json",
+                element="Light1",
+                description="Unused visualization element.",
+                suggested_fix="Remove or add a condition.",
+            ),
+        ],
+        plan_coverage_ok=True,
+        cross_file_consistency_ok=True,
+        summary="Minor warnings only.",
+    )
+    assert len(result.issues) == 1
+    assert result.issues[0].severity == "warning"
+
+
+def test_consistency_review_empty_issues():
+    result = ConsistencyReviewResult(
+        issues=[],
+        plan_coverage_ok=True,
+        cross_file_consistency_ok=True,
+        summary="All good.",
+    )
+    assert result.plan_coverage_ok is True
+
+
+# ---------------------------------------------------------------------------
+# FixPlan
+# ---------------------------------------------------------------------------
+
+def test_fix_plan_valid():
+    plan = FixPlan(
+        patches=[
+            FixDirective(
+                target_file="States.json",
+                element_name="BadState",
+                description="References non-existent element.",
+                fix_instruction="Remove the condition referencing 'Ghost'.",
+            ),
+        ],
+        requires_full_regeneration=[],
+        reasoning="Single cross-ref error.",
+    )
+    assert len(plan.patches) == 1
+
+
+def test_fix_plan_with_full_regeneration():
+    plan = FixPlan(
+        patches=[],
+        requires_full_regeneration=["states", "transitions"],
+        reasoning="Fundamental structure issues.",
+    )
+    assert "states" in plan.requires_full_regeneration
+
+
+def test_fix_plan_empty():
+    plan = FixPlan(patches=[], requires_full_regeneration=[], reasoning="No issues.")
+    assert len(plan.patches) == 0
+
+
+# ---------------------------------------------------------------------------
+# Registry active_files
+# ---------------------------------------------------------------------------
+
+def test_registry_empty_has_all_active_files():
+    from vivian_pipeline.models_funcspec.registry import Registry
+    reg = Registry.empty()
+    assert reg.active_files == {
+        "InteractionElements", "VisualizationElements", "States", "Transitions"
+    }
+
+
+def test_registry_conditional_cross_ref_skips_inactive():
+    """When InteractionElements is inactive, cross-ref errors for it are skipped."""
+    from vivian_pipeline.models_funcspec.registry import Registry
+    from vivian_pipeline.models_funcspec.interaction_elements import InteractionElementsFile
+    from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
+    from vivian_pipeline.models_funcspec.states import StatesFile, State, InteractionElementCondition
+    from vivian_pipeline.models_funcspec.transitions import TransitionsFile
+    from vivian_pipeline.models_funcspec.registry import ScreensRegistry
+
+    # A state references an interaction element that doesn't exist.
+    # With InteractionElements inactive, this should pass validation.
+    states = StatesFile(States=[
+        State(
+            Name="TestState",
+            Conditions=[
+                InteractionElementCondition(
+                    Type="InteractionElementCondition",
+                    InteractionElement="NonExistent",
+                    Attribute="VALUE",
+                    Value="true",
+                ),
+            ],
+        ),
+    ])
+    reg = Registry(
+        interaction_elements=InteractionElementsFile(Elements=[]),
+        visualization_elements=VisualizationElementsFile(Elements=[]),
+        screens=ScreensRegistry(files=[]),
+        states=states,
+        transitions=TransitionsFile(Transitions=[]),
+        active_files={"States", "Transitions"},  # InteractionElements NOT active
+    )
+    assert reg.states.States[0].Name == "TestState"
+
+
+# ---------------------------------------------------------------------------
+# SceneUnderstanding interaction_description
+# ---------------------------------------------------------------------------
+
+def test_scene_understanding_interaction_description():
+    from model.output_type_SceneUnderstanding import SceneUnderstanding
+    su = SceneUnderstanding(interaction_description="Toggle the light on/off.")
+    assert su.interaction_description == "Toggle the light on/off."
+
+
+def test_scene_understanding_interaction_description_optional():
+    from model.output_type_SceneUnderstanding import SceneUnderstanding
+    su = SceneUnderstanding()
+    assert su.interaction_description is None
+
+
+# ---------------------------------------------------------------------------
+# StartJobRequest new fields
+# ---------------------------------------------------------------------------
+
+def test_start_job_request_new_fields():
+    from backend.jobs.models import StartJobRequest
+    req = StartJobRequest(
+        group_path="/some/path",
+        interaction_description="Do stuff",
+        skip_scene_confirmation=True,
+    )
+    assert req.interaction_description == "Do stuff"
+    assert req.skip_scene_confirmation is True
+
+
+def test_start_job_request_new_fields_defaults():
+    from backend.jobs.models import StartJobRequest
+    req = StartJobRequest(group_path="/some/path")
+    assert req.interaction_description is None
+    assert req.skip_scene_confirmation is False
+
+
+# ---------------------------------------------------------------------------
+# JobPhase new values
+# ---------------------------------------------------------------------------
+
+def test_job_phase_new_values():
+    from backend.jobs.models import JobPhase
+    assert JobPhase.PLANNING_INTERACTIONS == "PLANNING_INTERACTIONS"
+    assert JobPhase.REVIEWING_CONSISTENCY == "REVIEWING_CONSISTENCY"
+
+
+# ---------------------------------------------------------------------------
+# rerun_policy expand_dirty_steps with active_steps
+# ---------------------------------------------------------------------------
+
+def test_expand_dirty_steps_with_active_steps():
+    from vivian_pipeline.rerun_policy import expand_dirty_steps
+    # "interaction" dirty should expand to all downstream, but only active ones
+    result = expand_dirty_steps(
+        {"interaction"},
+        active_steps={"interaction", "states", "transitions"},
+    )
+    # "visualization" would normally be included, but it's not active
+    assert result == {"interaction", "states", "transitions"}
+
+
+def test_expand_dirty_steps_without_active_steps_unchanged():
+    from vivian_pipeline.rerun_policy import expand_dirty_steps
+    result = expand_dirty_steps({"interaction"})
+    assert result == {"interaction", "visualization", "states", "transitions"}
+
+
+# ---------------------------------------------------------------------------
+# PipelineConfig new fields
+# ---------------------------------------------------------------------------
+
+def test_pipeline_config_new_fields():
+    from vivian_pipeline.pipeline_orchestrator import PipelineConfig
+    config = PipelineConfig.default(
+        run_id="test",
+        interaction_description="desc",
+        skip_scene_confirmation=True,
+    )
+    assert config.interaction_description == "desc"
+    assert config.skip_scene_confirmation is True
+
+
+def test_pipeline_config_new_fields_defaults():
+    from vivian_pipeline.pipeline_orchestrator import PipelineConfig
+    config = PipelineConfig.default(run_id="test")
+    assert config.interaction_description is None
+    assert config.skip_scene_confirmation is False
