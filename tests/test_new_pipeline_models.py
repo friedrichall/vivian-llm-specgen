@@ -312,7 +312,13 @@ def test_start_job_request_new_fields_defaults():
 def test_job_phase_new_values():
     from backend.jobs.models import JobPhase
     assert JobPhase.PLANNING_INTERACTIONS == "PLANNING_INTERACTIONS"
+    assert JobPhase.GENERATING_SPECS_INTERACTION_ELEMENTS == "GENERATING_SPECS_INTERACTION_ELEMENTS"
+    assert JobPhase.GENERATING_SPECS_VISUALIZATION_ELEMENTS == "GENERATING_SPECS_VISUALIZATION_ELEMENTS"
+    assert JobPhase.GENERATING_SPECS_STATES == "GENERATING_SPECS_STATES"
+    assert JobPhase.GENERATING_SPECS_TRANSITIONS == "GENERATING_SPECS_TRANSITIONS"
     assert JobPhase.REVIEWING_CONSISTENCY == "REVIEWING_CONSISTENCY"
+    assert JobPhase.GENERATING_FIX_PLAN == "GENERATING_FIX_PLAN"
+    assert JobPhase.DETERMINING_RETRY_SCOPE == "DETERMINING_RETRY_SCOPE"
 
 
 # ---------------------------------------------------------------------------

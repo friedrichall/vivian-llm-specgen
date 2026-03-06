@@ -380,7 +380,7 @@ def test_scene_review_flow_accepts_feedback_and_confirm(monkeypatch: pytest.Monk
     assert confirm.status_code == 200
     confirm_payload = confirm.json()
     assert confirm_payload["review_state"] == "CONFIRMED"
-    assert confirm_payload["phase"] == "GENERATING_SPECS"
+    assert confirm_payload["phase"] == "PLANNING_INTERACTIONS"
 
 
 def test_scene_review_rejects_revision_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:

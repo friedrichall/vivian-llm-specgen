@@ -124,7 +124,7 @@ def submit_scene_review_decision(
     job = job_manager.assert_job_exists(job_id)
     review_state = job_manager.submit_scene_decision(job_id, request)
     if request.confirmed:
-        job.phase = JobPhase.GENERATING_SPECS
+        job.phase = JobPhase.PLANNING_INTERACTIONS
     job_manager.write_meta(job=job)
     return SceneReviewDecisionResponse(
         job_id=job.job_id,

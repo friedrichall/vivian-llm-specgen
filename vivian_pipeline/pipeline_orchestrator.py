@@ -749,6 +749,7 @@ class PipelineOrchestrator:
         interaction_plan: InteractionPlan | None = None,
         fix_plan: FixPlan | None = None,
     ) -> InteractionElementsFile:
+        self._emit_phase("GENERATING_SPECS_INTERACTION_ELEMENTS")
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
@@ -821,6 +822,7 @@ class PipelineOrchestrator:
         interaction_plan: InteractionPlan | None = None,
         fix_plan: FixPlan | None = None,
     ) -> VisualizationElementsFile:
+        self._emit_phase("GENERATING_SPECS_VISUALIZATION_ELEMENTS")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
@@ -897,6 +899,7 @@ class PipelineOrchestrator:
         interaction_plan: InteractionPlan | None = None,
         fix_plan: FixPlan | None = None,
     ) -> StatesFile:
+        self._emit_phase("GENERATING_SPECS_STATES")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         visualization_subset = self._visualization_elements_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
@@ -967,6 +970,7 @@ class PipelineOrchestrator:
         interaction_plan: InteractionPlan | None = None,
         fix_plan: FixPlan | None = None,
     ) -> TransitionsFile:
+        self._emit_phase("GENERATING_SPECS_TRANSITIONS")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         state_names_subset = self._state_names_subset(registry_snapshot)
         _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
@@ -1095,7 +1099,6 @@ class PipelineOrchestrator:
                 apply_scene_feedback(scene_current, feedback)
 
             if decision.confirmed:
-                self._emit_phase("GENERATING_SPECS")
                 self._write_artifact(attempt_index, "scene_confirmed.json", scene_current)
                 return scene_current
 
@@ -1132,7 +1135,6 @@ class PipelineOrchestrator:
 
         if self.config.skip_scene_confirmation:
             LOGGER.info("Attempt %d: skip_scene_confirmation=True, using scene analysis directly", attempt_index)
-            self._emit_phase("GENERATING_SPECS")
             self._write_artifact(attempt_index, "scene_confirmed.json", scene_raw)
             self.scene_confirmed = scene_raw
             return scene_raw, "auto_confirmed"
@@ -1174,7 +1176,6 @@ class PipelineOrchestrator:
                 else None
             )
 
-            self._emit_phase("GENERATING_SPECS")
             if step == "interaction":
                 LOGGER.info("Attempt %d: rerun step interaction", attempt_index)
                 interaction_elements = await self.run_interaction_elements(
@@ -1350,6 +1351,7 @@ class PipelineOrchestrator:
         interaction_plan: InteractionPlan,
     ) -> FixPlan | None:
         """Run the fixer agent to produce a targeted FixPlan. Returns None on failure."""
+        self._emit_phase("GENERATING_FIX_PLAN")
         _errors_text = "\n".join(
             f"- [{stage}] {file_name}: {message}"
             for file_name, stage, message in validator_errors
@@ -1521,6 +1523,7 @@ class PipelineOrchestrator:
                     fix_plan=pending_fix_plan,
                 )
             except ElementNameMismatchError as exc:
+                self._emit_phase("DETERMINING_RETRY_SCOPE")
                 next_dirty_steps = expand_dirty_steps(
                     {exc.step}, active_steps=self.active_steps
                 )
@@ -1559,6 +1562,7 @@ class PipelineOrchestrator:
                     )
                     error_issues = [i for i in review.issues if i.severity == "error"]
                     if error_issues:
+                        self._emit_phase("DETERMINING_RETRY_SCOPE")
                         consistency_dirty = self._map_consistency_errors_to_dirty_steps(review)
                         consistency_dirty = expand_dirty_steps(
                             consistency_dirty, active_steps=self.active_steps
@@ -1639,6 +1643,7 @@ class PipelineOrchestrator:
                     interaction_plan=self.interaction_plan,
                 )
 
+            self._emit_phase("DETERMINING_RETRY_SCOPE")
             mapped_dirty_steps = map_errors_to_dirty_steps(validator_errors)
             next_dirty_steps = expand_dirty_steps(
                 mapped_dirty_steps, active_steps=self.active_steps
