@@ -96,7 +96,7 @@ class PipelineConfig:
         *,
         run_id: str | None = None,
         job_id: str | None = None,
-        max_attempts: int = 3,
+        max_attempts: int = 5,
         final_output_dir: Path | None = None,
         scene_dir: Path | None = None,
         publish_scene_review: PublishSceneReviewFn | None = None,
