@@ -41,6 +41,7 @@ from vivian_pipeline.models_funcspec.transitions import (
     Transition,
     TransitionsFile,
 )
+from vivian_pipeline.models_funcspec.visualization_arrays import VisualizationArraysFile
 from vivian_pipeline.models_funcspec.visualization_elements import (
     Animation,
     AppearingObject,
@@ -95,6 +96,7 @@ __all__ = [
     "ValueOfInteractionElementVisualization",
     "Vec2",
     "Vec3",
+    "VisualizationArraysFile",
     "VisualizationElement",
     "VisualizationElementsFile",
 ]

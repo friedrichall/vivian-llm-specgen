@@ -33,6 +33,9 @@ Planning transitions
 5.4. trigger_description should explain what triggers the transition in natural language (e.g., "User clicks the power button", "After 5 seconds timeout").
 5.5. Ensure every state is reachable from at least one other state (no orphan states), except for the initial state which may have no incoming transitions.
 5.6. Avoid creating dead-end states with no outgoing transitions unless they represent a terminal state.
+5.7. If a transition depends on an element attribute value (e.g., a rotary knob position or slider value), fill guard_hints with human-readable constraints that the downstream transitions agent should encode as guards. Each hint should specify the element name, attribute, operator, and threshold value. Example: ["RotaryButton VALUE <= 0.33 → short timeout", "RotaryButton VALUE > 0.66 → long timeout"].
+5.8. For elements with normalized value ranges (0.0–1.0), express thresholds in normalized values and note this in the hint. If the scene data includes value_normalized: true, always use normalized values.
+5.9. If no guards are needed for a transition, omit guard_hints or set it to null.
 
 Determining files_needed
 6.1. files_needed must list which FuncSpec files should actually be generated.

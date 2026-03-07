@@ -33,6 +33,7 @@ class PlannedTransition(StrictModel):
     destination_state: str
     trigger_element: str | None = None
     trigger_description: str
+    guard_hints: list[str] | None = None
 
 
 class InteractionPlan(StrictModel):

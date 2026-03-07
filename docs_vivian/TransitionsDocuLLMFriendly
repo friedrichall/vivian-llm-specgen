@@ -75,7 +75,7 @@ Event parameter guards
 8.2.2. "Operator": a string describing the comparison operator (for example, "LARGER", "SMALLER", "SMALLER_EQUALS").
 8.2.3. "CompareValue": the value to compare against (number or string, depending on the parameter).
 8.3. Example conceptual structure:
-8.3.1. {"EventParameter": "TOUCH_X_COORDINATE", "Operator": "LARGER", "CompareValue": 300}
+8.3.1. {"EventParameter": "TOUCH_X_COORDINATE", "Operator": "LARGER", "CompareValue": "300"}
 8.4. When the user specifies the operator and compare value, you must use them exactly as given.
 8.5. When the user does not specify them, you must choose clear, meaningful values and operators that reflect the described condition (for example, “x coordinate must be right of 300”).
 

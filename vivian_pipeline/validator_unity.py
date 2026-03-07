@@ -169,11 +169,11 @@ def _find_unity_editor_path() -> Optional[Path]:
 def _run_json_schema_validation(input_dir: Path, schema_path: Path) -> List[Dict[str, Any]]:
     """Validate generated JSON files against schema definitions and return errors."""
     files_to_defs = {
-        "InteractionElements.json": "InteractionElements",
-        "VisualizationElements.json": "VisualizationElements",
-        "VisualizationArrays.json": "VisualizationArrays",
-        "States.json": "States",
-        "Transitions.json": "Transitions",
+        "InteractionElements.json": "InteractionElementsFile",
+        "VisualizationElements.json": "VisualizationElementsFile",
+        "VisualizationArrays.json": "VisualizationArraysFile",
+        "States.json": "StatesFile",
+        "Transitions.json": "TransitionsFile",
     }
     errors: List[Dict[str, Any]] = []
 
