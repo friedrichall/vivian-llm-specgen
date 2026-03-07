@@ -192,7 +192,7 @@ async def cancel_job(job_id: str) -> CancelJobResponse:
 
 @api_router.post("/orchestrator/test", tags=["debug"])
 def run_orchestrator_test(
-    max_attempts: int = Query(default=1, ge=1),
+    max_attempts: int = Query(default=10, ge=1),
 ) -> dict[str, str | int | bool]:
     """Run the pipeline orchestrator directly for debugging."""
     LOGGER.info("POST /orchestrator/test max_attempts=%d", max_attempts)
