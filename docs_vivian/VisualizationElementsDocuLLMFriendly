@@ -65,12 +65,9 @@ AppearingObject configuration ("Type": "AppearingObject")
 7.2. For an AppearingObject element, you must include:
 7.2.1. "Type" with the value "AppearingObject".
 7.2.2. "Name" with a string identifier.
-7.3. You may optionally include a "Value" field:
-7.3.1. "Value" must be a numeric value, typically 1.0 for visible and 0.0 for hidden.
-7.4. If the user does not specify an initial visibility, you may omit "Value" and assume a default behavior as defined by the broader configuration.
-7.5. You must not add additional fields to an AppearingObject element unless explicitly requested.
-7.6. Example conceptual structure:
-7.6.1. {"Type": "AppearingObject", "Name": "CoverLid", "Value": 1.0}
+7.3. You must not add additional fields to an AppearingObject element unless explicitly requested. In particular, you must not include a "Value" field — this element type has no configurable fields beyond "Type" and "Name". The visibility of an AppearingObject is controlled exclusively through state conditions in States.json, not through VisualizationElements.json.
+7.4. Example conceptual structure:
+7.4.1. {"Type": "AppearingObject", "Name": "CoverLid"}
 
 SoundSource configuration ("Type": "SoundSource")
 8.1. A SoundSource visualization element represents an audio source attached to a model element.

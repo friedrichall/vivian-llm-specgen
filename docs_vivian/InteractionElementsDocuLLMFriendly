@@ -61,6 +61,7 @@ Slider configuration ("Type": "Slider")
 7.5. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 7.5.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 7.5.2. To make the slider initially non-interactive, include an object with "Attribute": "FIXED" and "Value": "true".
+7.5.3. To control whether the slider is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 7.6. You may optionally include "PositionResolution":
 7.6.1. If present, "PositionResolution" must be a positive integer representing the number of discrete positions the slider can take.
 7.6.2. If absent, the slider must be treated as having an effectively infinite (continuous) number of positions.
@@ -85,11 +86,12 @@ Rotatable configuration ("Type": "Rotatable")
 8.6. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 8.6.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 8.6.2. To prevent initial user interaction, include an object with "Attribute": "FIXED" and "Value": "true".
+8.6.3. To control whether the rotatable is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 8.7. You may optionally include "PositionResolution":
 8.7.1. If present, it must be a positive integer specifying the number of discrete rotation positions.
 8.7.2. If absent, the rotation must be treated as effectively continuous.
 8.8. You may optionally include "AllowsForInfiniteRotation":
-8.8.1. If present and set to true, you must ensure that the difference between "MaxRotation" and "MinRotation" is exactly 360.0.
+8.8.1. If present and set to true, you must ensure that the difference between "MaxRotation" and "MinRotation" is at least 360.0.
 8.8.2. If present and set to false, the rotation must be limited to the [MinRotation, MaxRotation] range.
 8.9. You may optionally include "TransitionTimeInMs":
 8.9.1. If present, it must be a non-negative integer representing the time in milliseconds for the Rotatable to transition to a new position defined by a state change.
@@ -130,7 +132,7 @@ Validation rules and conflict handling
 11.2. You must ensure that the top-level object contains exactly one key "Elements" and that its value is an array.
 11.3. You must ensure that every element in "Elements" has a valid "Type" and "Name".
 11.4. You must ensure that all required fields for each "Type" are present and correctly formatted.
-11.5. You must ensure that numeric ranges and constraints are respected (for example, values between 0.0 and 1.0, positive pixel resolutions, 360° range when "AllowsForInfiniteRotation" is true).
+11.5. You must ensure that numeric ranges and constraints are respected (for example, values between 0.0 and 1.0, positive pixel resolutions, at least 360° range when "AllowsForInfiniteRotation" is true).
 11.6. If user instructions conflict with these rules, you must either:
 11.6.1. Adjust the configuration to satisfy the Vivian specification while preserving the user’s intent as closely as possible, and clearly reflect the correct structure in the JSON you output; or
 11.6.2. Explain which constraints are violated and propose a corrected configuration that follows this policy, if you are asked to explain instead of outputting pure JSON.
