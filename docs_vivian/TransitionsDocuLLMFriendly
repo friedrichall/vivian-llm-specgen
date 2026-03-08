@@ -89,13 +89,18 @@ Interaction element attribute guards
 9.1. Use an interaction element attribute guard when the condition depends on an attribute of an interaction element (for example, value or position).
 9.2. An interaction element attribute guard object must include:
 9.2.1. "InteractionElement": a string naming the interaction element.
-9.2.2. "Attribute": a string naming the attribute (for example, "VALUE", "POSITION").
+9.2.2. "Attribute": a string naming the attribute. The complete and exhaustive list of valid values is:
+9.2.2.1. "VALUE": the element's current value. Used for Slider (normalized 0.0–1.0), Rotatable (normalized 0.0–1.0), and ToggleButton ("true" or "false"). You must NEVER use "ANGLE", "ROTATION", "DEGREES", or any other physical-unit attribute name for Rotatable elements — the correct attribute is always "VALUE".
+9.2.2.2. "POSITION": the current position of a Movable element, as a string "(x, y, z)".
+9.2.2.3. "FIXED": whether the element is currently locked ("true" or "false").
+9.2.2.4. "ENABLED": whether the element is currently interactable ("true" or "false").
 9.2.3. "Operator": a string describing the comparison operator. The complete and exhaustive list of valid values is: "LARGER", "LARGER_EQUALS", "EQUALS", "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER".
-9.2.4. "CompareValue": the value to compare against.
+9.2.4. "CompareValue": the value to compare against, always as a string.
 9.3. "CompareValue" must be formatted appropriately for the attribute:
-9.3.1. For "VALUE", it may be a numeric string or number (for example, "0.5" or 0.5) or another attribute form as defined by the framework.
-9.3.2. For "POSITION", it must be a string representing a 3D coordinate, for example: "(0.1, 0.0, 0.2)".
-9.3.3. For boolean attributes (for example, a fixed flag), it may be "true" or "false" as strings.
+9.3.1. For "VALUE" on Slider or Rotatable, it must be a numeric string between "0.0" and "1.0" (for example, "0.33", "0.5", "1.0"). Do not use degree values or raw position values.
+9.3.2. For "VALUE" on ToggleButton, it must be "true" or "false".
+9.3.3. For "POSITION", it must be a string representing a 3D coordinate, for example: "(0.1, 0.0, 0.2)".
+9.3.4. For "FIXED" or "ENABLED", it must be "true" or "false".
 9.4. Example conceptual structure:
 9.4.1. {"InteractionElement": "Slider", "Attribute": "VALUE", "Operator": "SMALLER_EQUALS", "CompareValue": "0.5"}
 9.5. You must not mix event parameter fields ("EventParameter") with interaction element fields ("InteractionElement", "Attribute") in the same guard object.

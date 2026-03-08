@@ -1,7 +1,7 @@
 /generated_specs
 /vivian-core
+/vivian-example-prototypes
 /tests/test_unityconnector_summary.py
-/vivian-windows-test-project/Packages/vivian-example-prototypes/Resources/Cubes
 /.env
 /scripts/dtos
 /scripts/openapi
