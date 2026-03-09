@@ -9,6 +9,7 @@ This page is auto-generated from the Pydantic model schema.
 | `scene_id` | `string | null` | no |  |
 | `source_file` | `string | null` | no |  |
 | `description` | `string | null` | no |  |
+| `interaction_description` | `string | null` | no |  |
 | `objects` | `array[ObjectEntry]` | no |  |
 | `relations` | `array[Relation]` | no |  |
 | `clusters` | `array[Cluster]` | no |  |

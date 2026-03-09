@@ -19,12 +19,13 @@ General rules for visualization elements
 4.1. Every visualization element object must contain a "Type" field.
 4.2. "Type" must be one of the following strings: "Light", "Screen", "AppearingObject", "SoundSource", "Animation", "Particles".
 4.3. Every visualization element object must contain a "Name" field.
-4.4. "Name" must be a string that uniquely identifies the visualization element within VisualizationElements.json.
-4.5. You must not create two visualization elements with the same "Name" in the same file.
-4.6. You must not add fields to a visualization element that are not described for its type in this policy, unless the user explicitly instructs you to extend the schema and acknowledges that this deviates from the Vivian specification.
-4.7. When vectors (such as planes) are required, you must use objects with keys "x", "y", and "z", each containing numeric values (for example: 0, 0.0, 1.0).
-4.8. When resolutions are required, you must use objects with keys "x" and "y", each containing positive integer values (for example: 800, 480).
-4.9. All numeric values must be valid JSON numbers (not strings), unless explicitly stated otherwise.
+4.4. "Name" must be a string copied verbatim and case-sensitively from the "name" field of the corresponding entry in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. You must not invent names, rename, abbreviate, add prefixes or suffixes, or paraphrase Unity object names. Only names that appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects are valid.
+4.5. "Name" must uniquely identify the visualization element within VisualizationElements.json.
+4.6. You must not create two visualization elements with the same "Name" in the same file.
+4.7. You must not add fields to a visualization element that are not described for its type in this policy, unless the user explicitly instructs you to extend the schema and acknowledges that this deviates from the Vivian specification.
+4.8. When vectors (such as planes) are required, you must use objects with keys "x", "y", and "z", each containing numeric values (for example: 0, 0.0, 1.0).
+4.9. When resolutions are required, you must use objects with keys "x" and "y", each containing positive integer values (for example: 800, 480).
+4.10. All numeric values must be valid JSON numbers (not strings), unless explicitly stated otherwise.
 
 Light configuration ("Type": "Light")
 5.1. A Light visualization element represents an emissive light source (for example, an LED or glow effect).
@@ -110,3 +111,11 @@ Validation rules and conflict handling
 11.6.1. Adjust the visualization element definitions to satisfy this specification while preserving the user’s intent as closely as possible; or
 11.6.2. If the user asks for an explanation instead of pure JSON, explain which constraints are violated and propose a corrected definition.
 11.7. When the user asks you to output VisualizationElements.json as file content, you must not include any additional natural language text; you must return only the JSON structure that satisfies all applicable rules in this policy.
+11.8. You must verify that every element "Name" in the output exactly matches one of the "name" values from CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. Any "Name" that does not appear in that list is invalid and must not appear in the output.
+
+Source of element names
+12.1. The authoritative source for all element "Name" values is the CONFIRMED_SCENE_UNDERSTANDING_JSON provided in the input, specifically the "name" field of each entry in the "objects" array.
+12.2. You must use the exact string from "objects[*].name" — character-for-character, including capitalisation, underscores, and spacing.
+12.3. You must not invent names, rename objects, use shortened versions, add prefixes or suffixes, or paraphrase Unity object names.
+12.4. You must not create an element whose "Name" does not appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects.
+12.5. Name consistency across files: names used here will be referenced by States.json and Transitions.json. A single typo or renamed element will break cross-file consistency. This makes exact name copying a strict requirement, not a suggestion.

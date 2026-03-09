@@ -1,5 +1,10 @@
 """Public exports for Vivian registry models_funcspec."""
 
+from vivian_pipeline.models_funcspec.consistency_review import (
+    ConsistencyIssue,
+    ConsistencyReviewResult,
+)
+from vivian_pipeline.models_funcspec.fix_plan import FixDirective, FixPlan
 from vivian_pipeline.models_funcspec.interaction_elements import (
     Button,
     InteractionElement,
@@ -11,6 +16,12 @@ from vivian_pipeline.models_funcspec.interaction_elements import (
     SnapPose,
     ToggleButton,
     TouchArea,
+)
+from vivian_pipeline.models_funcspec.interaction_plan import (
+    ElementRole,
+    InteractionPlan,
+    PlannedState,
+    PlannedTransition,
 )
 from vivian_pipeline.models_funcspec.registry import Registry, ScreensRegistry
 from vivian_pipeline.models_funcspec.shared import InitialAttributeValue, RGBA, Vec2, Vec3
@@ -46,7 +57,12 @@ __all__ = [
     "AppearingObject",
     "Button",
     "Condition",
+    "ConsistencyIssue",
+    "ConsistencyReviewResult",
+    "ElementRole",
     "EventParameterGuard",
+    "FixDirective",
+    "FixPlan",
     "FloatValueVisualization",
     "Guard",
     "InitialAttributeValue",
@@ -54,9 +70,12 @@ __all__ = [
     "InteractionElementAttributeGuard",
     "InteractionElementCondition",
     "InteractionElementsFile",
+    "InteractionPlan",
     "Light",
     "Movable",
     "Particles",
+    "PlannedState",
+    "PlannedTransition",
     "Registry",
     "RGBA",
     "Rotatable",

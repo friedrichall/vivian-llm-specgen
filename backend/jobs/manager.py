@@ -31,6 +31,7 @@ class JobManager:
         self._jobs: dict[str, JobInfo] = {}
         self.active_job_id: str | None = None
         self.active_stream_result: Any | None = None
+        self._active_task: asyncio.Task[None] | None = None
         self._cancel_requested_job_id: str | None = None
         self._scene_reviews: dict[str, SceneReviewPayload] = {}
         self._scene_review_states: dict[str, SceneReviewState] = {}
@@ -71,6 +72,7 @@ class JobManager:
             self._jobs[job_id] = job
             self.active_job_id = job_id
             self.active_stream_result = None
+            self._active_task = None
             self._cancel_requested_job_id = None
             self.write_meta(job=job, request_data=request_data)
             return job
@@ -105,6 +107,16 @@ class JobManager:
             return None
         return self.active_stream_result
 
+    def set_active_task(self, job_id: str, task: asyncio.Task[None]) -> None:
+        """Register the asyncio task handle for cancellation."""
+        if self.active_job_id == job_id:
+            self._active_task = task
+
+    def cancel_active_task(self, job_id: str) -> None:
+        """Cancel the asyncio task for an active job."""
+        if self.active_job_id == job_id and self._active_task is not None:
+            self._active_task.cancel()
+
     def request_cancel(self, job_id: str) -> bool:
         """Mark an active job as cancellation-requested."""
         if self.active_job_id != job_id:
@@ -126,6 +138,7 @@ class JobManager:
         if self.active_job_id == job_id:
             self.active_job_id = None
             self.active_stream_result = None
+            self._active_task = None
             self._cancel_requested_job_id = None
         self._scene_reviews.pop(job_id, None)
         self._scene_review_states.pop(job_id, None)

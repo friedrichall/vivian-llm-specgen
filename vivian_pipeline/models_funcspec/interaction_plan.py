@@ -1,0 +1,98 @@
+"""Pydantic models for the Interaction Planning stage output."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import model_validator
+
+from vivian_pipeline.models_funcspec.shared import StrictModel
+
+
+class ElementRole(StrictModel):
+    """Maps a scene object to its intended FuncSpec role."""
+
+    object_name: str
+    funcspec_type: str
+    category: Literal["interaction", "visualization"]
+    rationale: str
+
+
+class PlannedState(StrictModel):
+    """A state the system should have, with the elements involved."""
+
+    name: str
+    description: str
+    involved_elements: list[str]
+
+
+class PlannedTransition(StrictModel):
+    """A planned transition connecting two states."""
+
+    source_state: str
+    destination_state: str
+    trigger_element: str | None = None
+    trigger_description: str
+
+
+class InteractionPlan(StrictModel):
+    """Output of the interaction planner agent."""
+
+    element_roles: list[ElementRole]
+    planned_states: list[PlannedState]
+    planned_transitions: list[PlannedTransition]
+    files_needed: list[
+        Literal[
+            "InteractionElements",
+            "VisualizationElements",
+            "States",
+            "Transitions",
+        ]
+    ]
+    reasoning: str
+
+    @model_validator(mode="after")
+    def validate_plan_consistency(self) -> "InteractionPlan":
+        errors: list[str] = []
+        element_names = {er.object_name for er in self.element_roles}
+        state_names = {ps.name for ps in self.planned_states}
+
+        # Planned states must reference known element roles
+        for ps in self.planned_states:
+            for elem in ps.involved_elements:
+                if elem not in element_names:
+                    errors.append(
+                        f"PlannedState '{ps.name}' references unknown element '{elem}'."
+                    )
+
+        # Planned transitions must reference known states
+        for pt in self.planned_transitions:
+            if pt.source_state not in state_names:
+                errors.append(
+                    f"PlannedTransition references unknown source_state '{pt.source_state}'."
+                )
+            if pt.destination_state not in state_names:
+                errors.append(
+                    f"PlannedTransition references unknown destination_state '{pt.destination_state}'."
+                )
+            if pt.trigger_element is not None and pt.trigger_element not in element_names:
+                errors.append(
+                    f"PlannedTransition trigger_element '{pt.trigger_element}' not in element_roles."
+                )
+
+        # files_needed consistency: States requires elements, Transitions requires States
+        files = set(self.files_needed)
+        if "States" in files and not (
+            "InteractionElements" in files or "VisualizationElements" in files
+        ):
+            errors.append(
+                "files_needed includes 'States' but no element files."
+            )
+        if "Transitions" in files and "States" not in files:
+            errors.append(
+                "files_needed includes 'Transitions' but not 'States'."
+            )
+
+        if errors:
+            raise ValueError("\n".join(errors))
+        return self

@@ -113,3 +113,7 @@ Validation rules and error handling
 11.2.1. Adjust the transitions to satisfy this specification while preserving the user’s intent as closely as possible; or
 11.2.2. If the user asks for an explanation instead of pure JSON, explain which constraints are violated and propose a corrected transition definition.
 11.3. When the user asks you to output Transitions.json as a file content, you must not include any additional natural language text; you must return only the JSON structure that satisfies all applicable rules in this policy.
+11.4. Every "InteractionElement" value in a transition must exactly match (case-sensitively) a "Name" from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase interaction element names.
+11.5. Every guard's "InteractionElement" value must also exactly match a "Name" from the InteractionElements context. Do not invent names in guards either.
+11.6. All interaction element names used in Transitions.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in InteractionElements.json.
+11.7. If a transition or guard references an interaction element name that does not appear in the provided elements context, you must remove or correct that reference before outputting the file.

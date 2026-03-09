@@ -1,13 +1,12 @@
 """Background runner for executing run_vivian jobs."""
 
 import asyncio
-from collections.abc import Callable
+import textwrap
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from vivian_pipeline.agents_setup import build_vivian_prompt
 from vivian_pipeline.context import SceneReviewDecision
 from vivian_pipeline.pipeline_orchestrator import PipelineConfig, run_pipeline_async
 
@@ -73,12 +72,27 @@ def _resolve_path(raw_path: str, base_dir: Path | None = None) -> Path:
     return path.resolve()
 
 
+def _build_vivian_prompt(description: str, objects: dict[str, str]) -> str:
+    """Build the initial pipeline prompt from scene description and interaction objects."""
+    object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
+    return textwrap.dedent(
+        f"""
+        Create a complete Vivian FunctionalSpecification for the Unity scene below.
+
+        Scene description:
+        {description or "(no description provided)"}
+
+        Interaction objects (name -> interaction type):
+        {object_lines}
+        """
+    ).strip()
+
+
 async def _execute_pipeline(
     request_data: Mapping[str, Any],
     *,
     job: JobInfo,
     manager: JobManager,
-    on_stream_start: Callable[[Any], None] | None = None,
 ) -> str:
     """Prepare backend pipeline input and execute the deterministic orchestrator.
 
@@ -113,6 +127,10 @@ async def _execute_pipeline(
 
     start_pipeline = _coerce_bool(request_data.get("start_pipeline"), True)
     max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 3))
+    interaction_description = request_data.get("interaction_description") or None
+    skip_scene_confirmation = _coerce_bool(
+        request_data.get("skip_scene_confirmation"), False
+    )
 
     manifest_objects = manifest_data.get("objects", []) if manifest_data else []
     selected_manifest_objects = manifest_objects
@@ -155,7 +173,7 @@ async def _execute_pipeline(
             selected_manifest_objects=selected_manifest_objects,
         )
 
-        task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{build_vivian_prompt(description, batch_objects)}"
+        task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{_build_vivian_prompt(description, batch_objects)}"
         input_bundle = InputBundle(
             group_name=group,
             interaction_description=description,
@@ -222,8 +240,9 @@ async def _execute_pipeline(
             publish_scene_review=_publish_scene_review,
             await_scene_decision=_await_scene_decision,
             on_phase_change=_on_phase_change,
+            interaction_description=interaction_description,
+            skip_scene_confirmation=skip_scene_confirmation,
         )
-        _ = on_stream_start  # no streamed manager handle in orchestrator skeleton
         result = await run_pipeline_async(config=config, user_input=content)
         if not result.success:
             raise RuntimeError(
@@ -253,9 +272,6 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
         job.successful_attempt = None
         manager.write_meta(job=job)
 
-        def _on_stream_start(stream_result: Any) -> None:
-            manager.set_active_stream(job.job_id, stream_result)
-
         log_path = Path(job.log_path)
         cancelled_by_user = False
         try:
@@ -265,7 +281,6 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
                     request_data=request_data,
                     job=job,
                     manager=manager,
-                    on_stream_start=_on_stream_start,
                 )
                 print(f"[job:{job.job_id}] Run completed. output_path={output_path}")
 
@@ -281,6 +296,15 @@ async def run_job(job: JobInfo, request_data: Mapping[str, Any], manager: JobMan
                 job.phase = JobPhase.COMPLETED
                 job.output_path = output_path
                 job.error = None
+        except asyncio.CancelledError:
+            cancelled_by_user = True
+            job.status = JobStatus.CANCELLED
+            job.phase = JobPhase.CANCELLED
+            job.output_path = None
+            job.successful_attempt = None
+            job.error = "Cancelled by user."
+            with capture_job_output(log_path):
+                print(f"[job:{job.job_id}] Run cancelled by user.")
         except Exception as exc:  # pragma: no cover - defensive path
             if manager.is_cancel_requested(job.job_id):
                 cancelled_by_user = True

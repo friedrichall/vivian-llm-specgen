@@ -2,6 +2,7 @@
 
 from vivian_pipeline.rerun_policy import (
     expand_dirty_steps,
+    filter_errors_for_step,
     map_errors_to_dirty_steps,
     normalize_error_package,
 )
@@ -52,4 +53,25 @@ def test_expand_dirty_steps_expands_downstream() -> None:
         "states",
         "transitions",
     }
+
+
+def test_filter_errors_for_step_returns_matching_errors() -> None:
+    errors = [
+        ("States.json", "deserialize", "unknown state powerOff.state"),
+        ("Transitions.json", "schema", "invalid guard"),
+        ("InteractionElements.json", "schema", "missing field"),
+    ]
+    assert filter_errors_for_step(errors, "states") == [
+        ("States.json", "deserialize", "unknown state powerOff.state"),
+    ]
+    assert filter_errors_for_step(errors, "transitions") == [
+        ("Transitions.json", "schema", "invalid guard"),
+    ]
+
+
+def test_filter_errors_for_step_returns_empty_for_no_match() -> None:
+    errors = [("States.json", "deserialize", "some error")]
+    assert filter_errors_for_step(errors, "transitions") == []
+    assert filter_errors_for_step(errors, "unknown_step") == []
+    assert filter_errors_for_step([], "states") == []
 

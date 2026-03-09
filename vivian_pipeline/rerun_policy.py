@@ -52,13 +52,45 @@ def map_errors_to_dirty_steps(errors: list[tuple[str, str, str]]) -> set[str]:
     return dirty
 
 
-def expand_dirty_steps(dirty_steps: set[str]) -> set[str]:
-    """Expand dirty set so upstream invalidations include downstream steps."""
+def expand_dirty_steps(
+    dirty_steps: set[str],
+    active_steps: set[str] | None = None,
+) -> set[str]:
+    """Expand dirty set so upstream invalidations include downstream steps.
+
+    If *active_steps* is given, the expanded result is intersected with it so
+    that inactive (skipped) steps are never included.
+    """
     expanded = set(dirty_steps)
     for step in list(dirty_steps):
         if step not in STEP_ORDER:
             continue
         start_idx = STEP_ORDER.index(step)
         expanded.update(STEP_ORDER[start_idx:])
+    if active_steps is not None:
+        expanded &= active_steps
     return expanded
+
+
+STEP_TO_FILE_TOKEN: dict[str, str] = {
+    "interaction": "interactionelements",
+    "visualization": "visualizationelements",
+    "states": "states",
+    "transitions": "transitions",
+}
+
+
+def filter_errors_for_step(
+    errors: list[tuple[str, str, str]],
+    step: str,
+) -> list[tuple[str, str, str]]:
+    """Return only errors attributed to the given step's file."""
+    token = STEP_TO_FILE_TOKEN.get(step)
+    if not token:
+        return []
+    return [
+        (file_name, stage, message)
+        for file_name, stage, message in errors
+        if token in Path(file_name).name.lower().replace(".json", "")
+    ]
 

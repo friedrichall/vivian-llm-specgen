@@ -116,7 +116,7 @@ def test_unknown_job_returns_404() -> None:
 
 
 def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Cancel endpoint should cancel the active stream result."""
+    """Cancel endpoint should cancel the active asyncio task."""
     async def fake_run_job(job, request_data, manager) -> None:
         _ = (job, request_data, manager)
         return None
@@ -129,15 +129,15 @@ def test_cancel_endpoint_accepts_active_job(monkeypatch: pytest.MonkeyPatch) -> 
 
     cancelled = {"called": False}
 
-    class FakeStreamResult:
-        def cancel(self, mode: str = "immediate") -> None:
-            assert mode == "immediate"
+    class FakeTask:
+        def cancel(self) -> bool:
             cancelled["called"] = True
+            return True
 
     job = job_manager.assert_job_exists(job_id)
     job.status = JobStatus.RUNNING
     job_manager.active_job_id = job_id
-    job_manager.active_stream_result = FakeStreamResult()
+    job_manager._active_task = FakeTask()
 
     cancel = client.post(f"/v1/jobs/{job_id}/cancel")
     assert cancel.status_code == 202
@@ -380,7 +380,7 @@ def test_scene_review_flow_accepts_feedback_and_confirm(monkeypatch: pytest.Monk
     assert confirm.status_code == 200
     confirm_payload = confirm.json()
     assert confirm_payload["review_state"] == "CONFIRMED"
-    assert confirm_payload["phase"] == "GENERATING_SPECS"
+    assert confirm_payload["phase"] == "PLANNING_INTERACTIONS"
 
 
 def test_scene_review_rejects_revision_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:

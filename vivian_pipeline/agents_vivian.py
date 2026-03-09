@@ -2,15 +2,25 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 import json
 import sys
+import textwrap
 import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
+from agents import Agent
+from constants.agent_instructions import (
+    MANAGER_INSTRUCTIONS,
+    VISUALIZATION_ARRAYS_INSTRUCTIONS,
+)
 from model.output_type_FuncSpec import FunctionalSpecification
+from model.output_type_VisualizationArrays import VisualizationArrays
 from vivian_pipeline.agents_setup import (
-    build_manager_agent,
-    build_vivian_prompt,
+    BASE_MODEL,
+    interaction_elements_agent,
+    states_agent,
+    transitions_agent,
+    visualization_elements_agent,
 )
 from vivian_pipeline.context import (
     MOCK_SCENE_UNDERSTANDING_FILENAME,
@@ -40,6 +50,95 @@ from vivian_pipeline.validator_unity import (
     _unity_validator_source_path,
     _unity_validator_target_dir,
 )
+
+visualization_arrays_agent = Agent(
+    name="visualization_arrays_agent",
+    model=BASE_MODEL,
+    instructions=VISUALIZATION_ARRAYS_INSTRUCTIONS,
+    output_type=VisualizationArrays,
+)
+
+
+def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
+    """Build the manager prompt from scene description and interaction objects."""
+    object_lines = "\n".join(f"- {name}: {typ}" for name, typ in objects.items()) or "(none provided)"
+    return textwrap.dedent(
+        f"""
+        Create a complete Vivian FunctionalSpecification for the Unity scene below.
+
+        Scene description:
+        {description or "(no description provided)"}
+
+        Interaction objects (name -> interaction type):
+        {object_lines}
+        """
+    ).strip()
+
+
+def build_manager_agent(
+    *,
+    scene_analysis_tool: Any,
+    await_scene_confirmation: Any,
+    only_scene_analysis: bool = False,
+) -> Agent:
+    """Create the manager agent with scene and specification-generation tools.
+
+    Deprecated: Use PipelineOrchestrator for new backend job runs.
+    """
+
+    def _analysis_enabled(ctx: Any, _agent: Agent) -> bool:
+        state: VivianRunContext = ctx.context
+        return not state.scene_analysis_done and not state.scene_confirmed
+
+    def _confirm_enabled(ctx: Any, _agent: Agent) -> bool:
+        state: VivianRunContext = ctx.context
+        return state.scene_understanding is not None and not state.scene_confirmed
+
+    def _spec_tools_enabled(ctx: Any, _agent: Agent) -> bool:
+        state: VivianRunContext = ctx.context
+        return state.scene_confirmed and not state.only_scene_analysis
+
+    analysis_tool = scene_analysis_tool
+    analysis_tool.is_enabled = _analysis_enabled
+    confirmation_tool = await_scene_confirmation
+    confirmation_tool.is_enabled = _confirm_enabled
+
+    return Agent(
+        name="manager_agent",
+        model=BASE_MODEL,
+        instructions=MANAGER_INSTRUCTIONS,
+        tools=[
+            analysis_tool,
+            confirmation_tool,
+            interaction_elements_agent.as_tool(
+                tool_name="interaction_elements_JSON_generator",
+                tool_description="Generates the InteractionElements.json file based on the prototype description and existing elements.",
+                is_enabled=_spec_tools_enabled,
+            ),
+            transitions_agent.as_tool(
+                tool_name="transitions_JSON_generator",
+                tool_description="Generates the Transitions.json file based on the prototype description and existing elements.",
+                is_enabled=_spec_tools_enabled,
+            ),
+            states_agent.as_tool(
+                tool_name="states_JSON_generator",
+                tool_description="Generates the States.json file based on the prototype description and existing elements.",
+                is_enabled=_spec_tools_enabled,
+            ),
+            visualization_elements_agent.as_tool(
+                tool_name="visualization_elements_JSON_generator",
+                tool_description="Generates the VisualizationElements.json file based on the prototype description and existing elements.",
+                is_enabled=_spec_tools_enabled,
+            ),
+            visualization_arrays_agent.as_tool(
+                tool_name="visualization_arrays_JSON_generator",
+                tool_description="Generates the VisualizationArrays.json file based on the prototype description and existing elements.",
+                is_enabled=_spec_tools_enabled,
+            ),
+        ],
+        output_type=FunctionalSpecification if not only_scene_analysis else None,
+    )
+
 
 OUTPUT_DIR = Path("generated_specs")
 

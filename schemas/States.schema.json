@@ -40,15 +40,8 @@
                     "type": "string"
                 },
                 "Value": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "title": "Value"
+                    "title": "Value",
+                    "type": "string"
                 }
             },
             "required": [
