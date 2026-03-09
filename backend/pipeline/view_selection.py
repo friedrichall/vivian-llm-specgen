@@ -1,7 +1,7 @@
 """View selection and image collection utilities."""
 
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from backend.pipeline.models import ImagePayload, ObjectImageSelection
 from backend.pipeline.scene_io import get_view_file, get_view_name
@@ -91,36 +91,4 @@ def collect_images_for_objects(
 ) -> list[ObjectImageSelection]:
     """Collect image selections for all manifest objects."""
     return [collect_object_images(group_dir, manifest_object) for manifest_object in manifest_objects]
-
-
-def chunk_object_selections(
-    selections: list[ObjectImageSelection],
-    chunk_size: int,
-) -> list[list[ObjectImageSelection]]:
-    """Split object selections into fixed-size batches."""
-    if chunk_size <= 0:
-        return [selections]
-    return [selections[index : index + chunk_size] for index in range(0, len(selections), chunk_size)]
-
-
-def build_batch_object_interactions(
-    batch: list[ObjectImageSelection],
-    object_interactions: Mapping[str, str],
-    selected_manifest_objects: list[dict[str, Any]],
-) -> dict[str, str]:
-    """Build object interaction mapping for one batch."""
-    if batch:
-        return {
-            selection.object_name: object_interactions.get(selection.object_name, "")
-            for selection in batch
-        }
-    if object_interactions:
-        return dict(object_interactions)
-    if selected_manifest_objects:
-        return {
-            manifest_object.get("objectName", "UnnamedObject"): ""
-            for manifest_object in selected_manifest_objects
-            if isinstance(manifest_object, dict)
-        }
-    return {}
 
