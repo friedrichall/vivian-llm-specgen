@@ -84,7 +84,7 @@
    9.2. An `InteractionElementCondition` object must have the following fields:
    9.2.1. `"Type"`: must be the string `"InteractionElementCondition"`.
    9.2.2. `"InteractionElement"`: the name (string) of the target interaction element.
-   9.2.3. `"Attribute"`: must be one of the strings `"VALUE"`, `"POSITION"`, `"ROTATION"`, `"ENABLED"`, or `"FIXED"`.
+   9.2.3. `"Attribute"`: must be one of the strings `"VALUE"`, `"POSITION"`, `"ROTATION"`, or `"FIXED"`.
    9.2.4. `"Value"`:
    9.2.4.1. Must always be a JSON string (for example, `"true"`, `"0.2"`, or a coordinate string).
    9.2.4.2. Or may be the name (string) of another element whose value is referenced.
@@ -94,15 +94,12 @@
    9.4.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
    9.5. When `"Attribute"` is `"ROTATION"`:
    9.5.1. `"Value"` must be a string representing Euler angles in degrees, in the format `"(rx,ry,rz)"` (for example, `"(0,90,0)"`).
-   9.6. When `"Attribute"` is `"ENABLED"`:
-   9.6.1. `"Value"` must be `"true"` or `"false"` as a string, controlling whether the element is interactable.
-   9.7. When `"Attribute"` is `"FIXED"`:
-   9.7.1. `"Value"` must be `"true"` or `"false"` as a string, fixing the element in place and preventing user interaction.
+   9.6. When `"Attribute"` is `"FIXED"`:
+   9.6.1. `"Value"` must be `"true"` or `"false"` as a string, fixing the element in place and preventing user interaction.
    9.8. Example structures (conceptual):
    9.8.1. `{ "Type": "InteractionElementCondition", "InteractionElement": "Door", "Attribute": "FIXED", "Value": "false" }`
    9.8.2. `{ "Type": "InteractionElementCondition", "InteractionElement": "Slider2", "Attribute": "VALUE", "Value": "Slider1" }`
    9.8.3. `{ "Type": "InteractionElementCondition", "InteractionElement": "ObjectX", "Attribute": "POSITION", "Value": "(0.2,0.0,0.5)" }`
-   9.8.4. `{ "Type": "InteractionElementCondition", "InteractionElement": "Knob", "Attribute": "ENABLED", "Value": "false" }`
 
 10. **Combining multiple conditions in a state**
    10.1. You may include multiple conditions in the `"Conditions"` array of a state.

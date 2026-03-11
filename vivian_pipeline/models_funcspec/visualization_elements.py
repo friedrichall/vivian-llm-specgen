@@ -25,7 +25,6 @@ class Screen(StrictModel):
 class AppearingObject(StrictModel):
     Type: Literal["AppearingObject"]
     Name: str
-    Value: float | None = None
 
 
 class SoundSource(StrictModel):

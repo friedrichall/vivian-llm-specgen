@@ -15,10 +15,24 @@ class FloatValueVisualization(StrictModel):
     Value: float
 
 
+class FileVisualization(StrictModel):
+    Type: Literal["FileVisualization"]
+    VisualizationElement: str
+    FileName: str
+
+
+class TextOverlay(StrictModel):
+    Text: str
+    Size: int = Field(ge=1)
+    Position: str
+    Color: str
+
+
 class ScreenContentVisualization(StrictModel):
     Type: Literal["ScreenContentVisualization"]
     VisualizationElement: str
     FileName: str
+    Texts: list[TextOverlay] | None = None
 
 
 class ValueOfInteractionElementVisualization(StrictModel):
@@ -30,12 +44,13 @@ class ValueOfInteractionElementVisualization(StrictModel):
 class InteractionElementCondition(StrictModel):
     Type: Literal["InteractionElementCondition"]
     InteractionElement: str
-    Attribute: Literal["FIXED", "VALUE", "POSITION"]
+    Attribute: Literal["FIXED", "VALUE", "POSITION", "ROTATION"]
     Value: str
 
 
 Condition = Annotated[
     FloatValueVisualization
+    | FileVisualization
     | ScreenContentVisualization
     | ValueOfInteractionElementVisualization
     | InteractionElementCondition,

@@ -41,7 +41,7 @@ class Slider(StrictModel):
     MinPosition: Vec3
     MaxPosition: Vec3
     InitialAttributeValues: list[InitialAttributeValue] | None = None
-    PositionResolution: int | None = Field(default=None, ge=1)
+    PositionResolution: int | None = Field(default=None, ge=2)
     TransitionTimeInMs: int | None = Field(default=None, ge=0)
 
 
@@ -57,17 +57,17 @@ class Rotatable(StrictModel):
     MaxRotation: float
     RotationAxis: RotationAxis
     InitialAttributeValues: list[InitialAttributeValue] | None = None
-    PositionResolution: int | None = Field(default=None, ge=1)
+    PositionResolution: int | None = Field(default=None, ge=2)
     AllowsForInfiniteRotation: bool | None = None
     TransitionTimeInMs: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_infinite_rotation_span(self) -> "Rotatable":
         if self.AllowsForInfiniteRotation is True:
-            if (self.MaxRotation - self.MinRotation) != 360.0:
+            if (self.MaxRotation - self.MinRotation) < 360.0:
                 raise ValueError(
                     "When AllowsForInfiniteRotation is true, "
-                    "(MaxRotation - MinRotation) must equal 360.0."
+                    "(MaxRotation - MinRotation) must be at least 360.0."
                 )
         return self
 

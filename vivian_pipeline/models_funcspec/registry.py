@@ -7,6 +7,7 @@ from pydantic import Field, model_validator
 from vivian_pipeline.models_funcspec.interaction_elements import InteractionElementsFile
 from vivian_pipeline.models_funcspec.shared import StrictModel
 from vivian_pipeline.models_funcspec.states import (
+    FileVisualization,
     FloatValueVisualization,
     InteractionElementCondition,
     ScreenContentVisualization,
@@ -70,6 +71,7 @@ class Registry(StrictModel):
                         condition,
                         (
                             FloatValueVisualization,
+                            FileVisualization,
                             ScreenContentVisualization,
                             ValueOfInteractionElementVisualization,
                         ),

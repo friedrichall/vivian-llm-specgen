@@ -74,9 +74,8 @@ Slider configuration ("Type": "Slider")
 7.5. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 7.5.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 7.5.2. To make the slider initially non-interactive, include an object with "Attribute": "FIXED" and "Value": "true".
-7.5.3. To control whether the slider is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 7.6. You may optionally include "PositionResolution":
-7.6.1. If present, "PositionResolution" must be a positive integer representing the number of discrete positions the slider can take.
+7.6.1. If present, "PositionResolution" must be an integer of at least 2 representing the number of discrete positions the slider can take.
 7.6.2. If absent, the slider must be treated as having an effectively infinite (continuous) number of positions.
 7.6.3. For sliders that physically latch or snap to a fixed number of positions (e.g. a toaster
        handle that is either fully up or fully down), set "PositionResolution" to the number of
@@ -107,9 +106,8 @@ Rotatable configuration ("Type": "Rotatable")
 8.6. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 8.6.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 8.6.2. To prevent initial user interaction, include an object with "Attribute": "FIXED" and "Value": "true".
-8.6.3. To control whether the rotatable is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 8.7. You may optionally include "PositionResolution":
-8.7.1. If present, it must be a positive integer specifying the number of discrete rotation positions.
+8.7.1. If present, it must be an integer of at least 2 specifying the number of discrete rotation positions.
 8.7.2. If absent, the rotation must be treated as effectively continuous.
 8.8. You may optionally include "AllowsForInfiniteRotation":
 8.8.1. If present and set to true, you must ensure that the difference between "MaxRotation" and "MinRotation" is at least 360.0.
@@ -127,6 +125,7 @@ TouchArea configuration ("Type": "TouchArea")
 9.2.3. "Plane" as an object { "x": number, "y": number, "z": number } representing the normal vector of the surface relative to the object.
 9.2.4. "Resolution" as an object { "x": width, "y": height } where width and height are positive integers in pixels.
 9.3. You must not add additional fields to TouchArea unless explicitly requested.
+9.3.1. PREREQUISITE: The named Unity GameObject must have a mesh (MeshFilter component on itself or its children). A TouchArea without a MeshFilter will throw an exception during prototype initialization.
 9.4. Example structure (conceptual):
 9.4.1. {"Type": "TouchArea", "Name": "Screen", "Plane": {"x": 0, "y": 0, "z": 1}, "Resolution": {"x": 800, "y": 480}}
 
