@@ -27,12 +27,9 @@ from backend.pipeline.scene_io import (
 )
 from backend.pipeline.settings import (
     IMAGE_ANALYSIS_TASK,
-    MAX_OBJECTS_PER_RUN,
     SEND_IMAGES_TO_AGENT,
 )
 from backend.pipeline.view_selection import (
-    build_batch_object_interactions,
-    chunk_object_selections,
     collect_images_for_objects,
 )
 
@@ -156,99 +153,95 @@ async def _execute_pipeline(
         skip_images_note = "Image uploads skipped because start_pipeline is false."
 
     fs_dir = (group_path / "FunctionalSpecification").resolve()
-    batches = (
-        chunk_object_selections(object_selections, MAX_OBJECTS_PER_RUN)
-        if object_selections
-        else [[]]
-    )
     if not start_pipeline:
         print("[pipeline] start_pipeline=false; skipping orchestrator execution.")
         return str(fs_dir.resolve())
 
-    for batch_index, batch in enumerate(batches, start=1):
-        batch_images = [image for selection in batch for image in selection.images]
-        batch_objects = build_batch_object_interactions(
-            batch=batch,
-            object_interactions=object_interactions,
-            selected_manifest_objects=selected_manifest_objects,
-        )
+    all_images = [image for selection in object_selections for image in selection.images]
+    all_objects: dict[str, str] = (
+        dict(object_interactions)
+        if object_interactions
+        else {
+            manifest_object.get("objectName", "UnnamedObject"): ""
+            for manifest_object in selected_manifest_objects
+            if isinstance(manifest_object, dict)
+        }
+    )
 
-        task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{_build_vivian_prompt(description, batch_objects)}"
-        input_bundle = InputBundle(
-            group_name=group,
-            interaction_description=description,
-            scene_json_text=scene_json_text,
-            views_manifest_text=views_manifest_text,
-            images=batch_images,
-        )
-        content = build_input_items(
-            task_text=task_text,
-            bundle=input_bundle,
-            use_uploads=include_images,
-            include_images=include_images,
-            skip_images_note=skip_images_note,
-        )
+    task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{_build_vivian_prompt(description, all_objects)}"
+    input_bundle = InputBundle(
+        group_name=group,
+        interaction_description=description,
+        scene_json_text=scene_json_text,
+        views_manifest_text=views_manifest_text,
+        images=all_images,
+    )
+    content = build_input_items(
+        task_text=task_text,
+        bundle=input_bundle,
+        use_uploads=include_images,
+        include_images=include_images,
+        skip_images_note=skip_images_note,
+    )
 
-        def _on_phase_change(phase_name: str) -> None:
-            manager.update_phase(job.job_id, JobPhase(phase_name))
-            manager.write_meta(job=job)
+    def _on_phase_change(phase_name: str) -> None:
+        manager.update_phase(job.job_id, JobPhase(phase_name))
+        manager.write_meta(job=job)
 
-        def _publish_scene_review(
-            revision: int,
-            summary: str,
-            scene_understanding: dict[str, Any],
-        ) -> None:
-            manager.publish_scene_review(
-                job_id=job.job_id,
-                payload=SceneReviewPayload(
-                    revision=revision,
-                    summary=summary,
-                    scene_understanding=scene_understanding,
-                    updated_at=datetime.now(timezone.utc),
-                ),
-            )
-            manager.update_phase(job.job_id, JobPhase.AWAITING_SCENE_CONFIRMATION)
-            manager.write_meta(job=job)
-
-        async def _await_scene_decision(revision: int) -> SceneReviewDecision:
-            while True:
-                if manager.is_cancel_requested(job.job_id):
-                    raise asyncio.CancelledError("Cancelled by user.")
-                try:
-                    decision = await asyncio.wait_for(
-                        manager.await_scene_decision(
-                            job_id=job.job_id,
-                            expected_revision=revision,
-                        ),
-                        timeout=0.5,
-                    )
-                except asyncio.TimeoutError:
-                    continue
-                return SceneReviewDecision(
-                    revision=decision.revision,
-                    confirmed=decision.confirmed,
-                    feedback=decision.feedback,
-                )
-
-        run_id = job.job_id if len(batches) == 1 else f"{job.job_id}-batch-{batch_index}"
-        config = PipelineConfig.default(
-            run_id=run_id,
+    def _publish_scene_review(
+        revision: int,
+        summary: str,
+        scene_understanding: dict[str, Any],
+    ) -> None:
+        manager.publish_scene_review(
             job_id=job.job_id,
-            max_attempts=max_attempts,
-            final_output_dir=fs_dir,
-            scene_dir=scene_dir,
-            publish_scene_review=_publish_scene_review,
-            await_scene_decision=_await_scene_decision,
-            on_phase_change=_on_phase_change,
-            interaction_description=interaction_description,
-            skip_scene_confirmation=skip_scene_confirmation,
+            payload=SceneReviewPayload(
+                revision=revision,
+                summary=summary,
+                scene_understanding=scene_understanding,
+                updated_at=datetime.now(timezone.utc),
+            ),
         )
-        result = await run_pipeline_async(config=config, user_input=content)
-        if not result.success:
-            raise RuntimeError(
-                f"PipelineOrchestrator failed to confirm scene within {result.max_attempts} attempts."
+        manager.update_phase(job.job_id, JobPhase.AWAITING_SCENE_CONFIRMATION)
+        manager.write_meta(job=job)
+
+    async def _await_scene_decision(revision: int) -> SceneReviewDecision:
+        while True:
+            if manager.is_cancel_requested(job.job_id):
+                raise asyncio.CancelledError("Cancelled by user.")
+            try:
+                decision = await asyncio.wait_for(
+                    manager.await_scene_decision(
+                        job_id=job.job_id,
+                        expected_revision=revision,
+                    ),
+                    timeout=0.5,
+                )
+            except asyncio.TimeoutError:
+                continue
+            return SceneReviewDecision(
+                revision=decision.revision,
+                confirmed=decision.confirmed,
+                feedback=decision.feedback,
             )
-        job.successful_attempt = result.attempts_completed
+
+    config = PipelineConfig.default(
+        run_id=job.job_id,
+        max_attempts=max_attempts,
+        final_output_dir=fs_dir,
+        scene_dir=scene_dir,
+        publish_scene_review=_publish_scene_review,
+        await_scene_decision=_await_scene_decision,
+        on_phase_change=_on_phase_change,
+        interaction_description=interaction_description,
+        skip_scene_confirmation=skip_scene_confirmation,
+    )
+    result = await run_pipeline_async(config=config, user_input=content)
+    if not result.success:
+        raise RuntimeError(
+            f"PipelineOrchestrator failed to confirm scene within {result.max_attempts} attempts."
+        )
+    job.successful_attempt = result.attempts_completed
 
     return str(fs_dir.resolve())
 

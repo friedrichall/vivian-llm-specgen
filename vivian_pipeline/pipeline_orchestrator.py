@@ -82,7 +82,6 @@ class PipelineConfig:
     paths: PipelinePaths
     max_attempts: int
     run_id: str
-    job_id: str | None = None
     final_output_dir: Path | None = None
     scene_dir: Path | None = None
     publish_scene_review: PublishSceneReviewFn | None = None
@@ -96,8 +95,7 @@ class PipelineConfig:
         cls,
         *,
         run_id: str | None = None,
-        job_id: str | None = None,
-        max_attempts: int = 10,
+        max_attempts: int = 3,
         final_output_dir: Path | None = None,
         scene_dir: Path | None = None,
         publish_scene_review: PublishSceneReviewFn | None = None,
@@ -106,10 +104,9 @@ class PipelineConfig:
         interaction_description: str | None = None,
         skip_scene_confirmation: bool = False,
     ) -> "PipelineConfig":
-        resolved_run_id = (run_id or job_id or "orchestrator-run").strip()
+        resolved_run_id = (run_id or "orchestrator-run").strip()
         if not resolved_run_id:
             raise ValueError("run_id must not be empty.")
-        resolved_job_id = (job_id or resolved_run_id).strip()
         workspace_root = Path.cwd().resolve()
         return cls(
             paths=PipelinePaths(
@@ -118,7 +115,6 @@ class PipelineConfig:
             ),
             max_attempts=max_attempts,
             run_id=resolved_run_id,
-            job_id=resolved_job_id,
             final_output_dir=final_output_dir,
             scene_dir=scene_dir,
             publish_scene_review=publish_scene_review,
@@ -133,7 +129,6 @@ class PipelineConfig:
 class PipelineRunResult:
     success: bool
     run_id: str
-    job_id: str | None
     max_attempts: int
     attempts_completed: int
 
@@ -200,7 +195,6 @@ class PipelineOrchestrator:
             "seq": self._registry_change_seq,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "run_id": self.config.run_id,
-            "job_id": self.config.job_id,
             "attempt_index": attempt_index,
             "reason": reason,
             "registry": self.registry.model_dump(),
@@ -219,7 +213,7 @@ class PipelineOrchestrator:
         return self._attempt_root(attempt_index) / "artifacts" / filename
 
     def _emit_phase(self, phase_name: str) -> None:
-        LOGGER.info("phase=%s run_id=%s job_id=%s", phase_name, self.config.run_id, self.config.job_id)
+        LOGGER.info("phase=%s run_id=%s", phase_name, self.config.run_id)
         callback = self.config.on_phase_change
         if callback is not None:
             callback(phase_name)
@@ -241,7 +235,6 @@ class PipelineOrchestrator:
     def _write_run_meta(self) -> None:
         payload = {
             "run_id": self.config.run_id,
-            "job_id": self.config.job_id,
             "max_attempts": self.config.max_attempts,
         }
         path = self.run_root / "run_meta.json"
@@ -282,7 +275,6 @@ class PipelineOrchestrator:
         tool_version = getattr(scene_analysis_tool, "version", None)
         payload = {
             "run_id": self.config.run_id,
-            "job_id": self.config.job_id,
             "attempt_index": attempt_index,
             "started_at_utc": started_at.isoformat(),
             "finished_at_utc": finished_at.isoformat(),
@@ -1062,7 +1054,6 @@ class PipelineOrchestrator:
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             get_response_shape = {
-                "job_id": self.config.job_id,
                 "status": "RUNNING",
                 "phase": "AWAITING_SCENE_CONFIRMATION",
                 "review_state": "PENDING",
@@ -1454,9 +1445,8 @@ class PipelineOrchestrator:
     ) -> PipelineRunResult:
         LOGGER.info("Starting deterministic pipeline run (attempt-loop skeleton).")
         LOGGER.info(
-            "run_id=%s job_id=%s max_attempts=%d",
+            "run_id=%s max_attempts=%d",
             self.config.run_id,
-            self.config.job_id,
             self.config.max_attempts,
         )
         LOGGER.info("run_root=%s", self.run_root)
@@ -1630,7 +1620,6 @@ class PipelineOrchestrator:
                 return PipelineRunResult(
                     success=True,
                     run_id=self.config.run_id,
-                    job_id=self.config.job_id,
                     max_attempts=self.config.max_attempts,
                     attempts_completed=attempts_completed,
                 )
@@ -1680,7 +1669,6 @@ class PipelineOrchestrator:
         return PipelineRunResult(
             success=False,
             run_id=self.config.run_id,
-            job_id=self.config.job_id,
             max_attempts=self.config.max_attempts,
             attempts_completed=attempts_completed,
         )
