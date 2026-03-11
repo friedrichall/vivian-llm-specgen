@@ -362,3 +362,143 @@ def test_pipeline_config_new_fields_defaults():
     config = PipelineConfig.default(run_id="test")
     assert config.interaction_description is None
     assert config.skip_scene_confirmation is False
+
+
+# ---------------------------------------------------------------------------
+# Guard models (no Type field, discriminated by field presence via extra=forbid)
+# ---------------------------------------------------------------------------
+
+def test_event_parameter_guard_valid():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    g = EventParameterGuard(
+        EventParameter="TOUCH_X_COORDINATE",
+        Operator="LARGER",
+        CompareValue="300",
+    )
+    assert g.EventParameter == "TOUCH_X_COORDINATE"
+    assert g.CompareValue == "300"
+
+
+def test_interaction_element_attribute_guard_valid():
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    g = InteractionElementAttributeGuard(
+        InteractionElement="Slider",
+        Attribute="VALUE",
+        Operator="SMALLER_EQUALS",
+        CompareValue="0.5",
+    )
+    assert g.InteractionElement == "Slider"
+
+
+def test_event_parameter_guard_rejects_type_field():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            Type="EventParameterGuard",
+            EventParameter="TOUCH_X_COORDINATE",
+            Operator="LARGER",
+            CompareValue="300",
+        )
+
+
+def test_interaction_element_attribute_guard_rejects_type_field():
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            Type="InteractionElementAttributeGuard",
+            InteractionElement="Slider",
+            Attribute="VALUE",
+            Operator="SMALLER_EQUALS",
+            CompareValue="0.5",
+        )
+
+
+def test_compare_value_must_be_string():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            EventParameter="TOUCH_X_COORDINATE",
+            Operator="LARGER",
+            CompareValue=300,
+        )
+
+
+def test_guard_union_discriminates_by_field_presence():
+    from vivian_pipeline.models_funcspec.transitions import Transition
+    t = Transition(
+        SourceState="Idle",
+        DestinationState="Active",
+        InteractionElement="TouchArea",
+        Event="TOUCH_END",
+        Guards=[
+            {
+                "EventParameter": "TOUCH_X_COORDINATE",
+                "Operator": "LARGER",
+                "CompareValue": "300",
+            },
+            {
+                "InteractionElement": "Slider",
+                "Attribute": "VALUE",
+                "Operator": "SMALLER_EQUALS",
+                "CompareValue": "0.5",
+            },
+        ],
+    )
+    assert len(t.Guards) == 2
+    assert hasattr(t.Guards[0], "EventParameter")
+    assert hasattr(t.Guards[1], "InteractionElement")
+
+
+def test_transition_with_guards_roundtrip():
+    from vivian_pipeline.models_funcspec.transitions import (
+        Transition,
+        TransitionsFile,
+        EventParameterGuard,
+        InteractionElementAttributeGuard,
+    )
+    t = Transition(
+        SourceState="Idle",
+        DestinationState="Active",
+        InteractionElement="TouchArea",
+        Event="TOUCH_END",
+        Guards=[
+            EventParameterGuard(
+                EventParameter="TOUCH_X_COORDINATE",
+                Operator="LARGER",
+                CompareValue="300",
+            ),
+            InteractionElementAttributeGuard(
+                InteractionElement="Slider",
+                Attribute="VALUE",
+                Operator="SMALLER_EQUALS",
+                CompareValue="0.5",
+            ),
+        ],
+    )
+    data = TransitionsFile(Transitions=[t]).model_dump()
+    reloaded = TransitionsFile.model_validate(data)
+    assert len(reloaded.Transitions[0].Guards) == 2
+
+
+# ---------------------------------------------------------------------------
+# PlannedTransition guard_hints (Fix 4 verification)
+# ---------------------------------------------------------------------------
+
+def test_planned_transition_guard_hints():
+    pt = PlannedTransition(
+        source_state="Off",
+        destination_state="On",
+        trigger_element="ButtonA",
+        trigger_description="Click button",
+        guard_hints=["RotaryButton VALUE <= 0.33 → short timeout"],
+    )
+    assert pt.guard_hints == ["RotaryButton VALUE <= 0.33 → short timeout"]
+
+
+def test_planned_transition_guard_hints_default_none():
+    pt = PlannedTransition(
+        source_state="Off",
+        destination_state="On",
+        trigger_description="Click button",
+    )
+    assert pt.guard_hints is None

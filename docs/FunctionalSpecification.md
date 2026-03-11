@@ -6,11 +6,11 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `interaction_elements` | `InteractionElements` | yes |  |
-| `visualization_elements` | `VisualizationElements` | yes |  |
-| `visualization_arrays` | `VisualizationArrays` | yes |  |
-| `states` | `States` | yes |  |
-| `transitions` | `Transitions` | yes |  |
+| `interaction_elements` | `InteractionElementsFile` | yes |  |
+| `visualization_elements` | `VisualizationElementsFile` | yes |  |
+| `visualization_arrays` | `VisualizationArraysFile` | yes |  |
+| `states` | `StatesFile` | yes |  |
+| `transitions` | `TransitionsFile` | yes |  |
 
 ## Types / Elements
 
@@ -18,48 +18,31 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Animation'` | yes |  |
+| `Name` | `string` | yes |  |
 
 ### AppearingObject
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'AppearingObject'` | yes |  |
+| `Name` | `string` | yes |  |
 | `Value` | `number | null` | no |  |
-
-### AttributeValue
-
-| Field | Type | Required? | Description |
-|---|---|---|---|
-| `Attribute` | `string` | yes |  |
-| `Value` | `string` | yes |  |
 
 ### Button
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Button'` | yes |  |
-
-### ColorRGBA
-
-| Field | Type | Required? | Description |
-|---|---|---|---|
-| `r` | `number` | yes |  |
-| `g` | `number` | yes |  |
-| `b` | `number` | yes |  |
-| `a` | `number` | yes |  |
+| `Name` | `string` | yes |  |
 
 ### EventParameterGuard
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Type` | `'EventParameterGuard'` | yes |  |
 | `EventParameter` | `string` | yes |  |
 | `Operator` | `string` | yes |  |
-| `CompareValue` | `integer | number | string` | yes |  |
+| `CompareValue` | `string` | yes |  |
 
 ### FloatValueVisualization
 
@@ -69,11 +52,17 @@ This page is auto-generated from the Pydantic model schema.
 | `VisualizationElement` | `string` | yes |  |
 | `Value` | `number` | yes |  |
 
+### InitialAttributeValue
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `Attribute` | `enum('VALUE', 'FIXED', 'POSITION', 'ROTATION')` | yes |  |
+| `Value` | `string` | yes |  |
+
 ### InteractionElementAttributeGuard
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Type` | `'InteractionElementAttributeGuard'` | yes |  |
 | `InteractionElement` | `string` | yes |  |
 | `Attribute` | `string` | yes |  |
 | `Operator` | `string` | yes |  |
@@ -85,10 +74,10 @@ This page is auto-generated from the Pydantic model schema.
 |---|---|---|---|
 | `Type` | `'InteractionElementCondition'` | yes |  |
 | `InteractionElement` | `string` | yes |  |
-| `Attribute` | `string` | yes |  |
+| `Attribute` | `enum('FIXED', 'VALUE', 'POSITION')` | yes |  |
 | `Value` | `string` | yes |  |
 
-### InteractionElements
+### InteractionElementsFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
@@ -98,44 +87,46 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Light'` | yes |  |
-| `EmissionColor` | `ColorRGBA` | yes |  |
+| `Name` | `string` | yes |  |
+| `EmissionColor` | `RGBA` | yes |  |
 
 ### Movable
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Movable'` | yes |  |
-| `InitialAttributeValues` | `array[AttributeValue] | null` | no |  |
-| `SnapPoses` | `array[SnapPose] | null` | no |  |
+| `Name` | `string` | yes |  |
+| `InitialAttributeValues` | `array[InitialAttributeValue]` | yes |  |
+| `SnapPoses` | `array[SnapPose]` | yes |  |
 | `TransitionTimeInMs` | `integer | null` | no |  |
 
 ### Particles
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Particles'` | yes |  |
+| `Name` | `string` | yes |  |
 
-### Resolution
+### RGBA
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `x` | `integer` | yes |  |
-| `y` | `integer` | yes |  |
+| `r` | `number` | yes |  |
+| `g` | `number` | yes |  |
+| `b` | `number` | yes |  |
+| `a` | `number` | yes |  |
 
 ### Rotatable
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Rotatable'` | yes |  |
+| `Name` | `string` | yes |  |
 | `MinRotation` | `number` | yes |  |
 | `MaxRotation` | `number` | yes |  |
 | `RotationAxis` | `RotationAxis` | yes |  |
-| `InitialAttributeValues` | `array[AttributeValue] | null` | no |  |
+| `InitialAttributeValues` | `array[InitialAttributeValue] | null` | no |  |
 | `PositionResolution` | `integer | null` | no |  |
 | `AllowsForInfiniteRotation` | `boolean | null` | no |  |
 | `TransitionTimeInMs` | `integer | null` | no |  |
@@ -151,10 +142,10 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Screen'` | yes |  |
+| `Name` | `string` | yes |  |
 | `Plane` | `Vec3` | yes |  |
-| `Resolution` | `Resolution` | yes |  |
+| `Resolution` | `Vec2` | yes |  |
 
 ### ScreenContentVisualization
 
@@ -168,11 +159,11 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'Slider'` | yes |  |
+| `Name` | `string` | yes |  |
 | `MinPosition` | `Vec3` | yes |  |
 | `MaxPosition` | `Vec3` | yes |  |
-| `InitialAttributeValues` | `array[AttributeValue] | null` | no |  |
+| `InitialAttributeValues` | `array[InitialAttributeValue] | null` | no |  |
 | `PositionResolution` | `integer | null` | no |  |
 | `TransitionTimeInMs` | `integer | null` | no |  |
 
@@ -187,8 +178,8 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'SoundSource'` | yes |  |
+| `Name` | `string` | yes |  |
 
 ### State
 
@@ -197,7 +188,7 @@ This page is auto-generated from the Pydantic model schema.
 | `Name` | `string` | yes |  |
 | `Conditions` | `array[FloatValueVisualization | ScreenContentVisualization | ValueOfInteractionElementVisualization | InteractionElementCondition]` | yes |  |
 
-### States
+### StatesFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
@@ -207,18 +198,18 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'ToggleButton'` | yes |  |
-| `InitialAttributeValues` | `array[AttributeValue] | null` | no |  |
+| `Name` | `string` | yes |  |
+| `InitialAttributeValues` | `array[InitialAttributeValue]` | yes |  |
 
 ### TouchArea
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Name` | `string` | yes |  |
 | `Type` | `'TouchArea'` | yes |  |
+| `Name` | `string` | yes |  |
 | `Plane` | `Vec3` | yes |  |
-| `Resolution` | `Resolution` | yes |  |
+| `Resolution` | `Vec2` | yes |  |
 
 ### Transition
 
@@ -231,7 +222,7 @@ This page is auto-generated from the Pydantic model schema.
 | `Timeout` | `integer | null` | no |  |
 | `Guards` | `array[EventParameterGuard | InteractionElementAttributeGuard] | null` | no |  |
 
-### Transitions
+### TransitionsFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
@@ -245,6 +236,13 @@ This page is auto-generated from the Pydantic model schema.
 | `VisualizationElement` | `string` | yes |  |
 | `InteractionElement` | `string` | yes |  |
 
+### Vec2
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `x` | `number` | yes |  |
+| `y` | `number` | yes |  |
+
 ### Vec3
 
 | Field | Type | Required? | Description |
@@ -253,13 +251,13 @@ This page is auto-generated from the Pydantic model schema.
 | `y` | `number` | yes |  |
 | `z` | `number` | yes |  |
 
-### VisualizationArrays
+### VisualizationArraysFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
 | `Elements` | `array[string]` | no |  |
 
-### VisualizationElements
+### VisualizationElementsFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|

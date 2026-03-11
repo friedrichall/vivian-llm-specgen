@@ -56,14 +56,32 @@ Slider configuration ("Type": "Slider")
 7.2.2. "Name" with a string identifier.
 7.2.3. "MinPosition" as an object { "x": number, "y": number, "z": number }.
 7.2.4. "MaxPosition" as an object { "x": number, "y": number, "z": number }.
-7.3. At "MinPosition", the slider’s value corresponds to 0.0.
-7.4. At "MaxPosition", the slider’s value corresponds to 1.0.
+7.3. MinPosition and MaxPosition are offsets from the slider object’s current rest position
+     (localPosition) in the parent object’s local coordinate space.
+     The framework computes: axis_origin = localPosition + MinPosition
+                             axis_direction = MaxPosition - MinPosition
+7.4. At MinPosition the slider’s value is 0.0; at MaxPosition it is 1.0.
+7.4.1. Always set "MinPosition" to {"x": 0.0, "y": 0.0, "z": 0.0}. This anchors the track’s
+       minimum endpoint at the object’s current rest position.
+7.4.2. Derive "MaxPosition" from the scene JSON interaction_params:
+       - axis ("x", "y", or "z") identifies the movement axis.
+       - range is the total travel distance in meters.
+       - Set the matching axis component to ±range (positive or negative depending on which
+         direction the element physically moves); set all other components to 0.0.
+       Example: axis="x", range=0.0575 → MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
+7.4.3. NEVER use bounding_box.min or bounding_box.max from the scene JSON as MinPosition or
+       MaxPosition. Those are world-space mesh corners, not slider track endpoints.
 7.5. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 7.5.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 7.5.2. To make the slider initially non-interactive, include an object with "Attribute": "FIXED" and "Value": "true".
+7.5.3. To control whether the slider is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 7.6. You may optionally include "PositionResolution":
 7.6.1. If present, "PositionResolution" must be a positive integer representing the number of discrete positions the slider can take.
 7.6.2. If absent, the slider must be treated as having an effectively infinite (continuous) number of positions.
+7.6.3. For sliders that physically latch or snap to a fixed number of positions (e.g. a toaster
+       handle that is either fully up or fully down), set "PositionResolution" to the number of
+       discrete positions (e.g. 2). Use scene description and interaction_params as evidence;
+       if in doubt, omit it (continuous slider).
 7.7. You may optionally include "TransitionTimeInMs":
 7.7.1. If present, "TransitionTimeInMs" must be a non-negative integer representing the time in milliseconds for the slider to transition to a position defined by a state change.
 7.8. Example minimal structure (conceptual):
@@ -79,17 +97,22 @@ Rotatable configuration ("Type": "Rotatable")
 8.3.4. "MaxRotation" as a numeric value in degrees.
 8.3.5. "RotationAxis" as an object with:
 8.3.5.1. "Origin": an object { "x": number, "y": number, "z": number } representing the origin of the rotation axis relative to the rotatable.
+8.3.5.1.1. "Origin" is an offset from the rotatable object's current rest position in the parent
+            object's local coordinate space (same convention as Slider MinPosition).
+            For a knob that rotates around its own center, use {"x": 0.0, "y": 0.0, "z": 0.0}.
+            NEVER use the object's world position from the scene JSON as the Origin.
 8.3.5.2. "Direction": an object { "x": number, "y": number, "z": number } representing the direction of the rotation axis.
 8.4. At "MinRotation", the Rotatable value corresponds to 0.0.
 8.5. At "MaxRotation", the Rotatable value corresponds to 1.0.
 8.6. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 8.6.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 8.6.2. To prevent initial user interaction, include an object with "Attribute": "FIXED" and "Value": "true".
+8.6.3. To control whether the rotatable is interactable at startup, include an object with "Attribute": "ENABLED" and "Value": "true" or "false".
 8.7. You may optionally include "PositionResolution":
 8.7.1. If present, it must be a positive integer specifying the number of discrete rotation positions.
 8.7.2. If absent, the rotation must be treated as effectively continuous.
 8.8. You may optionally include "AllowsForInfiniteRotation":
-8.8.1. If present and set to true, you must ensure that the difference between "MaxRotation" and "MinRotation" is exactly 360.0.
+8.8.1. If present and set to true, you must ensure that the difference between "MaxRotation" and "MinRotation" is at least 360.0.
 8.8.2. If present and set to false, the rotation must be limited to the [MinRotation, MaxRotation] range.
 8.9. You may optionally include "TransitionTimeInMs":
 8.9.1. If present, it must be a non-negative integer representing the time in milliseconds for the Rotatable to transition to a new position defined by a state change.
@@ -130,7 +153,7 @@ Validation rules and conflict handling
 11.2. You must ensure that the top-level object contains exactly one key "Elements" and that its value is an array.
 11.3. You must ensure that every element in "Elements" has a valid "Type" and "Name".
 11.4. You must ensure that all required fields for each "Type" are present and correctly formatted.
-11.5. You must ensure that numeric ranges and constraints are respected (for example, values between 0.0 and 1.0, positive pixel resolutions, 360° range when "AllowsForInfiniteRotation" is true).
+11.5. You must ensure that numeric ranges and constraints are respected (for example, values between 0.0 and 1.0, positive pixel resolutions, at least 360° range when "AllowsForInfiniteRotation" is true).
 11.6. If user instructions conflict with these rules, you must either:
 11.6.1. Adjust the configuration to satisfy the Vivian specification while preserving the user’s intent as closely as possible, and clearly reflect the correct structure in the JSON you output; or
 11.6.2. Explain which constraints are violated and propose a corrected configuration that follows this policy, if you are asked to explain instead of outputting pure JSON.

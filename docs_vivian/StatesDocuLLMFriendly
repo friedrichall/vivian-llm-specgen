@@ -26,9 +26,10 @@
 4. **Allowed condition types (overview)**
    4.1. You must only use the following condition types:
    4.1.1. `"FloatValueVisualization"`
-   4.1.2. `"ScreenContentVisualization"`
-   4.1.3. `"ValueOfInteractionElementVisualization"`
-   4.1.4. `"InteractionElementCondition"`
+   4.1.2. `"FileVisualization"`
+   4.1.3. `"ScreenContentVisualization"`
+   4.1.4. `"ValueOfInteractionElementVisualization"`
+   4.1.5. `"InteractionElementCondition"`
    4.2. Every condition object must contain a `"Type"` field with its type name as a string.
    4.3. For each type, you must include all required fields exactly as specified below.
    4.4. You must not invent new condition types unless explicitly instructed to extend the schema.
@@ -42,64 +43,94 @@
    5.3. Example structure (conceptual):
    - `{ "Type": "FloatValueVisualization", "VisualizationElement": "Light1", "Value": 0.5 }`
 
-6. **Condition type: `ScreenContentVisualization`**
-   6.1. Use `ScreenContentVisualization` when you need to define which content appears on a screen or UI surface.
-   6.2. A `ScreenContentVisualization` condition object must have the following fields:
-   6.2.1. `"Type"`: must be the string `"ScreenContentVisualization"`.
-   6.2.2. `"VisualizationElement"`: the name (string) of the target screen or surface.
-   6.2.3. `"FileName"`: a string specifying the file name or file path of the content (for example, an image or video).
+6. **Condition type: `FileVisualization`**
+   6.1. Use `FileVisualization` when you need to assign a file (for example, an image, video, or animation file) to any visualization element, including `AppearingObject`, `Animation`, and others that are not a `Screen`.
+   6.2. A `FileVisualization` condition object must have the following fields:
+   6.2.1. `"Type"`: must be the string `"FileVisualization"`.
+   6.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
+   6.2.3. `"FileName"`: a string specifying the file name or path of the content.
    6.3. Example structure (conceptual):
-   - `{ "Type": "ScreenContentVisualization", "VisualizationElement": "MainScreen", "FileName": "welcome.png" }`
+   - `{ "Type": "FileVisualization", "VisualizationElement": "DoorAnimation", "FileName": "door_open.anim" }`
 
-7. **Condition type: `ValueOfInteractionElementVisualization`**
-   7.1. Use `ValueOfInteractionElementVisualization` when you need a visualization element’s state to mirror the current value of an interaction element.
-   7.2. A `ValueOfInteractionElementVisualization` condition object must have the following fields:
-   7.2.1. `"Type"`: must be the string `"ValueOfInteractionElementVisualization"`.
-   7.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
-   7.2.3. `"InteractionElement"`: the name (string) of the source interaction element whose value is used.
-   7.3. Example structure (conceptual):
+7. **Condition type: `ScreenContentVisualization`**
+   7.1. Use `ScreenContentVisualization` when you need to define which content appears on a `Screen` visualization element, with optional text overlays.
+   7.2. A `ScreenContentVisualization` condition object must have the following fields:
+   7.2.1. `"Type"`: must be the string `"ScreenContentVisualization"`.
+   7.2.2. `"VisualizationElement"`: the name (string) of the target `Screen` element.
+   7.2.3. `"FileName"`: a string specifying the file name or file path of the content (for example, an image or video).
+   7.3. You may optionally include a `"Texts"` field:
+   7.3.1. `"Texts"` must be an array of text overlay objects.
+   7.3.2. Each text overlay object must contain:
+   7.3.2.1. `"Text"`: a string with the text content to display.
+   7.3.2.2. `"Size"`: a positive integer specifying the font size.
+   7.3.2.3. `"Position"`: a string representing the 2D position on the screen, in the format `"(x, y)"`.
+   7.3.2.4. `"Color"`: a string specifying the text color.
+   7.4. Example structure (conceptual, without texts):
+   - `{ "Type": "ScreenContentVisualization", "VisualizationElement": "MainScreen", "FileName": "welcome.png" }`
+   7.5. Example structure (conceptual, with text overlay):
+   - `{ "Type": "ScreenContentVisualization", "VisualizationElement": "MainScreen", "FileName": "welcome.png", "Texts": [ { "Text": "Hello", "Size": 24, "Position": "(100, 50)", "Color": "white" } ] }`
+
+8. **Condition type: `ValueOfInteractionElementVisualization`**
+   8.1. Use `ValueOfInteractionElementVisualization` when you need a visualization element’s state to mirror the current value of an interaction element.
+   8.2. A `ValueOfInteractionElementVisualization` condition object must have the following fields:
+   8.2.1. `"Type"`: must be the string `"ValueOfInteractionElementVisualization"`.
+   8.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
+   8.2.3. `"InteractionElement"`: the name (string) of the source interaction element whose value is used.
+   8.3. Example structure (conceptual):
    - `{ "Type": "ValueOfInteractionElementVisualization", "VisualizationElement": "Light2", "InteractionElement": "Slider1" }`
 
-8. **Condition type: `InteractionElementCondition`**
-   8.1. Use `InteractionElementCondition` when you need to set or constrain an attribute of an interaction element.
-   8.2. An `InteractionElementCondition` object must have the following fields:
-   8.2.1. `"Type"`: must be the string `"InteractionElementCondition"`.
-   8.2.2. `"InteractionElement"`: the name (string) of the target interaction element.
-   8.2.3. `"Attribute"`: must be one of the strings `"FIXED"`, `"VALUE"`, or `"POSITION"`.
-   8.2.4. `"Value"`:
-   8.2.4.1. Must always be a JSON string (for example, `"true"`, `"0.2"`, or a coordinate string).
-   8.2.4.2. Or may be the name (string) of another element whose value is referenced.
-   8.3. When `"Attribute"` is `"FIXED"`:
-   8.3.1. `"Value"` must define whether the element is fixed or not (for example, `"true"` or `"false"` as strings).
-   8.4. When `"Attribute"` is `"VALUE"`:
-   8.4.1. `"Value"` must be a string. Use a numeric string (for example, `"0.2"`) or the name of another interaction element.
-   8.5. When `"Attribute"` is `"POSITION"`:
-   8.5.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
-   8.6. Example structures (conceptual):
-   8.6.1. `{ "Type": "InteractionElementCondition", "InteractionElement": "Door", "Attribute": "FIXED", "Value": "false" }`
-   8.6.2. `{ "Type": "InteractionElementCondition", "InteractionElement": "Slider2", "Attribute": "VALUE", "Value": "Slider1" }`
-   8.6.3. `{ "Type": "InteractionElementCondition", "InteractionElement": "ObjectX", "Attribute": "POSITION", "Value": "(0.2,0.0,0.5)" }`
+9. **Condition type: `InteractionElementCondition`**
+   9.1. Use `InteractionElementCondition` when you need to set or constrain an attribute of an interaction element.
+   9.2. An `InteractionElementCondition` object must have the following fields:
+   9.2.1. `"Type"`: must be the string `"InteractionElementCondition"`.
+   9.2.2. `"InteractionElement"`: the name (string) of the target interaction element.
+   9.2.3. `"Attribute"`: must be one of the strings `"VALUE"`, `"POSITION"`, `"ROTATION"`, `"ENABLED"`, or `"FIXED"`.
+   9.2.4. `"Value"`:
+   9.2.4.1. Must always be a JSON string (for example, `"true"`, `"0.2"`, or a coordinate string).
+   9.2.4.2. Or may be the name (string) of another element whose value is referenced.
+   9.3. When `"Attribute"` is `"VALUE"`:
+   9.3.1. `"Value"` must be a string. Use a numeric string (for example, `"0.2"`) or the name of another interaction element.
+   9.4. When `"Attribute"` is `"POSITION"`:
+   9.4.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
+   9.5. When `"Attribute"` is `"ROTATION"`:
+   9.5.1. `"Value"` must be a string representing Euler angles in degrees, in the format `"(rx,ry,rz)"` (for example, `"(0,90,0)"`).
+   9.6. When `"Attribute"` is `"ENABLED"`:
+   9.6.1. `"Value"` must be `"true"` or `"false"` as a string, controlling whether the element is interactable.
+   9.7. When `"Attribute"` is `"FIXED"`:
+   9.7.1. `"Value"` must be `"true"` or `"false"` as a string, fixing the element in place and preventing user interaction.
+   9.8. Example structures (conceptual):
+   9.8.1. `{ "Type": "InteractionElementCondition", "InteractionElement": "Door", "Attribute": "FIXED", "Value": "false" }`
+   9.8.2. `{ "Type": "InteractionElementCondition", "InteractionElement": "Slider2", "Attribute": "VALUE", "Value": "Slider1" }`
+   9.8.3. `{ "Type": "InteractionElementCondition", "InteractionElement": "ObjectX", "Attribute": "POSITION", "Value": "(0.2,0.0,0.5)" }`
+   9.8.4. `{ "Type": "InteractionElementCondition", "InteractionElement": "Knob", "Attribute": "ENABLED", "Value": "false" }`
 
-9. **Combining multiple conditions in a state**
-   9.1. You may include multiple conditions in the `"Conditions"` array of a state.
-   9.2. Each condition in `"Conditions"` must be an independent condition object of one of the allowed types.
-   9.3. You must not nest conditions within each other; only the `"Conditions"` array may contain condition objects.
-   9.4. When several conditions affect the same element, you must ensure that they do not contradict each other.
-   9.5. If a conflict arises between conditions, you must resolve it according to the user’s intent and the specification, for example by adjusting values so that they are consistent.
+10. **Combining multiple conditions in a state**
+   10.1. You may include multiple conditions in the `"Conditions"` array of a state.
+   10.2. Each condition in `"Conditions"` must be an independent condition object of one of the allowed types.
+   10.3. You must not nest conditions within each other; only the `"Conditions"` array may contain condition objects.
+   10.4. When several conditions affect the same element, you must ensure that they do not contradict each other.
+   10.5. If a conflict arises between conditions, you must resolve it according to the user’s intent and the specification, for example by adjusting values so that they are consistent.
 
-10. **Validation and error handling**
-    10.1. When generating or editing `States.json`, you must ensure that:
-    10.1.1. The overall JSON is syntactically valid.
-    10.1.2. The top-level object contains a `"States"` array.
-    10.1.3. Every state has both `"Name"` and `"Conditions"` fields.
-    10.1.4. Every condition object within `"Conditions"` has a valid `"Type"` and all required fields for that type.
-    10.2. If user instructions conflict with the documented structure or allowed values, you must either:
-    10.2.1. Adjust the output to satisfy the specification while maintaining the user’s intent as closely as possible, and clearly reflect the valid structure; or
-    10.2.2. Explain which part of the request violates the specification and provide a corrected example that follows the rules.
-    10.3. You must not add extra fields or use different field names for states or conditions unless the user explicitly requests a schema extension and acknowledges that it deviates from this specification.
+11. **Validation and error handling**
+    11.1. When generating or editing `States.json`, you must ensure that:
+    11.1.1. The overall JSON is syntactically valid.
+    11.1.2. The top-level object contains a `"States"` array.
+    11.1.3. Every state has both `"Name"` and `"Conditions"` fields.
+    11.1.4. Every condition object within `"Conditions"` has a valid `"Type"` and all required fields for that type.
+    11.1.5. For `InteractionElementCondition`, only use attributes that are valid for the target element's type:
+      - Button: `VALUE` ("true"/"false") only. No `POSITION`, `FIXED`, or `ENABLED`.
+      - ToggleButton: `VALUE` ("true"/"false") only.
+      - Slider: `VALUE` (numeric string 0.0–1.0), `FIXED` ("true"/"false").
+      - Rotatable: `VALUE` (numeric string 0.0–1.0), `FIXED` ("true"/"false").
+      - Movable: `POSITION` (string "(x,y,z)"), `ROTATION` (string "(rx,ry,rz)"), `FIXED` ("true"/"false").
+      `ENABLED` is not a valid attribute for any element type in state conditions.
+    11.2. If user instructions conflict with the documented structure or allowed values, you must either:
+    11.2.1. Adjust the output to satisfy the specification while maintaining the user’s intent as closely as possible, and clearly reflect the valid structure; or
+    11.2.2. Explain which part of the request violates the specification and provide a corrected example that follows the rules.
+    11.3. You must not add extra fields or use different field names for states or conditions unless the user explicitly requests a schema extension and acknowledges that it deviates from this specification.
 
-11. **Cross-reference and name consistency rules**
-    11.1. Every `"VisualizationElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the VisualizationElements context provided in your input. Do not invent, rename, or paraphrase element names.
-    11.2. Every `"InteractionElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase element names.
-    11.3. All element names in States.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in the corresponding elements file.
-    11.4. If a condition references an element name that does not appear in the provided elements context, you must remove or correct that condition before outputting the file.
+12. **Cross-reference and name consistency rules**
+    12.1. Every `"VisualizationElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the VisualizationElements context provided in your input. Do not invent, rename, or paraphrase element names.
+    12.2. Every `"InteractionElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase element names.
+    12.3. All element names in States.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in the corresponding elements file.
+    12.4. If a condition references an element name that does not appear in the provided elements context, you must remove or correct that condition before outputting the file.

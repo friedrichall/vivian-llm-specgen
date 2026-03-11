@@ -101,7 +101,7 @@ Used for screen coordinates or input values from events.
 {
   "EventParameter": "TOUCH_X_COORDINATE",
   "Operator": "LARGER",
-  "CompareValue": 300
+  "CompareValue": "300"
 }
 ```
 

@@ -1,33 +1,35 @@
 {
     "$defs": {
         "Animation": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Animation",
                     "title": "Type",
                     "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
                 }
             },
             "required": [
-                "Name",
-                "Type"
+                "Type",
+                "Name"
             ],
             "title": "Animation",
             "type": "object"
         },
         "AppearingObject": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "AppearingObject",
                     "title": "Type",
+                    "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
                     "type": "string"
                 },
                 "Value": {
@@ -44,84 +46,35 @@
                 }
             },
             "required": [
-                "Name",
-                "Type"
+                "Type",
+                "Name"
             ],
             "title": "AppearingObject",
             "type": "object"
         },
-        "AttributeValue": {
-            "properties": {
-                "Attribute": {
-                    "title": "Attribute",
-                    "type": "string"
-                },
-                "Value": {
-                    "title": "Value",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "Attribute",
-                "Value"
-            ],
-            "title": "AttributeValue",
-            "type": "object"
-        },
         "Button": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Button",
                     "title": "Type",
                     "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
                 }
             },
             "required": [
-                "Name",
-                "Type"
+                "Type",
+                "Name"
             ],
             "title": "Button",
             "type": "object"
         },
-        "ColorRGBA": {
-            "properties": {
-                "r": {
-                    "title": "R",
-                    "type": "number"
-                },
-                "g": {
-                    "title": "G",
-                    "type": "number"
-                },
-                "b": {
-                    "title": "B",
-                    "type": "number"
-                },
-                "a": {
-                    "title": "A",
-                    "type": "number"
-                }
-            },
-            "required": [
-                "r",
-                "g",
-                "b",
-                "a"
-            ],
-            "title": "ColorRGBA",
-            "type": "object"
-        },
         "EventParameterGuard": {
+            "additionalProperties": false,
             "properties": {
-                "Type": {
-                    "const": "EventParameterGuard",
-                    "title": "Type",
-                    "type": "string"
-                },
                 "EventParameter": {
                     "title": "Eventparameter",
                     "type": "string"
@@ -131,22 +84,11 @@
                     "type": "string"
                 },
                 "CompareValue": {
-                    "anyOf": [
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "number"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ],
-                    "title": "Comparevalue"
+                    "title": "Comparevalue",
+                    "type": "string"
                 }
             },
             "required": [
-                "Type",
                 "EventParameter",
                 "Operator",
                 "CompareValue"
@@ -155,6 +97,7 @@
             "type": "object"
         },
         "FloatValueVisualization": {
+            "additionalProperties": false,
             "properties": {
                 "Type": {
                     "const": "FloatValueVisualization",
@@ -178,13 +121,34 @@
             "title": "FloatValueVisualization",
             "type": "object"
         },
-        "InteractionElementAttributeGuard": {
+        "InitialAttributeValue": {
+            "additionalProperties": false,
             "properties": {
-                "Type": {
-                    "const": "InteractionElementAttributeGuard",
-                    "title": "Type",
+                "Attribute": {
+                    "enum": [
+                        "VALUE",
+                        "FIXED",
+                        "POSITION",
+                        "ROTATION"
+                    ],
+                    "title": "Attribute",
                     "type": "string"
                 },
+                "Value": {
+                    "title": "Value",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Attribute",
+                "Value"
+            ],
+            "title": "InitialAttributeValue",
+            "type": "object"
+        },
+        "InteractionElementAttributeGuard": {
+            "additionalProperties": false,
+            "properties": {
                 "InteractionElement": {
                     "title": "Interactionelement",
                     "type": "string"
@@ -203,7 +167,6 @@
                 }
             },
             "required": [
-                "Type",
                 "InteractionElement",
                 "Attribute",
                 "Operator",
@@ -213,6 +176,7 @@
             "type": "object"
         },
         "InteractionElementCondition": {
+            "additionalProperties": false,
             "properties": {
                 "Type": {
                     "const": "InteractionElementCondition",
@@ -224,6 +188,11 @@
                     "type": "string"
                 },
                 "Attribute": {
+                    "enum": [
+                        "FIXED",
+                        "VALUE",
+                        "POSITION"
+                    ],
                     "title": "Attribute",
                     "type": "string"
                 },
@@ -241,7 +210,8 @@
             "title": "InteractionElementCondition",
             "type": "object"
         },
-        "InteractionElements": {
+        "InteractionElementsFile": {
+            "additionalProperties": false,
             "properties": {
                 "Elements": {
                     "items": {
@@ -284,76 +254,63 @@
             "required": [
                 "Elements"
             ],
-            "title": "InteractionElements",
+            "title": "InteractionElementsFile",
             "type": "object"
         },
         "Light": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Light",
                     "title": "Type",
                     "type": "string"
                 },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
                 "EmissionColor": {
-                    "$ref": "#/$defs/ColorRGBA"
+                    "$ref": "#/$defs/RGBA"
                 }
             },
             "required": [
-                "Name",
                 "Type",
+                "Name",
                 "EmissionColor"
             ],
             "title": "Light",
             "type": "object"
         },
         "Movable": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Movable",
                     "title": "Type",
                     "type": "string"
                 },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
                 "InitialAttributeValues": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "$ref": "#/$defs/AttributeValue"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Initialattributevalues"
+                    "items": {
+                        "$ref": "#/$defs/InitialAttributeValue"
+                    },
+                    "title": "Initialattributevalues",
+                    "type": "array"
                 },
                 "SnapPoses": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "$ref": "#/$defs/SnapPose"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Snapposes"
+                    "items": {
+                        "$ref": "#/$defs/SnapPose"
+                    },
+                    "title": "Snapposes",
+                    "type": "array"
                 },
                 "TransitionTimeInMs": {
                     "anyOf": [
                         {
+                            "minimum": 0,
                             "type": "integer"
                         },
                         {
@@ -365,58 +322,73 @@
                 }
             },
             "required": [
+                "Type",
                 "Name",
-                "Type"
+                "InitialAttributeValues",
+                "SnapPoses"
             ],
             "title": "Movable",
             "type": "object"
         },
         "Particles": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Particles",
                     "title": "Type",
                     "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
                 }
             },
             "required": [
-                "Name",
-                "Type"
+                "Type",
+                "Name"
             ],
             "title": "Particles",
             "type": "object"
         },
-        "Resolution": {
+        "RGBA": {
+            "additionalProperties": false,
             "properties": {
-                "x": {
-                    "title": "X",
-                    "type": "integer"
+                "r": {
+                    "title": "R",
+                    "type": "number"
                 },
-                "y": {
-                    "title": "Y",
-                    "type": "integer"
+                "g": {
+                    "title": "G",
+                    "type": "number"
+                },
+                "b": {
+                    "title": "B",
+                    "type": "number"
+                },
+                "a": {
+                    "title": "A",
+                    "type": "number"
                 }
             },
             "required": [
-                "x",
-                "y"
+                "r",
+                "g",
+                "b",
+                "a"
             ],
-            "title": "Resolution",
+            "title": "RGBA",
             "type": "object"
         },
         "Rotatable": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Rotatable",
                     "title": "Type",
+                    "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
                     "type": "string"
                 },
                 "MinRotation": {
@@ -434,7 +406,7 @@
                     "anyOf": [
                         {
                             "items": {
-                                "$ref": "#/$defs/AttributeValue"
+                                "$ref": "#/$defs/InitialAttributeValue"
                             },
                             "type": "array"
                         },
@@ -448,6 +420,7 @@
                 "PositionResolution": {
                     "anyOf": [
                         {
+                            "minimum": 1,
                             "type": "integer"
                         },
                         {
@@ -472,6 +445,7 @@
                 "TransitionTimeInMs": {
                     "anyOf": [
                         {
+                            "minimum": 0,
                             "type": "integer"
                         },
                         {
@@ -483,8 +457,8 @@
                 }
             },
             "required": [
-                "Name",
                 "Type",
+                "Name",
                 "MinRotation",
                 "MaxRotation",
                 "RotationAxis"
@@ -493,6 +467,7 @@
             "type": "object"
         },
         "RotationAxis": {
+            "additionalProperties": false,
             "properties": {
                 "Origin": {
                     "$ref": "#/$defs/Vec3"
@@ -509,26 +484,27 @@
             "type": "object"
         },
         "Screen": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Screen",
                     "title": "Type",
+                    "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
                     "type": "string"
                 },
                 "Plane": {
                     "$ref": "#/$defs/Vec3"
                 },
                 "Resolution": {
-                    "$ref": "#/$defs/Resolution"
+                    "$ref": "#/$defs/Vec2"
                 }
             },
             "required": [
-                "Name",
                 "Type",
+                "Name",
                 "Plane",
                 "Resolution"
             ],
@@ -536,6 +512,7 @@
             "type": "object"
         },
         "ScreenContentVisualization": {
+            "additionalProperties": false,
             "properties": {
                 "Type": {
                     "const": "ScreenContentVisualization",
@@ -560,14 +537,15 @@
             "type": "object"
         },
         "Slider": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "Slider",
                     "title": "Type",
+                    "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
                     "type": "string"
                 },
                 "MinPosition": {
@@ -580,7 +558,7 @@
                     "anyOf": [
                         {
                             "items": {
-                                "$ref": "#/$defs/AttributeValue"
+                                "$ref": "#/$defs/InitialAttributeValue"
                             },
                             "type": "array"
                         },
@@ -594,6 +572,7 @@
                 "PositionResolution": {
                     "anyOf": [
                         {
+                            "minimum": 1,
                             "type": "integer"
                         },
                         {
@@ -606,6 +585,7 @@
                 "TransitionTimeInMs": {
                     "anyOf": [
                         {
+                            "minimum": 0,
                             "type": "integer"
                         },
                         {
@@ -617,8 +597,8 @@
                 }
             },
             "required": [
-                "Name",
                 "Type",
+                "Name",
                 "MinPosition",
                 "MaxPosition"
             ],
@@ -626,6 +606,7 @@
             "type": "object"
         },
         "SnapPose": {
+            "additionalProperties": false,
             "properties": {
                 "Position": {
                     "title": "Position",
@@ -651,25 +632,27 @@
             "type": "object"
         },
         "SoundSource": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "SoundSource",
                     "title": "Type",
                     "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
                 }
             },
             "required": [
-                "Name",
-                "Type"
+                "Type",
+                "Name"
             ],
             "title": "SoundSource",
             "type": "object"
         },
         "State": {
+            "additionalProperties": false,
             "properties": {
                 "Name": {
                     "title": "Name",
@@ -712,7 +695,8 @@
             "title": "State",
             "type": "object"
         },
-        "States": {
+        "StatesFile": {
+            "additionalProperties": false,
             "properties": {
                 "States": {
                     "items": {
@@ -725,64 +709,59 @@
             "required": [
                 "States"
             ],
-            "title": "States",
+            "title": "StatesFile",
             "type": "object"
         },
         "ToggleButton": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "ToggleButton",
                     "title": "Type",
                     "type": "string"
                 },
+                "Name": {
+                    "title": "Name",
+                    "type": "string"
+                },
                 "InitialAttributeValues": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "$ref": "#/$defs/AttributeValue"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Initialattributevalues"
+                    "items": {
+                        "$ref": "#/$defs/InitialAttributeValue"
+                    },
+                    "title": "Initialattributevalues",
+                    "type": "array"
                 }
             },
             "required": [
+                "Type",
                 "Name",
-                "Type"
+                "InitialAttributeValues"
             ],
             "title": "ToggleButton",
             "type": "object"
         },
         "TouchArea": {
+            "additionalProperties": false,
             "properties": {
-                "Name": {
-                    "title": "Name",
-                    "type": "string"
-                },
                 "Type": {
                     "const": "TouchArea",
                     "title": "Type",
+                    "type": "string"
+                },
+                "Name": {
+                    "title": "Name",
                     "type": "string"
                 },
                 "Plane": {
                     "$ref": "#/$defs/Vec3"
                 },
                 "Resolution": {
-                    "$ref": "#/$defs/Resolution"
+                    "$ref": "#/$defs/Vec2"
                 }
             },
             "required": [
-                "Name",
                 "Type",
+                "Name",
                 "Plane",
                 "Resolution"
             ],
@@ -790,6 +769,7 @@
             "type": "object"
         },
         "Transition": {
+            "additionalProperties": false,
             "properties": {
                 "SourceState": {
                     "title": "Sourcestate",
@@ -826,6 +806,7 @@
                 "Timeout": {
                     "anyOf": [
                         {
+                            "minimum": 0,
                             "type": "integer"
                         },
                         {
@@ -839,14 +820,7 @@
                     "anyOf": [
                         {
                             "items": {
-                                "discriminator": {
-                                    "mapping": {
-                                        "EventParameterGuard": "#/$defs/EventParameterGuard",
-                                        "InteractionElementAttributeGuard": "#/$defs/InteractionElementAttributeGuard"
-                                    },
-                                    "propertyName": "Type"
-                                },
-                                "oneOf": [
+                                "anyOf": [
                                     {
                                         "$ref": "#/$defs/EventParameterGuard"
                                     },
@@ -872,7 +846,8 @@
             "title": "Transition",
             "type": "object"
         },
-        "Transitions": {
+        "TransitionsFile": {
+            "additionalProperties": false,
             "properties": {
                 "Transitions": {
                     "items": {
@@ -885,10 +860,11 @@
             "required": [
                 "Transitions"
             ],
-            "title": "Transitions",
+            "title": "TransitionsFile",
             "type": "object"
         },
         "ValueOfInteractionElementVisualization": {
+            "additionalProperties": false,
             "properties": {
                 "Type": {
                     "const": "ValueOfInteractionElementVisualization",
@@ -912,7 +888,27 @@
             "title": "ValueOfInteractionElementVisualization",
             "type": "object"
         },
+        "Vec2": {
+            "additionalProperties": false,
+            "properties": {
+                "x": {
+                    "title": "X",
+                    "type": "number"
+                },
+                "y": {
+                    "title": "Y",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "x",
+                "y"
+            ],
+            "title": "Vec2",
+            "type": "object"
+        },
         "Vec3": {
+            "additionalProperties": false,
             "properties": {
                 "x": {
                     "title": "X",
@@ -935,9 +931,11 @@
             "title": "Vec3",
             "type": "object"
         },
-        "VisualizationArrays": {
+        "VisualizationArraysFile": {
+            "additionalProperties": false,
             "properties": {
                 "Elements": {
+                    "default": [],
                     "items": {
                         "type": "string"
                     },
@@ -945,10 +943,11 @@
                     "type": "array"
                 }
             },
-            "title": "VisualizationArrays",
+            "title": "VisualizationArraysFile",
             "type": "object"
         },
-        "VisualizationElements": {
+        "VisualizationElementsFile": {
+            "additionalProperties": false,
             "properties": {
                 "Elements": {
                     "items": {
@@ -991,25 +990,25 @@
             "required": [
                 "Elements"
             ],
-            "title": "VisualizationElements",
+            "title": "VisualizationElementsFile",
             "type": "object"
         }
     },
     "properties": {
         "interaction_elements": {
-            "$ref": "#/$defs/InteractionElements"
+            "$ref": "#/$defs/InteractionElementsFile"
         },
         "visualization_elements": {
-            "$ref": "#/$defs/VisualizationElements"
+            "$ref": "#/$defs/VisualizationElementsFile"
         },
         "visualization_arrays": {
-            "$ref": "#/$defs/VisualizationArrays"
+            "$ref": "#/$defs/VisualizationArraysFile"
         },
         "states": {
-            "$ref": "#/$defs/States"
+            "$ref": "#/$defs/StatesFile"
         },
         "transitions": {
-            "$ref": "#/$defs/Transitions"
+            "$ref": "#/$defs/TransitionsFile"
         }
     },
     "required": [

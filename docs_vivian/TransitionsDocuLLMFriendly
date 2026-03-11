@@ -40,18 +40,20 @@ Event-based transitions
 5.2.3. Set "Event" to the event type string.
 5.2.4. Set "DestinationState" to the target state name.
 5.3. You must not include "Timeout" in an event-based transition.
-5.4. When the user does not specify event type names, you must use clear, supported event types consistent with the interaction element, for example:
-5.4.1. "BUTTON_PRESS" for button presses.
-5.4.2. "TOUCH_START" or "TOUCH_END" for touch surfaces.
-5.4.3. "ROTATABLE_DRAG_START" or "ROTATABLE_DRAG_END" for rotatable elements.
-5.4.4. "SNAPPOSES_CHECK" for transitions triggered by checking snap poses.
-5.5. You must not invent completely arbitrary event names; event names must be descriptive and consistent with the interaction type or as defined by the user.
+5.4. The complete and exhaustive list of valid event type strings is defined by the framework. You must only use values from this list. The valid values are:
+5.4.1. For Button elements: "BUTTON_PRESS", "BUTTON_RELEASE".
+5.4.2. For Slider elements: "SLIDER_DRAG_START", "SLIDER_DRAG", "SLIDER_DRAG_END".
+5.4.3. For Rotatable elements: "ROTATABLE_DRAG_START", "ROTATABLE_DRAG", "ROTATABLE_DRAG_END".
+5.4.4. For TouchArea elements: "TOUCH_START", "TOUCH_SLIDE", "TOUCH_END".
+5.4.5. For Movable elements: "OBJECT_MOVE_START", "OBJECT_MOVE", "OBJECT_MOVE_END".
+5.4.6. For Movable elements with snap poses: "SNAPPOSES_CHECK".
+5.5. You must not use any event name that does not appear in the list above. Any other string will be rejected by the framework at runtime.
 
 Timeout-based transitions
 6.1. A timeout-based transition occurs automatically after a specified delay.
 6.2. For a timeout-based transition you must:
 6.2.1. Set "SourceState" to the current state name.
-6.2.2. Set "Timeout" to a non-negative integer number of milliseconds.
+6.2.2. Set "Timeout" to a non-negative integer number of milliseconds. A value of 0 is valid and means the transition fires immediately upon entering the source state.
 6.2.3. Set "DestinationState" to the target state name.
 6.3. You must not include "Event" or "InteractionElement" in a timeout-based transition.
 6.4. You must choose timeout values that make sense in the user’s scenario; if the user specifies a timeout, you must use exactly that value.
@@ -69,27 +71,36 @@ Guards: general rules
 7.7.2. Interaction element attribute guard if "InteractionElement" and "Attribute" are present.
 
 Event parameter guards
-8.1. Use an event parameter guard when the condition depends on properties of the event itself (for example, touch coordinates or input values).
+8.1. Use an event parameter guard when the condition depends on properties of the event itself (for example, touch coordinates or a slider's dragged value).
 8.2. An event parameter guard object must include:
-8.2.1. "EventParameter": a string naming the event property (for example, "TOUCH_X_COORDINATE").
-8.2.2. "Operator": a string describing the comparison operator (for example, "LARGER", "SMALLER", "SMALLER_EQUALS").
-8.2.3. "CompareValue": the value to compare against (number or string, depending on the parameter).
+8.2.1. “EventParameter”: a string naming the event property. The complete and exhaustive list of valid values is:
+8.2.1.1. “SELECTED_VALUE”: the current position/value produced by the event (used with Slider and Rotatable drag events).
+8.2.1.2. “TOUCH_X_COORDINATE”: the x coordinate of the touch point (used with TouchArea events).
+8.2.1.3. “TOUCH_Y_COORDINATE”: the y coordinate of the touch point (used with TouchArea events).
+8.2.2. “Operator”: a string describing the comparison operator. The complete and exhaustive list of valid values is: “LARGER”, “LARGER_EQUALS”, “EQUALS”, “NOT_EQUALS”, “SMALLER_EQUALS”, “SMALLER”.
+8.2.3. “CompareValue”: the value to compare against, always as a string.
 8.3. Example conceptual structure:
-8.3.1. {"EventParameter": "TOUCH_X_COORDINATE", "Operator": "LARGER", "CompareValue": 300}
+8.3.1. {“EventParameter”: “TOUCH_X_COORDINATE”, “Operator”: “LARGER”, “CompareValue”: “300”}
 8.4. When the user specifies the operator and compare value, you must use them exactly as given.
 8.5. When the user does not specify them, you must choose clear, meaningful values and operators that reflect the described condition (for example, “x coordinate must be right of 300”).
+8.6. You must not use any “EventParameter” value that does not appear in the list in 8.2.1. Any other string will be rejected by the framework at runtime.
 
 Interaction element attribute guards
 9.1. Use an interaction element attribute guard when the condition depends on an attribute of an interaction element (for example, value or position).
 9.2. An interaction element attribute guard object must include:
 9.2.1. "InteractionElement": a string naming the interaction element.
-9.2.2. "Attribute": a string naming the attribute (for example, "VALUE", "POSITION").
-9.2.3. "Operator": a string describing the comparison operator (for example, "SMALLER_EQUALS", "LARGER", "SMALLER").
-9.2.4. "CompareValue": the value to compare against.
+9.2.2. "Attribute": a string naming the attribute. The complete and exhaustive list of valid values is:
+9.2.2.1. "VALUE": the element's current value. Used for Slider (normalized 0.0–1.0), Rotatable (normalized 0.0–1.0), and ToggleButton ("true" or "false"). You must NEVER use "ANGLE", "ROTATION", "DEGREES", or any other physical-unit attribute name for Rotatable elements — the correct attribute is always "VALUE".
+9.2.2.2. "POSITION": the current position of a Movable element, as a string "(x, y, z)".
+9.2.2.3. "FIXED": whether the element is currently locked ("true" or "false").
+9.2.2.4. "ENABLED": whether the element is currently interactable ("true" or "false").
+9.2.3. "Operator": a string describing the comparison operator. The complete and exhaustive list of valid values is: "LARGER", "LARGER_EQUALS", "EQUALS", "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER".
+9.2.4. "CompareValue": the value to compare against, always as a string.
 9.3. "CompareValue" must be formatted appropriately for the attribute:
-9.3.1. For "VALUE", it may be a numeric string or number (for example, "0.5" or 0.5) or another attribute form as defined by the framework.
-9.3.2. For "POSITION", it must be a string representing a 3D coordinate, for example: "(0.1, 0.0, 0.2)".
-9.3.3. For boolean attributes (for example, a fixed flag), it may be "true" or "false" as strings.
+9.3.1. For "VALUE" on Slider or Rotatable, it must be a numeric string between "0.0" and "1.0" (for example, "0.33", "0.5", "1.0"). Do not use degree values or raw position values.
+9.3.2. For "VALUE" on ToggleButton, it must be "true" or "false".
+9.3.3. For "POSITION", it must be a string representing a 3D coordinate, for example: "(0.1, 0.0, 0.2)".
+9.3.4. For "FIXED" or "ENABLED", it must be "true" or "false".
 9.4. Example conceptual structure:
 9.4.1. {"InteractionElement": "Slider", "Attribute": "VALUE", "Operator": "SMALLER_EQUALS", "CompareValue": "0.5"}
 9.5. You must not mix event parameter fields ("EventParameter") with interaction element fields ("InteractionElement", "Attribute") in the same guard object.

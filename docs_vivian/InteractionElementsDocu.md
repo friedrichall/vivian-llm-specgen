@@ -59,7 +59,7 @@ The following sections describe the specification of the different types of supp
 
 **Configuration:**
 - `MinPosition`, `MaxPosition`: 3D coordinates in reference to the slider defining the minimum (value 0.0) and maximum (value 1.0) position.
-- `InitialAttributeValues`: 
+- `InitialAttributeValues`:
   - `VALUE`: the initial value of the slider between 0.0 and 1.0 (inclusive)
   - *(Optional)* `FIXED`: `"true"` if initually user shall not be able to interact with the slider.
 - `PositionResolution`: (Optional) defines how many positions the slider can take. Per default, it can take an infinte number of positions.
@@ -85,7 +85,7 @@ The following sections describe the specification of the different types of supp
 - `RotationAxis`: 
   - `Origin`: Origin of the rotation axis reference to the rotatable.
   - `Direction`: Direction of the rotation axis.
-- `InitialAttributeValues`: 
+- `InitialAttributeValues`:
   - `VALUE`: the initial value of the rotatable between 0.0 and 1.0 (inclusive)
   - *(Optional)* `FIXED`: `"true"` if initually user shall not be able to interact with the rotatable.
 - `PositionResolution`: (Optional) defines how many positions the rotatable can take. Per default, it can take an infinte number of positions.
