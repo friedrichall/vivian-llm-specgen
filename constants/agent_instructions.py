@@ -81,6 +81,10 @@ SCENE_ANALYSIS_INSTRUCTIONS: str = """
         Requirements:
         - Use the fields from the scene JSON directly (e.g., roles, interactionParams, unityTag, isPartOfDevice,
           transform, materials, worldAabb/bounding boxes, path, stableId, parent/children relationships).
+        - For objects with interactionParams: copy interaction_params.axis and
+          interaction_params.range verbatim into ObjectEntry.interaction_params.
+          Do NOT infer or override axis from bounding_box dimensions, mesh
+          orientation, or image evidence; the scene JSON value is authoritative.
         - If images are present, use them only to refine or confirm roles and relationships; do not guess measurements.
         - Do NOT reuse heuristics from any previous scene analyzer; rely on explicit fields and visual evidence.
         - Preserve Unity object names and paths exactly (case-sensitive).

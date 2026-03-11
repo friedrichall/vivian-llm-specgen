@@ -69,6 +69,8 @@ Slider configuration ("Type": "Slider")
        - Set the matching axis component to ±range (positive or negative depending on which
          direction the element physically moves); set all other components to 0.0.
        Example: axis="x", range=0.0575 → MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
+       NEVER infer or override the movement axis from bounding_box dimensions, mesh shape, or
+       image evidence. interaction_params.axis is the authoritative source for the movement axis.
 7.4.3. NEVER use bounding_box.min or bounding_box.max from the scene JSON as MinPosition or
        MaxPosition. Those are world-space mesh corners, not slider track endpoints.
 7.5. You may optionally include "InitialAttributeValues" as an array of attribute objects:
@@ -101,6 +103,14 @@ Rotatable configuration ("Type": "Rotatable")
             For a knob that rotates around its own center, use {"x": 0.0, "y": 0.0, "z": 0.0}.
             NEVER use the object's world position from the scene JSON as the Origin.
 8.3.5.2. "Direction": an object { "x": number, "y": number, "z": number } representing the direction of the rotation axis.
+          Derive "Direction" from interaction_params.axis in CONFIRMED_SCENE_UNDERSTANDING_JSON
+          (same field used for Slider MaxPosition):
+          - axis="x" → Direction: {"x": 1.0, "y": 0.0, "z": 0.0}
+          - axis="y" → Direction: {"x": 0.0, "y": 1.0, "z": 0.0}
+          - axis="z" → Direction: {"x": 0.0, "y": 0.0, "z": 1.0}
+          NEVER infer the rotation axis from bounding_box, mesh shape, or image evidence;
+          interaction_params.axis is the authoritative source.
+          If interaction_params.axis is absent or null, default to axis="z" as a last resort only.
 8.4. At "MinRotation", the Rotatable value corresponds to 0.0.
 8.5. At "MaxRotation", the Rotatable value corresponds to 1.0.
 8.6. You may optionally include "InitialAttributeValues" as an array of attribute objects:
