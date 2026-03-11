@@ -90,6 +90,10 @@
    9.2.4.2. Or may be the name (string) of another element whose value is referenced.
    9.3. When `"Attribute"` is `"VALUE"`:
    9.3.1. `"Value"` must be a string. Use a numeric string (for example, `"0.2"`) or the name of another interaction element.
+   9.3.1.1. For Rotatable and Slider elements, VALUE must be a normalized numeric string between
+            "0.0" and "1.0" — never a raw degree value or meter value.
+            Convert physical intuition (e.g. 90° out of 270° range) to a normalized fraction
+            (90/270 ≈ "0.33"). Do not write degree values like "90".
    9.4. When `"Attribute"` is `"POSITION"`:
    9.4.1. `"Value"` must be a string representing a 3D coordinate, in the format `"(x,y,z)"` with numeric components (for example, `"(0.2,0.0,0.5)"`).
    9.5. When `"Attribute"` is `"ROTATION"`:

@@ -39,6 +39,12 @@ Light configuration ("Type": "Light")
 5.3.3. "b": blue component, a number between 0.0 and 1.0.
 5.3.4. "a": alpha (opacity) component, a number between 0.0 and 1.0.
 5.4. You must not add additional fields to a Light element unless explicitly requested.
+5.4.1. Choose EmissionColor based on the semantic meaning of the light in the interaction
+       (e.g. green for "active/ready", red for "error/off", white for a neutral indicator),
+       as stated in the interaction_description or implied by the interaction plan.
+       Do NOT attempt to read scene JSON material colors — the Light element replaces the
+       object's material with its own at runtime, so scene material values are irrelevant.
+       Do NOT infer color from visual appearance in images.
 5.5. PREREQUISITE: The named Unity GameObject must have either a Unity Light component or a mesh (MeshFilter component on itself or its children). A Light element without either of these will throw an ArgumentException during prototype initialization, aborting all interactions. Do not use "Light" for invisible or non-mesh objects that also lack a Unity Light component.
 5.6. Example conceptual structure:
 5.6.1. {"Type": "Light", "Name": "StatusLED", "EmissionColor": {"r": 1.0, "g": 0.5, "b": 0.0, "a": 1.0}}
@@ -54,6 +60,10 @@ Screen configuration ("Type": "Screen")
 6.3.1. "x": x-component of the normal vector.
 6.3.2. "y": y-component of the normal vector.
 6.3.3. "z": z-component of the normal vector.
+6.3.4. "Plane" represents the surface normal in the GameObject's local coordinate space.
+       For most screen surfaces, the local forward direction (z=1.0) is the correct normal.
+       If the scene JSON or interaction_description specifies an orientation, use that instead.
+       Do NOT infer Plane from mesh bounding box dimensions or visual appearance in images.
 6.4. "Resolution" must be an object with integer fields:
 6.4.1. "x": horizontal resolution in pixels, a positive integer.
 6.4.2. "y": vertical resolution in pixels, a positive integer.
