@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 from agents import Agent, ItemHelpers, Runner
 
 from prompt_logging import _extract_tool_call, _summarize_user_input, _write_prompt_error_log
-from vivian_pipeline.agents_setup import BASE_MODEL
 from vivian_pipeline.context import VivianRunContext
 
 
@@ -107,7 +106,7 @@ async def _stream_agent_run(
             user_input=user_input,
             agent_name=current_agent_name,
             last_tool_call=last_tool_call,
-            model=BASE_MODEL,
+            model=agent.model,
         )
         raise
 
