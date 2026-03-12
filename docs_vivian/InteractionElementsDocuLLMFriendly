@@ -66,9 +66,32 @@ Slider configuration ("Type": "Slider")
 7.4.2. Derive "MaxPosition" from the scene JSON interaction_params:
        - axis ("x", "y", or "z") identifies the movement axis.
        - range is the total travel distance in meters.
-       - Set the matching axis component to ±range (positive or negative depending on which
-         direction the element physically moves); set all other components to 0.0.
-       Example: axis="x", range=0.0575 → MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
+       - Set the matching axis component to ±range; set all other components to 0.0.
+       - Determine the sign of range using the following priority order:
+
+         SIGN DETERMINATION RULES (apply the first matching rule):
+
+         1. interaction_description text (highest priority):
+            "push down", "press down", "slide down", "pushed down", "pulls down" → NEGATIVE
+            "pull up", "lift up", "pushed up", "slides up"                       → POSITIVE (y)
+            "slide left", "move left", "pushed left"                             → NEGATIVE (x)
+            "slide right", "move right", "pushed right"                          → POSITIVE (x)
+            "push forward", "pushed forward", "slides forward"                   → POSITIVE (z)
+            "push back", "slide back", "pushed back"                             → NEGATIVE (z)
+
+         2. Gravity/physics convention for y-axis:
+            If axis="y" and the object is a handle, lever, plunger, or button
+            that the user physically presses or pushes → NEGATIVE y.
+            (In Unity's Y-up world, "pressing down" decreases y.)
+
+         3. If no directional cue is available: use POSITIVE as fallback and
+            add a diagnostics entry (level: "warning") flagging the ambiguity.
+
+       Example (downward handle): axis="y", range=0.0575 →
+           MaxPosition: {"x": 0.0, "y": -0.0575, "z": 0.0}
+       Example (rightward slider): axis="x", range=0.0575 →
+           MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
+
        NEVER infer or override the movement axis from bounding_box dimensions, mesh shape, or
        image evidence. interaction_params.axis is the authoritative source for the movement axis.
 7.4.3. NEVER use bounding_box.min or bounding_box.max from the scene JSON as MinPosition or
