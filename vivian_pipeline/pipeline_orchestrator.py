@@ -529,14 +529,12 @@ class PipelineOrchestrator:
                         name=transition.DestinationState,
                     )
                 )
-            if (
-                transition.InteractionElement is not None
-                and transition.InteractionElement not in interaction_names
-            ):
+            ie = getattr(transition, "InteractionElement", None)
+            if ie is not None and ie not in interaction_names:
                 errors.append(
                     "Transition[{index}] references unknown InteractionElement '{name}'.".format(
                         index=index,
-                        name=transition.InteractionElement,
+                        name=ie,
                     )
                 )
             for guard in transition.Guards or []:

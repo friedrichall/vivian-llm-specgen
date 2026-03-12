@@ -424,8 +424,8 @@ def test_compare_value_must_be_string():
 
 
 def test_guard_union_discriminates_by_field_presence():
-    from vivian_pipeline.models_funcspec.transitions import Transition
-    t = Transition(
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    t = EventTransition(
         SourceState="Idle",
         DestinationState="Active",
         InteractionElement="TouchArea",
@@ -451,12 +451,12 @@ def test_guard_union_discriminates_by_field_presence():
 
 def test_transition_with_guards_roundtrip():
     from vivian_pipeline.models_funcspec.transitions import (
-        Transition,
+        EventTransition,
         TransitionsFile,
         EventParameterGuard,
         InteractionElementAttributeGuard,
     )
-    t = Transition(
+    t = EventTransition(
         SourceState="Idle",
         DestinationState="Active",
         InteractionElement="TouchArea",
@@ -478,6 +478,20 @@ def test_transition_with_guards_roundtrip():
     data = TransitionsFile(Transitions=[t]).model_dump()
     reloaded = TransitionsFile.model_validate(data)
     assert len(reloaded.Transitions[0].Guards) == 2
+
+
+def test_timeout_transition_rejects_event_fields():
+    from pydantic import ValidationError
+    from vivian_pipeline.models_funcspec.transitions import TimeoutTransition
+    t = TimeoutTransition(SourceState="Idle", DestinationState="Active", Timeout=5)
+    assert t.Timeout == 5
+    with pytest.raises(ValidationError):
+        TimeoutTransition(
+            SourceState="Idle",
+            DestinationState="Active",
+            Timeout=5,
+            Event="TOUCH_END",
+        )
 
 
 # ---------------------------------------------------------------------------

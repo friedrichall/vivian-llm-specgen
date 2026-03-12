@@ -36,9 +36,11 @@ from vivian_pipeline.models_funcspec.states import (
 )
 from vivian_pipeline.models_funcspec.transitions import (
     EventParameterGuard,
+    EventTransition,
     Guard,
     InteractionElementAttributeGuard,
     Transition,
+    TimeoutTransition,
     TransitionsFile,
 )
 from vivian_pipeline.models_funcspec.visualization_arrays import VisualizationArraysFile
@@ -62,6 +64,7 @@ __all__ = [
     "ConsistencyReviewResult",
     "ElementRole",
     "EventParameterGuard",
+    "EventTransition",
     "FixDirective",
     "FixPlan",
     "FloatValueVisualization",
@@ -91,6 +94,7 @@ __all__ = [
     "StatesFile",
     "ToggleButton",
     "TouchArea",
+    "TimeoutTransition",
     "Transition",
     "TransitionsFile",
     "ValueOfInteractionElementVisualization",

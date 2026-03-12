@@ -147,15 +147,16 @@ class Registry(StrictModel):
                         )
                     )
 
+                ie = getattr(transition, "InteractionElement", None)
                 if (
                     "InteractionElements" in active
-                    and transition.InteractionElement is not None
-                    and transition.InteractionElement not in interaction_names
+                    and ie is not None
+                    and ie not in interaction_names
                 ):
                     errors.append(
                         "Transition[{index}] references unknown InteractionElement '{name}'.".format(
                             index=index,
-                            name=transition.InteractionElement,
+                            name=ie,
                         )
                     )
 

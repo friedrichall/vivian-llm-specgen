@@ -84,6 +84,57 @@
             "title": "EventParameterGuard",
             "type": "object"
         },
+        "EventTransition": {
+            "additionalProperties": false,
+            "properties": {
+                "SourceState": {
+                    "title": "Sourcestate",
+                    "type": "string"
+                },
+                "DestinationState": {
+                    "title": "Destinationstate",
+                    "type": "string"
+                },
+                "InteractionElement": {
+                    "title": "Interactionelement",
+                    "type": "string"
+                },
+                "Event": {
+                    "title": "Event",
+                    "type": "string"
+                },
+                "Guards": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/EventParameterGuard"
+                                    },
+                                    {
+                                        "$ref": "#/$defs/InteractionElementAttributeGuard"
+                                    }
+                                ]
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Guards"
+                }
+            },
+            "required": [
+                "SourceState",
+                "DestinationState",
+                "InteractionElement",
+                "Event"
+            ],
+            "title": "EventTransition",
+            "type": "object"
+        },
         "FileVisualization": {
             "additionalProperties": false,
             "properties": {
@@ -775,6 +826,53 @@
             "title": "TextOverlay",
             "type": "object"
         },
+        "TimeoutTransition": {
+            "additionalProperties": false,
+            "properties": {
+                "SourceState": {
+                    "title": "Sourcestate",
+                    "type": "string"
+                },
+                "DestinationState": {
+                    "title": "Destinationstate",
+                    "type": "string"
+                },
+                "Timeout": {
+                    "minimum": 0,
+                    "title": "Timeout",
+                    "type": "integer"
+                },
+                "Guards": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/$defs/EventParameterGuard"
+                                    },
+                                    {
+                                        "$ref": "#/$defs/InteractionElementAttributeGuard"
+                                    }
+                                ]
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Guards"
+                }
+            },
+            "required": [
+                "SourceState",
+                "DestinationState",
+                "Timeout"
+            ],
+            "title": "TimeoutTransition",
+            "type": "object"
+        },
         "ToggleButton": {
             "additionalProperties": false,
             "properties": {
@@ -831,90 +929,19 @@
             "title": "TouchArea",
             "type": "object"
         },
-        "Transition": {
-            "additionalProperties": false,
-            "properties": {
-                "SourceState": {
-                    "title": "Sourcestate",
-                    "type": "string"
-                },
-                "DestinationState": {
-                    "title": "Destinationstate",
-                    "type": "string"
-                },
-                "InteractionElement": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Interactionelement"
-                },
-                "Event": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Event"
-                },
-                "Timeout": {
-                    "anyOf": [
-                        {
-                            "minimum": 0,
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Timeout"
-                },
-                "Guards": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "anyOf": [
-                                    {
-                                        "$ref": "#/$defs/EventParameterGuard"
-                                    },
-                                    {
-                                        "$ref": "#/$defs/InteractionElementAttributeGuard"
-                                    }
-                                ]
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Guards"
-                }
-            },
-            "required": [
-                "SourceState",
-                "DestinationState"
-            ],
-            "title": "Transition",
-            "type": "object"
-        },
         "TransitionsFile": {
             "additionalProperties": false,
             "properties": {
                 "Transitions": {
                     "items": {
-                        "$ref": "#/$defs/Transition"
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/EventTransition"
+                            },
+                            {
+                                "$ref": "#/$defs/TimeoutTransition"
+                            }
+                        ]
                     },
                     "title": "Transitions",
                     "type": "array"
