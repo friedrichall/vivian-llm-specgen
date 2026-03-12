@@ -39,8 +39,15 @@ Light configuration ("Type": "Light")
 5.3.3. "b": blue component, a number between 0.0 and 1.0.
 5.3.4. "a": alpha (opacity) component, a number between 0.0 and 1.0.
 5.4. You must not add additional fields to a Light element unless explicitly requested.
-5.5. Example conceptual structure:
-5.5.1. {"Type": "Light", "Name": "StatusLED", "EmissionColor": {"r": 1.0, "g": 0.5, "b": 0.0, "a": 1.0}}
+5.4.1. Choose EmissionColor based on the semantic meaning of the light in the interaction
+       (e.g. green for "active/ready", red for "error/off", white for a neutral indicator),
+       as stated in the interaction_description or implied by the interaction plan.
+       Do NOT attempt to read scene JSON material colors — the Light element replaces the
+       object's material with its own at runtime, so scene material values are irrelevant.
+       Do NOT infer color from visual appearance in images.
+5.5. PREREQUISITE: The named Unity GameObject must have either a Unity Light component or a mesh (MeshFilter component on itself or its children). A Light element without either of these will throw an ArgumentException during prototype initialization, aborting all interactions. Do not use "Light" for invisible or non-mesh objects that also lack a Unity Light component.
+5.6. Example conceptual structure:
+5.6.1. {"Type": "Light", "Name": "StatusLED", "EmissionColor": {"r": 1.0, "g": 0.5, "b": 0.0, "a": 1.0}}
 
 Screen configuration ("Type": "Screen")
 6.1. A Screen visualization element defines a planar surface that displays UI or other content.
@@ -53,10 +60,15 @@ Screen configuration ("Type": "Screen")
 6.3.1. "x": x-component of the normal vector.
 6.3.2. "y": y-component of the normal vector.
 6.3.3. "z": z-component of the normal vector.
+6.3.4. "Plane" represents the surface normal in the GameObject's local coordinate space.
+       For most screen surfaces, the local forward direction (z=1.0) is the correct normal.
+       If the scene JSON or interaction_description specifies an orientation, use that instead.
+       Do NOT infer Plane from mesh bounding box dimensions or visual appearance in images.
 6.4. "Resolution" must be an object with integer fields:
 6.4.1. "x": horizontal resolution in pixels, a positive integer.
 6.4.2. "y": vertical resolution in pixels, a positive integer.
 6.5. You must not add additional fields to a Screen element unless explicitly requested.
+6.5.1. PREREQUISITE: The named Unity GameObject must have a mesh (MeshFilter component on itself or its children). A Screen element without a MeshFilter will throw an exception during prototype initialization.
 6.6. Example conceptual structure:
 6.6.1. {"Type": "Screen", "Name": "MainDisplay", "Plane": {"x": 0.0, "y": 0.0, "z": 1.0}, "Resolution": {"x": 800, "y": 480}}
 
@@ -65,7 +77,7 @@ AppearingObject configuration ("Type": "AppearingObject")
 7.2. For an AppearingObject element, you must include:
 7.2.1. "Type" with the value "AppearingObject".
 7.2.2. "Name" with a string identifier.
-7.3. You must not add additional fields to an AppearingObject element unless explicitly requested. In particular, you must not include a "Value" field — this element type has no configurable fields beyond "Type" and "Name". The visibility of an AppearingObject is controlled exclusively through state conditions in States.json, not through VisualizationElements.json.
+7.3. You must not add any fields other than "Type" and "Name".
 7.4. Example conceptual structure:
 7.4.1. {"Type": "AppearingObject", "Name": "CoverLid"}
 
@@ -79,22 +91,26 @@ SoundSource configuration ("Type": "SoundSource")
 8.4.1. {"Type": "SoundSource", "Name": "Speaker"}
 
 Animation configuration ("Type": "Animation")
-9.1. An Animation visualization element triggers or visualizes animations attached to a model element (for example, in a Unity prefab with configured animations).
-9.2. For an Animation element, you must include:
-9.2.1. "Type" with the value "Animation".
-9.2.2. "Name" with a string identifier.
-9.3. You must not add additional fields to an Animation element unless explicitly requested.
-9.4. Example conceptual structure:
-9.4.1. {"Type": "Animation", "Name": "DoorOpenAnimation"}
+9.1. An Animation visualization element triggers animations on a Unity GameObject that has an Animation or Animator component already configured in the Unity scene.
+9.2. PREREQUISITE — HARD RULE: You must only use "Animation" if the scene understanding EXPLICITLY confirms the corresponding Unity GameObject has an Animation or Animator component. If this is uncertain or not confirmed, do NOT use "Animation". Use "AppearingObject" for simple show/hide behavior instead.
+9.3. If the GameObject does not have an Animation or Animator component at runtime, the entire virtual prototype will fail to initialize — meaning no element in the entire scene will be interactive. This is a fatal error, not a graceful degradation.
+9.4. For an Animation element, you must include:
+9.4.1. "Type" with the value "Animation".
+9.4.2. "Name" with a string identifier.
+9.5. You must not add additional fields to an Animation element unless explicitly requested.
+9.6. Example conceptual structure:
+9.6.1. {"Type": "Animation", "Name": "DoorOpenAnimation"}
 
 Particles configuration ("Type": "Particles")
-10.1. A Particles visualization element represents a visual particle effect (for example, steam or smoke) attached to a model element with configured particle systems.
-10.2. For a Particles element, you must include:
-10.2.1. "Type" with the value "Particles".
-10.2.2. "Name" with a string identifier.
-10.3. You must not add additional fields to a Particles element unless explicitly requested.
-10.4. Example conceptual structure:
-10.4.1. {"Type": "Particles", "Name": "SteamEffect"}
+10.1. A Particles visualization element activates a ParticleSystem on a Unity GameObject that has a ParticleSystem component already configured in the Unity scene.
+10.2. PREREQUISITE — HARD RULE: You must only use "Particles" if the scene understanding EXPLICITLY confirms the corresponding Unity GameObject has a ParticleSystem component. If uncertain, do NOT use "Particles".
+10.3. If the GameObject does not have a ParticleSystem component at runtime, the entire virtual prototype will fail to initialize — no element in the scene will be interactive.
+10.4. For a Particles element, you must include:
+10.4.1. "Type" with the value "Particles".
+10.4.2. "Name" with a string identifier.
+10.5. You must not add additional fields to a Particles element unless explicitly requested.
+10.6. Example conceptual structure:
+10.6.1. {"Type": "Particles", "Name": "SteamEffect"}
 
 Validation rules and conflict handling
 11.1. When generating or editing VisualizationElements.json, you must ensure that the JSON is syntactically valid.

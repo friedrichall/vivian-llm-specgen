@@ -18,11 +18,32 @@ Planning element_roles
 3.5. rationale must briefly explain why this object should have this role (e.g., "Has button role in scene data", "User requested this as a toggle switch", "Screen object for displaying status").
 3.6. You must not assign roles to objects that do not exist in SceneUnderstanding.objects.
 3.7. Consider the object's roles, interaction_params, materials, and relations when deciding its funcspec_type.
+3.8. PREREQUISITE — "Animation" funcspec_type: Only assign funcspec_type "Animation" if the scene
+understanding EXPLICITLY confirms that the corresponding Unity GameObject has an Animation or
+Animator component. If this is uncertain or not confirmed, use "AppearingObject" instead for
+show/hide behavior. Assigning "Animation" to an object without these components will cause the
+entire virtual prototype to fail to initialize — no element in the scene will be interactive.
+3.9. PREREQUISITE — "Particles" funcspec_type: Only assign funcspec_type "Particles" if the scene
+understanding EXPLICITLY confirms that the corresponding Unity GameObject has a ParticleSystem
+component. If uncertain, do not include that object as a Particles visualization element.
+Assigning "Particles" to an object without a ParticleSystem component is a fatal initialization error.
+3.10. PREREQUISITE — "Light" funcspec_type: Only assign funcspec_type "Light" if the named Unity
+GameObject has either a Unity Light component or a mesh (MeshFilter component on itself or its
+children). A Light element without either of these will throw an ArgumentException and abort all interactions.
+3.11. Default fallback for show/hide: When an object should appear or disappear based on state but
+does not have confirmed Animation, Animator, or ParticleSystem components, always use
+"AppearingObject" as the funcspec_type.
+3.12. PREREQUISITE — "TouchArea" funcspec_type: Only assign funcspec_type "TouchArea" if the named
+Unity GameObject has a mesh (MeshFilter component on itself or its children). A TouchArea without a
+MeshFilter will throw an exception during prototype initialization.
+3.13. PREREQUISITE — "Screen" funcspec_type: Only assign funcspec_type "Screen" if the named Unity
+GameObject has a mesh (MeshFilter component on itself or its children). A Screen element without a
+MeshFilter will throw an exception during prototype initialization.
 
 Planning states
 4.1. For each system state, create a PlannedState entry with a descriptive name and description.
 4.2. involved_elements must list object_names from your element_roles that are relevant to this state (elements whose conditions change in this state).
-4.3. State names should be descriptive and follow PascalCase or snake_case conventions (e.g., "PowerOff", "Idle", "ActiveMode").
+4.3. State names must be camelCase ending with '.state' (e.g., 'powerOff.state', 'idle.state', 'activeMode.state'). This matches the naming convention enforced by the states agent.
 4.4. Every prototype should have at least one initial/default state.
 4.5. Keep the number of states reasonable for the scene complexity. Simple scenes may need only 2-3 states; complex scenes may need more.
 

@@ -31,18 +31,6 @@
                 "Name": {
                     "title": "Name",
                     "type": "string"
-                },
-                "Value": {
-                    "anyOf": [
-                        {
-                            "type": "number"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Value"
                 }
             },
             "required": [
@@ -94,6 +82,31 @@
                 "CompareValue"
             ],
             "title": "EventParameterGuard",
+            "type": "object"
+        },
+        "FileVisualization": {
+            "additionalProperties": false,
+            "properties": {
+                "Type": {
+                    "const": "FileVisualization",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "VisualizationElement": {
+                    "title": "Visualizationelement",
+                    "type": "string"
+                },
+                "FileName": {
+                    "title": "Filename",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Type",
+                "VisualizationElement",
+                "FileName"
+            ],
+            "title": "FileVisualization",
             "type": "object"
         },
         "FloatValueVisualization": {
@@ -191,7 +204,8 @@
                     "enum": [
                         "FIXED",
                         "VALUE",
-                        "POSITION"
+                        "POSITION",
+                        "ROTATION"
                     ],
                     "title": "Attribute",
                     "type": "string"
@@ -420,7 +434,7 @@
                 "PositionResolution": {
                     "anyOf": [
                         {
-                            "minimum": 1,
+                            "minimum": 2,
                             "type": "integer"
                         },
                         {
@@ -526,6 +540,21 @@
                 "FileName": {
                     "title": "Filename",
                     "type": "string"
+                },
+                "Texts": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "$ref": "#/$defs/TextOverlay"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Texts"
                 }
             },
             "required": [
@@ -572,7 +601,7 @@
                 "PositionResolution": {
                     "anyOf": [
                         {
-                            "minimum": 1,
+                            "minimum": 2,
                             "type": "integer"
                         },
                         {
@@ -662,6 +691,7 @@
                     "items": {
                         "discriminator": {
                             "mapping": {
+                                "FileVisualization": "#/$defs/FileVisualization",
                                 "FloatValueVisualization": "#/$defs/FloatValueVisualization",
                                 "InteractionElementCondition": "#/$defs/InteractionElementCondition",
                                 "ScreenContentVisualization": "#/$defs/ScreenContentVisualization",
@@ -672,6 +702,9 @@
                         "oneOf": [
                             {
                                 "$ref": "#/$defs/FloatValueVisualization"
+                            },
+                            {
+                                "$ref": "#/$defs/FileVisualization"
                             },
                             {
                                 "$ref": "#/$defs/ScreenContentVisualization"
@@ -710,6 +743,36 @@
                 "States"
             ],
             "title": "StatesFile",
+            "type": "object"
+        },
+        "TextOverlay": {
+            "additionalProperties": false,
+            "properties": {
+                "Text": {
+                    "title": "Text",
+                    "type": "string"
+                },
+                "Size": {
+                    "minimum": 1,
+                    "title": "Size",
+                    "type": "integer"
+                },
+                "Position": {
+                    "title": "Position",
+                    "type": "string"
+                },
+                "Color": {
+                    "title": "Color",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Text",
+                "Size",
+                "Position",
+                "Color"
+            ],
+            "title": "TextOverlay",
             "type": "object"
         },
         "ToggleButton": {

@@ -20,48 +20,53 @@ from vivian_pipeline.models_funcspec.transitions import TransitionsFile
 from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
 from vivian_pipeline.scene_analysis import build_scene_analysis_agent
 
-BASE_MODEL = "gpt-5-mini-2025-08-07"
+MODEL_FLAGSHIP = "gpt-5.4"   # Critical reasoning + multimodal (scene analysis, planning)
+MODEL_STRONG = "gpt-5.2"     # Logic-intensive tasks (transitions)
+MODEL_BALANCED = "gpt-5.1"   # Structured generation (spec agents, review)
+MODEL_FAST = "gpt-5-mini"    # Simple tasks (visualization elements, fixer)
+
+BASE_MODEL = MODEL_FAST  # Legacy alias for agents_vivian.py
 
 interaction_elements_agent = Agent(
     name="interaction_elements_agent",
-    model=BASE_MODEL,
+    model=MODEL_BALANCED,
     instructions=INTERACTION_ELEMENTS_INSTRUCTIONS,
     output_type=InteractionElementsFile,
 )
 transitions_agent = Agent(
     name="transitions_agent",
-    model=BASE_MODEL,
+    model=MODEL_STRONG,
     instructions=TRANSITIONS_INSTRUCTIONS,
     output_type=TransitionsFile,
 )
 states_agent = Agent(
     name="states_agent",
-    model=BASE_MODEL,
+    model=MODEL_BALANCED,
     instructions=STATES_INSTRUCTIONS,
     output_type=StatesFile,
 )
 visualization_elements_agent = Agent(
     name="visualization_elements_agent",
-    model=BASE_MODEL,
+    model=MODEL_FAST,
     instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
     output_type=VisualizationElementsFile,
 )
 interaction_planner_agent = Agent(
     name="interaction_planner_agent",
-    model=BASE_MODEL,
+    model=MODEL_FLAGSHIP,
     instructions=INTERACTION_PLANNING_INSTRUCTIONS,
     output_type=InteractionPlan,
 )
 consistency_reviewer_agent = Agent(
     name="consistency_reviewer_agent",
-    model=BASE_MODEL,
+    model=MODEL_BALANCED,
     instructions=CONSISTENCY_REVIEW_INSTRUCTIONS,
     output_type=ConsistencyReviewResult,
 )
 fixer_agent = Agent(
     name="fixer_agent",
-    model=BASE_MODEL,
+    model=MODEL_FAST,
     instructions=FIXER_INSTRUCTIONS,
     output_type=FixPlan,
 )
-scene_analysis_agent = build_scene_analysis_agent(BASE_MODEL)
+scene_analysis_agent = build_scene_analysis_agent(MODEL_FLAGSHIP)

@@ -18,6 +18,10 @@ What to check
 3.6. Visualization consistency: If a visualization element has a FloatValueVisualization condition, does at least one state actually set a meaningful value for it? A Light with FloatValueVisualization but no state ever changing its value is suspicious.
 3.7. Interaction-visualization alignment: If an InteractionElement is referenced in transitions, do the resulting states actually change any conditions? Transitions that don't lead to observable changes are pointless.
 3.8. Element name validity: All element names in States and Transitions must match exactly (case-sensitive) with names defined in InteractionElements and VisualizationElements.
+3.9. Guard and condition value normalization: For Rotatable and Slider elements, verify that all
+     VALUE attribute values in States conditions and Transitions guards are normalized strings
+     between "0.0" and "1.0". Any numeric value above 1.0 on a Rotatable or Slider VALUE attribute
+     indicates a degree or unit value was used instead of a normalized fraction — flag as error.
 
 Severity levels
 4.1. Use severity "error" for issues that will cause the FunctionalSpecification to malfunction or fail validation:
