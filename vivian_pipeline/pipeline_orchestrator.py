@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -158,6 +159,7 @@ class PipelineOrchestrator:
 
         self.config = config
         self._run_started_at = datetime.now()
+        self._run_counter = self._compute_run_counter()
         self._registry_change_seq = 0
         self.registry = RegistryFull.empty()
         self._record_registry_change(reason="initialize_registry", attempt_index=None)
@@ -176,10 +178,27 @@ class PipelineOrchestrator:
     def registry(self, value: RegistryFull) -> None:
         self._registry = value
 
+    def _compute_run_counter(self) -> int:
+        """Return the next zero-based daily counter for today's run directories."""
+        date_str = self._run_started_at.strftime("%Y%m%d")
+        runs_root = self.config.paths.runs_root
+        if not runs_root.exists():
+            return 0
+        pattern = re.compile(rf"^{date_str}-\d{{6}}-(\d{{3}})$")
+        max_k = -1
+        for entry in runs_root.iterdir():
+            if entry.is_dir():
+                m = pattern.match(entry.name)
+                if m:
+                    k = int(m.group(1))
+                    if k > max_k:
+                        max_k = k
+        return max_k + 1
+
     @property
     def run_root(self) -> Path:
         timestamp = self._run_started_at.strftime("%Y%m%d-%H%M%S")
-        return self.config.paths.runs_root / f"{timestamp}-{self.config.run_id}"
+        return self.config.paths.runs_root / f"{timestamp}-{self._run_counter:03d}"
 
     def _attempt_root(self, attempt_index: int) -> Path:
         return self.run_root / "attempts" / str(attempt_index)
