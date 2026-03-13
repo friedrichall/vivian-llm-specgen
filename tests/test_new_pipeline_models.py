@@ -738,3 +738,91 @@ def test_element_role_valid_visualization_pairing():
     )
     assert er.category == "visualization"
     assert er.funcspec_type == "Screen"
+
+
+# ---------------------------------------------------------------------------
+# Cross-reference step attribution (stuck-retry-loop regression)
+# ---------------------------------------------------------------------------
+
+from vivian_pipeline.pipeline_orchestrator import (  # noqa: E402
+    ElementNameMismatchError,
+    PipelineOrchestrator,
+)
+from vivian_pipeline.models_funcspec.registry import Registry, ScreensRegistry
+from vivian_pipeline.models_funcspec.interaction_elements import (  # noqa: E402
+    InteractionElementsFile,
+)
+from vivian_pipeline.models_funcspec.visualization_elements import (  # noqa: E402
+    VisualizationElementsFile,
+)
+from vivian_pipeline.models_funcspec.states import StatesFile, State
+from vivian_pipeline.models_funcspec.transitions import (  # noqa: E402
+    EventTransition,
+    TransitionsFile,
+)
+from vivian_pipeline.rerun_policy import expand_dirty_steps  # noqa: E402
+
+
+def _make_registry_with_states(state_names: list[str]) -> Registry:
+    states = StatesFile(
+        States=[State(Name=n, Conditions=[]) for n in state_names]
+    )
+    return Registry(
+        interaction_elements=InteractionElementsFile(Elements=[]),
+        visualization_elements=VisualizationElementsFile(Elements=[]),
+        screens=ScreensRegistry(files=[]),
+        states=states,
+        transitions=TransitionsFile(Transitions=[]),
+    )
+
+
+def _event_transition(source: str, dest: str) -> EventTransition:
+    return EventTransition(
+        SourceState=source,
+        DestinationState=dest,
+        InteractionElement="Btn",
+        Event="BUTTON_PRESS",
+    )
+
+
+class TestTransitionStateRefAttribution:
+    """_validate_transition_state_refs must raise ValueError for bad state names."""
+
+    def test_unknown_source_state_raises(self):
+        tf = TransitionsFile(Transitions=[_event_transition("BAD_STATE", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        with pytest.raises(ValueError, match="unknown SourceState"):
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+
+    def test_unknown_dest_state_raises(self):
+        tf = TransitionsFile(Transitions=[_event_transition("Off", "GHOST_STATE")])
+        registry = _make_registry_with_states(["Off", "On"])
+        with pytest.raises(ValueError, match="unknown DestinationState"):
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+
+    def test_valid_state_refs_pass(self):
+        tf = TransitionsFile(Transitions=[_event_transition("Off", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        PipelineOrchestrator._validate_transition_state_refs(tf, registry)  # no raise
+
+    def test_wrapping_produces_step_states(self):
+        """Simulates the run_transitions wrapping: bad state ref → step='states'."""
+        tf = TransitionsFile(Transitions=[_event_transition("BAD", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        try:
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+        except ValueError as exc:
+            err = ElementNameMismatchError(str(exc), step="states")
+            assert err.step == "states"
+        else:
+            pytest.fail("Expected ValueError from _validate_transition_state_refs")
+
+    def test_expand_dirty_steps_from_states_includes_transitions(self):
+        """expand_dirty_steps({'states'}) must cascade to transitions."""
+        result = expand_dirty_steps({"states"})
+        assert "states" in result
+        assert "transitions" in result
+
+    def test_expand_dirty_steps_from_interaction_includes_all_downstream(self):
+        result = expand_dirty_steps({"interaction"})
+        assert result >= {"interaction", "visualization", "states", "transitions"}

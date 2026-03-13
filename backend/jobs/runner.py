@@ -123,7 +123,7 @@ async def _execute_pipeline(
     object_interactions: dict[str, str] = {}
 
     start_pipeline = _coerce_bool(request_data.get("start_pipeline"), True)
-    max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 10))
+    max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 5))
     interaction_description = request_data.get("interaction_description") or None
     skip_scene_confirmation = _coerce_bool(
         request_data.get("skip_scene_confirmation"), False

@@ -587,17 +587,14 @@ class PipelineOrchestrator:
             )
 
     @staticmethod
-    def _validate_transitions_cross_refs(
+    def _validate_transition_state_refs(
         transitions_file: TransitionsFile,
         registry_snapshot: RegistryFull,
     ) -> None:
+        """Raise ValueError if any transition references an unknown state name."""
         state_names = {
             state.Name
             for state in registry_snapshot.states.States
-        }
-        interaction_names = {
-            element.Name
-            for element in registry_snapshot.interaction_elements.Elements
         }
         errors: list[str] = []
 
@@ -616,6 +613,23 @@ class PipelineOrchestrator:
                         name=transition.DestinationState,
                     )
                 )
+
+        if errors:
+            raise ValueError("\n".join(errors))
+
+    @staticmethod
+    def _validate_transition_element_refs(
+        transitions_file: TransitionsFile,
+        registry_snapshot: RegistryFull,
+    ) -> None:
+        """Raise ValueError if any transition references an unknown interaction element name."""
+        interaction_names = {
+            element.Name
+            for element in registry_snapshot.interaction_elements.Elements
+        }
+        errors: list[str] = []
+
+        for index, transition in enumerate(transitions_file.Transitions):
             ie = getattr(transition, "InteractionElement", None)
             if ie is not None and ie not in interaction_names:
                 errors.append(
@@ -1106,10 +1120,18 @@ class PipelineOrchestrator:
             parsed = TransitionsFile.parse_obj(raw_payload)
 
         # XOR and related event/timeout rules are enforced by Transitions model validators.
+        # State-name errors are attributed to "states" so that expand_dirty_steps also
+        # re-runs states (the actual root cause), not just transitions.
         try:
-            self._validate_transitions_cross_refs(parsed, registry_snapshot)
+            self._validate_transition_state_refs(parsed, registry_snapshot)
         except ValueError as exc:
-            raise ElementNameMismatchError(str(exc), step="transitions") from exc
+            raise ElementNameMismatchError(str(exc), step="states") from exc
+        # Interaction-element errors are attributed to "interaction" so that expand_dirty_steps
+        # re-runs all downstream steps including visualization, states, and transitions.
+        try:
+            self._validate_transition_element_refs(parsed, registry_snapshot)
+        except ValueError as exc:
+            raise ElementNameMismatchError(str(exc), step="interaction") from exc
         return parsed
 
     def _clone_scene_understanding(self, scene_understanding: SceneUnderstanding) -> SceneUnderstanding:
@@ -1625,7 +1647,9 @@ class PipelineOrchestrator:
                     status="name_mismatch",
                     next_dirty_steps=next_dirty_steps,
                 )
-                dirty_steps = next_dirty_steps
+                dirty_steps = expand_dirty_steps(
+                    next_dirty_steps | dirty_steps, active_steps=self.active_steps
+                )
                 pending_fix_plan = None
                 pending_consistency_issues = None
                 continue
