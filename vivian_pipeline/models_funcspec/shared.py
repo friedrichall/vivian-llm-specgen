@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StrictModel(BaseModel):
@@ -25,10 +25,10 @@ class Vec3(StrictModel):
 
 
 class RGBA(StrictModel):
-    r: float
-    g: float
-    b: float
-    a: float
+    r: float = Field(ge=0.0, le=1.0)
+    g: float = Field(ge=0.0, le=1.0)
+    b: float = Field(ge=0.0, le=1.0)
+    a: float = Field(ge=0.0, le=1.0)
 
 
 class InitialAttributeValue(StrictModel):

@@ -461,18 +461,26 @@
             "additionalProperties": false,
             "properties": {
                 "r": {
+                    "maximum": 1.0,
+                    "minimum": 0.0,
                     "title": "R",
                     "type": "number"
                 },
                 "g": {
+                    "maximum": 1.0,
+                    "minimum": 0.0,
                     "title": "G",
                     "type": "number"
                 },
                 "b": {
+                    "maximum": 1.0,
+                    "minimum": 0.0,
                     "title": "B",
                     "type": "number"
                 },
                 "a": {
+                    "maximum": 1.0,
+                    "minimum": 0.0,
                     "title": "A",
                     "type": "number"
                 }

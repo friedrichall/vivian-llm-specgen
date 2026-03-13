@@ -2,20 +2,54 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import model_validator
 
 from vivian_pipeline.models_funcspec.shared import StrictModel
+
+# ---------------------------------------------------------------------------
+# FuncSpec element type literals — mirror the C# type switches
+# InteractionElementSpecs.cs:363-415  /  VisualizationElementSpecs.cs:195-222
+# ---------------------------------------------------------------------------
+
+InteractionElementType = Literal[
+    "Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable",
+]
+VisualizationElementType = Literal[
+    "Light", "Screen", "AppearingObject", "SoundSource", "Animation", "Particles",
+]
+FuncSpecType = Literal[
+    "Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable",
+    "Light", "Screen", "AppearingObject", "SoundSource", "Animation", "Particles",
+]
 
 
 class ElementRole(StrictModel):
     """Maps a scene object to its intended FuncSpec role."""
 
     object_name: str
-    funcspec_type: str
+    funcspec_type: FuncSpecType
     category: Literal["interaction", "visualization"]
     rationale: str
+
+    @model_validator(mode="after")
+    def validate_category_type_pairing(self) -> "ElementRole":
+        if self.category == "interaction":
+            valid = get_args(InteractionElementType)
+            if self.funcspec_type not in valid:
+                raise ValueError(
+                    f"funcspec_type '{self.funcspec_type}' is not a valid interaction "
+                    f"element type. Valid: {valid}"
+                )
+        else:  # visualization
+            valid = get_args(VisualizationElementType)
+            if self.funcspec_type not in valid:
+                raise ValueError(
+                    f"funcspec_type '{self.funcspec_type}' is not a valid visualization "
+                    f"element type. Valid: {valid}"
+                )
+        return self
 
 
 class PlannedState(StrictModel):

@@ -613,3 +613,128 @@ def test_guard_attribute_only_value_and_position():
             Operator="EQUALS", CompareValue="0.5",
         )
         assert g.Attribute == attr
+
+
+# ---------------------------------------------------------------------------
+# RGBA range constraints
+# ---------------------------------------------------------------------------
+
+def test_rgba_valid_range():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    c = RGBA(r=0.5, g=0.0, b=1.0, a=1.0)
+    assert c.r == 0.5
+    assert c.b == 1.0
+
+
+def test_rgba_rejects_value_above_one():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    with pytest.raises(ValidationError):
+        RGBA(r=1.5, g=0.0, b=0.0, a=1.0)
+
+
+def test_rgba_rejects_negative_value():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    with pytest.raises(ValidationError):
+        RGBA(r=0.0, g=-0.1, b=0.0, a=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Movable POSITION validator
+# ---------------------------------------------------------------------------
+
+def test_movable_requires_position_attribute():
+    from vivian_pipeline.models_funcspec.interaction_elements import Movable, SnapPose
+    from vivian_pipeline.models_funcspec.shared import InitialAttributeValue
+    with pytest.raises(ValidationError, match="Attribute='POSITION'"):
+        Movable(
+            Type="Movable",
+            Name="Obj",
+            InitialAttributeValues=[
+                InitialAttributeValue(Attribute="ROTATION", Value="0 0 0 1"),
+            ],
+            SnapPoses=[SnapPose(Position="1 2 3")],
+        )
+
+
+def test_movable_accepts_position_attribute():
+    from vivian_pipeline.models_funcspec.interaction_elements import Movable, SnapPose
+    from vivian_pipeline.models_funcspec.shared import InitialAttributeValue
+    m = Movable(
+        Type="Movable",
+        Name="Obj",
+        InitialAttributeValues=[
+            InitialAttributeValue(Attribute="POSITION", Value="1 2 3"),
+        ],
+        SnapPoses=[SnapPose(Position="1 2 3")],
+    )
+    assert m.Name == "Obj"
+
+
+# ---------------------------------------------------------------------------
+# ElementRole funcspec_type Literal constraint
+# ---------------------------------------------------------------------------
+
+def test_element_role_rejects_invalid_funcspec_type():
+    with pytest.raises(ValidationError):
+        ElementRole(
+            object_name="X",
+            funcspec_type="InvalidType",
+            category="interaction",
+            rationale="r",
+        )
+
+
+def test_element_role_accepts_all_interaction_types():
+    for t in ("Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable"):
+        er = ElementRole(
+            object_name="X", funcspec_type=t, category="interaction", rationale="r",
+        )
+        assert er.funcspec_type == t
+
+
+def test_element_role_accepts_all_visualization_types():
+    for t in ("Light", "Screen", "AppearingObject", "SoundSource", "Animation", "Particles"):
+        er = ElementRole(
+            object_name="X", funcspec_type=t, category="visualization", rationale="r",
+        )
+        assert er.funcspec_type == t
+
+
+# ---------------------------------------------------------------------------
+# ElementRole category / funcspec_type pairing validator
+# ---------------------------------------------------------------------------
+
+def test_element_role_rejects_interaction_with_viz_type():
+    with pytest.raises(ValidationError, match="not a valid interaction"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Light",
+            category="interaction",
+            rationale="r",
+        )
+
+
+def test_element_role_rejects_visualization_with_interaction_type():
+    with pytest.raises(ValidationError, match="not a valid visualization"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Button",
+            category="visualization",
+            rationale="r",
+        )
+
+
+def test_element_role_valid_interaction_pairing():
+    er = ElementRole(
+        object_name="X", funcspec_type="Slider", category="interaction", rationale="r",
+    )
+    assert er.category == "interaction"
+    assert er.funcspec_type == "Slider"
+
+
+def test_element_role_valid_visualization_pairing():
+    er = ElementRole(
+        object_name="X", funcspec_type="Screen", category="visualization", rationale="r",
+    )
+    assert er.category == "visualization"
+    assert er.funcspec_type == "Screen"
