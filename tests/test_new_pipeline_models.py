@@ -516,3 +516,100 @@ def test_planned_transition_guard_hints_default_none():
         trigger_description="Click button",
     )
     assert pt.guard_hints is None
+
+
+# ---------------------------------------------------------------------------
+# Literal constraint enforcement for Transitions models
+# ---------------------------------------------------------------------------
+
+def test_event_transition_rejects_invalid_event():
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    with pytest.raises(ValidationError):
+        EventTransition(
+            SourceState="A", DestinationState="B",
+            InteractionElement="Btn", Event="INVALID_EVENT",
+        )
+
+
+def test_event_parameter_guard_rejects_invalid_parameter():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            EventParameter="INVALID_PARAM", Operator="EQUALS", CompareValue="1",
+        )
+
+
+def test_event_parameter_guard_rejects_invalid_operator():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            EventParameter="SELECTED_VALUE", Operator="INVALID_OP", CompareValue="1",
+        )
+
+
+def test_interaction_element_guard_rejects_fixed_attribute():
+    """FIXED is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Slider", Attribute="FIXED",
+            Operator="EQUALS", CompareValue="true",
+        )
+
+
+def test_interaction_element_guard_rejects_rotation_attribute():
+    """ROTATION is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Rotatable", Attribute="ROTATION",
+            Operator="EQUALS", CompareValue="0.5",
+        )
+
+
+def test_interaction_element_guard_rejects_enabled_attribute():
+    """ENABLED is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Btn", Attribute="ENABLED",
+            Operator="EQUALS", CompareValue="true",
+        )
+
+
+def test_all_valid_event_types_accepted():
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    valid_events = [
+        "BUTTON_PRESS", "BUTTON_RELEASE",
+        "SLIDER_DRAG_START", "SLIDER_DRAG", "SLIDER_DRAG_END",
+        "ROTATABLE_DRAG_START", "ROTATABLE_DRAG", "ROTATABLE_DRAG_END",
+        "TOUCH_START", "TOUCH_SLIDE", "TOUCH_END",
+        "OBJECT_MOVE_START", "OBJECT_MOVE", "OBJECT_MOVE_END",
+        "SNAPPOSES_CHECK",
+    ]
+    for event in valid_events:
+        t = EventTransition(
+            SourceState="A", DestinationState="B",
+            InteractionElement="E", Event=event,
+        )
+        assert t.Event == event
+
+
+def test_all_valid_operators_accepted():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    valid_ops = ["LARGER", "LARGER_EQUALS", "EQUALS", "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER"]
+    for op in valid_ops:
+        g = EventParameterGuard(
+            EventParameter="SELECTED_VALUE", Operator=op, CompareValue="0.5",
+        )
+        assert g.Operator == op
+
+
+def test_guard_attribute_only_value_and_position():
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    for attr in ("VALUE", "POSITION"):
+        g = InteractionElementAttributeGuard(
+            InteractionElement="Elem", Attribute=attr,
+            Operator="EQUALS", CompareValue="0.5",
+        )
+        assert g.Attribute == attr

@@ -92,18 +92,18 @@ Interaction element attribute guards
 9.2.2. "Attribute": a string naming the attribute. The complete and exhaustive list of valid values is:
 9.2.2.1. "VALUE": the element's current value. Used for Slider (normalized 0.0–1.0), Rotatable (normalized 0.0–1.0), and ToggleButton ("true" or "false"). You must NEVER use "ANGLE", "ROTATION", "DEGREES", or any other physical-unit attribute name for Rotatable elements — the correct attribute is always "VALUE".
 9.2.2.2. "POSITION": the current position of a Movable element, as a string "(x, y, z)".
-9.2.2.3. "FIXED": whether the element is currently locked ("true" or "false").
+9.2.2.3. You must NEVER use "FIXED", "ENABLED", or "ROTATION" as the Attribute in a guard. These attributes are valid for state conditions and initial attribute values, but the Unity runtime guard evaluation (StateMachine.GuardsMatch) only supports "VALUE" and "POSITION" — any other attribute throws an ArgumentException.
 9.2.3. "Operator": a string describing the comparison operator. The complete and exhaustive list of valid values is: "LARGER", "LARGER_EQUALS", "EQUALS", "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER".
 9.2.4. "CompareValue": the value to compare against, always as a string.
 9.3. "CompareValue" must be formatted appropriately for the attribute:
 9.3.1. For "VALUE" on Slider or Rotatable, it must be a numeric string between "0.0" and "1.0" (for example, "0.33", "0.5", "1.0"). Do not use degree values or raw position values.
 9.3.2. For "VALUE" on ToggleButton, it must be "true" or "false".
 9.3.3. For "POSITION", it must be a string representing a 3D coordinate, for example: "(0.1, 0.0, 0.2)".
-9.3.4. For "FIXED", it must be "true" or "false".
-9.3.5. Operator restrictions by value type:
-9.3.5.1. For boolean CompareValues ("true"/"false"), only "EQUALS" and "NOT_EQUALS" are valid operators. Using "LARGER", "SMALLER", etc. on a boolean will throw an ArgumentException at runtime.
-9.3.5.2. For string CompareValues, only "EQUALS" and "NOT_EQUALS" are valid.
-9.3.5.3. For numeric CompareValues, all six operators are valid.
+9.3.4. Operator restrictions by value type:
+9.3.4.1. For boolean CompareValues ("true"/"false"), only "EQUALS" is a valid operator. Any other operator including "NOT_EQUALS" will throw an ArgumentException at runtime.
+9.3.4.2. For string CompareValues, only "EQUALS" is a valid operator. Any other operator will throw an ArgumentException at runtime.
+9.3.4.3. For numeric CompareValues, all six operators are valid.
+9.3.4.4. For Vector3 CompareValues (e.g. "(0.1, 0.0, 0.2)"), all six operators are valid. Comparison is performed element-wise (x, y, z must all satisfy the operator).
 9.4. Example conceptual structure:
 9.4.1. {"InteractionElement": "Slider", "Attribute": "VALUE", "Operator": "SMALLER_EQUALS", "CompareValue": "0.5"}
 9.5. You must not mix event parameter fields ("EventParameter") with interaction element fields ("InteractionElement", "Attribute") in the same guard object.

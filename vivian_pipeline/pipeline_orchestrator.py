@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from agents.tool_context import ToolContext
 
@@ -427,6 +427,74 @@ class PipelineOrchestrator:
         )
 
     @staticmethod
+    def _trim_scene_for_agent(
+        scene: SceneUnderstanding,
+        level: Literal["minimal", "standard", "full"],
+    ) -> dict[str, Any]:
+        """Return a trimmed scene dict sized for the consuming agent.
+
+        Levels:
+            minimal  — object names only (transitions, states)
+            standard — names + roles + interaction_params (interaction_elements)
+            full     — names + roles + interaction_params + materials + relations
+                       + clusters (visualization_elements, interaction_planning)
+        """
+        base: dict[str, Any] = {}
+        if scene.scene_id:
+            base["scene_id"] = scene.scene_id
+        if scene.interaction_description:
+            base["interaction_description"] = scene.interaction_description
+
+        if level == "minimal":
+            base["objects"] = [{"name": obj.name} for obj in scene.objects]
+        elif level == "standard":
+            base["objects"] = [
+                {
+                    "name": obj.name,
+                    "roles": obj.roles,
+                    **(
+                        {"interaction_params": obj.interaction_params.model_dump()}
+                        if obj.interaction_params
+                        else {}
+                    ),
+                }
+                for obj in scene.objects
+            ]
+        else:  # full
+            base["objects"] = [
+                {
+                    "name": obj.name,
+                    "roles": obj.roles,
+                    **(
+                        {"interaction_params": obj.interaction_params.model_dump()}
+                        if obj.interaction_params
+                        else {}
+                    ),
+                    **(
+                        {
+                            "materials": [
+                                m.model_dump(exclude_none=True)
+                                for m in obj.materials
+                            ]
+                        }
+                        if obj.materials
+                        else {}
+                    ),
+                }
+                for obj in scene.objects
+            ]
+            base["relations"] = [
+                r.model_dump(exclude={"confidence", "evidence"})
+                for r in scene.relations
+            ]
+            base["clusters"] = [
+                c.model_dump(exclude={"confidence", "rationale"})
+                for c in scene.clusters
+            ]
+
+        return base
+
+    @staticmethod
     def _interaction_elements_subset(registry_snapshot: RegistryFull) -> list[dict[str, str]]:
         return [
             {
@@ -761,7 +829,8 @@ class PipelineOrchestrator:
         fix_plan: FixPlan | None = None,
     ) -> InteractionElementsFile:
         self._emit_phase("GENERATING_SPECS_INTERACTION_ELEMENTS")
-        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _scene_trimmed = self._trim_scene_for_agent(scene_confirmed, "standard")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
             _prev_output = json.dumps(
@@ -835,7 +904,8 @@ class PipelineOrchestrator:
     ) -> VisualizationElementsFile:
         self._emit_phase("GENERATING_SPECS_VISUALIZATION_ELEMENTS")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
-        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _scene_trimmed = self._trim_scene_for_agent(scene_confirmed, "full")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
         if errors_for_step:
@@ -913,7 +983,8 @@ class PipelineOrchestrator:
         self._emit_phase("GENERATING_SPECS_STATES")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         visualization_subset = self._visualization_elements_subset(registry_snapshot)
-        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _scene_trimmed = self._trim_scene_for_agent(scene_confirmed, "minimal")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _visualization_json = json.dumps(visualization_subset, indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
@@ -984,7 +1055,8 @@ class PipelineOrchestrator:
         self._emit_phase("GENERATING_SPECS_TRANSITIONS")
         interaction_subset = self._interaction_elements_subset(registry_snapshot)
         state_names_subset = self._state_names_subset(registry_snapshot)
-        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _scene_trimmed = self._trim_scene_for_agent(scene_confirmed, "minimal")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _state_names_json = json.dumps(state_names_subset, indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
@@ -1269,7 +1341,8 @@ class PipelineOrchestrator:
         scene_confirmed: SceneUnderstanding,
     ) -> InteractionPlan:
         self._emit_phase("PLANNING_INTERACTIONS")
-        _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
+        _scene_trimmed = self._trim_scene_for_agent(scene_confirmed, "full")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
         parts = [f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n"]
         if scene_confirmed.interaction_description:
             parts.append(

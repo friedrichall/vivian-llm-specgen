@@ -64,10 +64,23 @@
             "additionalProperties": false,
             "properties": {
                 "EventParameter": {
+                    "enum": [
+                        "SELECTED_VALUE",
+                        "TOUCH_X_COORDINATE",
+                        "TOUCH_Y_COORDINATE"
+                    ],
                     "title": "Eventparameter",
                     "type": "string"
                 },
                 "Operator": {
+                    "enum": [
+                        "LARGER",
+                        "LARGER_EQUALS",
+                        "EQUALS",
+                        "NOT_EQUALS",
+                        "SMALLER_EQUALS",
+                        "SMALLER"
+                    ],
                     "title": "Operator",
                     "type": "string"
                 },
@@ -100,6 +113,23 @@
                     "type": "string"
                 },
                 "Event": {
+                    "enum": [
+                        "BUTTON_PRESS",
+                        "BUTTON_RELEASE",
+                        "SLIDER_DRAG_START",
+                        "SLIDER_DRAG",
+                        "SLIDER_DRAG_END",
+                        "ROTATABLE_DRAG_START",
+                        "ROTATABLE_DRAG",
+                        "ROTATABLE_DRAG_END",
+                        "TOUCH_START",
+                        "TOUCH_SLIDE",
+                        "TOUCH_END",
+                        "OBJECT_MOVE_START",
+                        "OBJECT_MOVE",
+                        "OBJECT_MOVE_END",
+                        "SNAPPOSES_CHECK"
+                    ],
                     "title": "Event",
                     "type": "string"
                 },
@@ -218,10 +248,22 @@
                     "type": "string"
                 },
                 "Attribute": {
+                    "enum": [
+                        "VALUE",
+                        "POSITION"
+                    ],
                     "title": "Attribute",
                     "type": "string"
                 },
                 "Operator": {
+                    "enum": [
+                        "LARGER",
+                        "LARGER_EQUALS",
+                        "EQUALS",
+                        "NOT_EQUALS",
+                        "SMALLER_EQUALS",
+                        "SMALLER"
+                    ],
                     "title": "Operator",
                     "type": "string"
                 },
