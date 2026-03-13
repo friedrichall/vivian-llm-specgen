@@ -288,11 +288,11 @@ async def run_vivian(
             on_phase_change("GENERATING_SPECS")
         output_dir.mkdir(parents=True, exist_ok=True)
         file_map = {
-            "InteractionElements.json": final_output.interaction_elements.model_dump(),
-            "VisualizationElements.json": final_output.visualization_elements.model_dump(),
-            "VisualizationArrays.json": final_output.visualization_arrays.model_dump(),
-            "States.json": final_output.states.model_dump(),
-            "Transitions.json": final_output.transitions.model_dump(),
+            "InteractionElements.json": final_output.interaction_elements.model_dump(exclude_none=True),
+            "VisualizationElements.json": final_output.visualization_elements.model_dump(exclude_none=True),
+            "VisualizationArrays.json": final_output.visualization_arrays.model_dump(exclude_none=True),
+            "States.json": final_output.states.model_dump(exclude_none=True),
+            "Transitions.json": final_output.transitions.model_dump(exclude_none=True),
         }
         for filename, payload in file_map.items():
             path = output_dir / filename

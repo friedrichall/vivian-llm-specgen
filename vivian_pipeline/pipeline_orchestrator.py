@@ -138,11 +138,11 @@ def publish_final(registry: RegistryFull, final_dir: Path) -> None:
     """Publish final FunctionalSpecification JSON files from registry snapshot."""
     final_dir.mkdir(parents=True, exist_ok=True)
     file_map = {
-        "InteractionElements.json": registry.interaction_elements.model_dump(),
-        "VisualizationElements.json": registry.visualization_elements.model_dump(),
-        "VisualizationArrays.json": VisualizationArraysFile().model_dump(),
-        "States.json": registry.states.model_dump(),
-        "Transitions.json": registry.transitions.model_dump(),
+        "InteractionElements.json": registry.interaction_elements.model_dump(exclude_none=True),
+        "VisualizationElements.json": registry.visualization_elements.model_dump(exclude_none=True),
+        "VisualizationArrays.json": VisualizationArraysFile().model_dump(exclude_none=True),
+        "States.json": registry.states.model_dump(exclude_none=True),
+        "Transitions.json": registry.transitions.model_dump(exclude_none=True),
     }
     for filename, payload in file_map.items():
         path = final_dir / filename
@@ -332,7 +332,7 @@ class PipelineOrchestrator:
         )
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(
-            json.dumps(interaction_elements.model_dump(), indent=2, ensure_ascii=False),
+            json.dumps(interaction_elements.model_dump(exclude_none=True), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         LOGGER.info("Wrote draft snapshot: %s", draft_path)
@@ -364,7 +364,7 @@ class PipelineOrchestrator:
         )
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(
-            json.dumps(visualization_elements.model_dump(), indent=2, ensure_ascii=False),
+            json.dumps(visualization_elements.model_dump(exclude_none=True), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         LOGGER.info("Wrote draft snapshot: %s", draft_path)
@@ -382,7 +382,7 @@ class PipelineOrchestrator:
         )
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(
-            json.dumps(states.model_dump(), indent=2, ensure_ascii=False),
+            json.dumps(states.model_dump(exclude_none=True), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         LOGGER.info("Wrote draft snapshot: %s", draft_path)
@@ -400,7 +400,7 @@ class PipelineOrchestrator:
         )
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(
-            json.dumps(transitions.model_dump(), indent=2, ensure_ascii=False),
+            json.dumps(transitions.model_dump(exclude_none=True), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         LOGGER.info("Wrote draft snapshot: %s", draft_path)
@@ -414,7 +414,7 @@ class PipelineOrchestrator:
         )
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(
-            json.dumps(VisualizationArraysFile().model_dump(), indent=2, ensure_ascii=False),
+            json.dumps(VisualizationArraysFile().model_dump(exclude_none=True), indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
         LOGGER.info("Wrote draft snapshot placeholder: %s", draft_path)
