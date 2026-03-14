@@ -204,7 +204,7 @@
                 },
                 "Value": {
                     "title": "Value",
-                    "type": "number"
+                    "type": "string"
                 }
             },
             "required": [

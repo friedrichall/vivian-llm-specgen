@@ -39,9 +39,9 @@
    5.2. A `FloatValueVisualization` condition object must have the following fields:
    5.2.1. `"Type"`: must be the string `"FloatValueVisualization"`.
    5.2.2. `"VisualizationElement"`: the name (string) of the target visualization element.
-   5.2.3. `"Value"`: a numeric value (float) such as `0.0`, `0.5`, or `1.0`.
+   5.2.3. `"Value"`: must be a **string** representation of a float number, such as `"0.0"`, `"0.5"`, or `"1.0"`. Do not use a bare JSON number — always wrap the value in quotes.
    5.3. Example structure (conceptual):
-   - `{ "Type": "FloatValueVisualization", "VisualizationElement": "Light1", "Value": 0.5 }`
+   - `{ "Type": "FloatValueVisualization", "VisualizationElement": "Light1", "Value": "0.5" }`
 
 6. **Condition type: `FileVisualization`**
    6.1. Use `FileVisualization` when you need to assign a file (for example, an image, video, or animation file) to any visualization element, including `AppearingObject`, `Animation`, and others that are not a `Screen`.
