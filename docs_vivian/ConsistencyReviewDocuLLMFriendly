@@ -22,6 +22,10 @@ What to check
      VALUE attribute values in States conditions and Transitions guards are normalized strings
      between "0.0" and "1.0". Any numeric value above 1.0 on a Rotatable or Slider VALUE attribute
      indicates a degree or unit value was used instead of a normalized fraction — flag as error.
+3.10. Screen file assignments: If the InteractionPlan includes screen_files assignments on planned
+     states, verify that the generated States.json uses those assignments. If a planned state has
+     screen_files assigned but the corresponding generated state has no ScreenContentVisualization
+     condition or uses a different filename, flag as a warning.
 
 Severity levels
 4.1. Use severity "error" for issues that will cause the FunctionalSpecification to malfunction or fail validation:

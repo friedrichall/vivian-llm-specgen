@@ -6,13 +6,14 @@ import asyncio
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agents.tool_context import ToolContext
 
+from backend.pipeline.screen_discovery import ScreenFileInfo
 from model.output_type_SceneUnderstanding import SceneUnderstanding
 from vivian_pipeline.agents_setup import (
     consistency_reviewer_agent,
@@ -90,6 +91,7 @@ class PipelineConfig:
     on_phase_change: PhaseUpdateFn | None = None
     interaction_description: str | None = None
     skip_scene_confirmation: bool = False
+    screen_files: list[ScreenFileInfo] = field(default_factory=list)
 
     @classmethod
     def default(
@@ -104,6 +106,7 @@ class PipelineConfig:
         on_phase_change: PhaseUpdateFn | None = None,
         interaction_description: str | None = None,
         skip_scene_confirmation: bool = False,
+        screen_files: list[ScreenFileInfo] | None = None,
     ) -> "PipelineConfig":
         resolved_run_id = (run_id or "orchestrator-run").strip()
         if not resolved_run_id:
@@ -123,6 +126,7 @@ class PipelineConfig:
             on_phase_change=on_phase_change,
             interaction_description=interaction_description,
             skip_scene_confirmation=skip_scene_confirmation,
+            screen_files=screen_files or [],
         )
 
 
@@ -162,6 +166,9 @@ class PipelineOrchestrator:
         self._run_counter = self._compute_run_counter()
         self._registry_change_seq = 0
         self.registry = RegistryFull.empty()
+        # Populate ScreensRegistry from disk-provided screen files
+        if config.screen_files:
+            self.registry.screens.files = [sf.filename for sf in config.screen_files]
         self._record_registry_change(reason="initialize_registry", attempt_index=None)
         # Canonical scene object for downstream phases once implemented.
         self.scene_confirmed: SceneUnderstanding | None = None
@@ -691,9 +698,11 @@ class PipelineOrchestrator:
         return raw_payload
 
     def _run_registry_full_gate(self, *, attempt_index: int) -> None:
-        # Screens are ignored as a generation step; sync referenced filenames from states
-        # so Registry-level validation can still run deterministically.
-        self.registry.screens.files = self._collect_screen_files_from_states(self.registry.states)
+        # When screen files were provided from disk, keep the registry as-is so
+        # validation catches unknown filenames. Otherwise fall back to the legacy
+        # behaviour of syncing referenced filenames from the states agent output.
+        if not self.config.screen_files:
+            self.registry.screens.files = self._collect_screen_files_from_states(self.registry.states)
         self._record_registry_change(
             reason="sync_screens_for_registry_gate",
             attempt_index=attempt_index,
@@ -805,6 +814,29 @@ class PipelineOrchestrator:
             return ""
         plan_json = json.dumps(interaction_plan.model_dump(), indent=2, ensure_ascii=False)
         return f"INTERACTION_PLAN_JSON:\n{plan_json}\n\n"
+
+    def _format_screen_files_context(self) -> str:
+        """Format available screen filenames as prompt context for agents."""
+        if not self.config.screen_files:
+            return ""
+        filenames = [sf.filename for sf in self.config.screen_files]
+        files_json = json.dumps(filenames, indent=2, ensure_ascii=False)
+        return f"AVAILABLE_SCREEN_FILES:\n{files_json}\n\n"
+
+    @staticmethod
+    def _format_screen_mapping_context(interaction_plan: InteractionPlan | None) -> str:
+        """Format per-state screen file assignments from the interaction plan."""
+        if interaction_plan is None:
+            return ""
+        mapping: dict[str, list[str]] = {
+            ps.name: ps.screen_files
+            for ps in interaction_plan.planned_states
+            if ps.screen_files
+        }
+        if not mapping:
+            return ""
+        mapping_json = json.dumps(mapping, indent=2, ensure_ascii=False)
+        return f"SCREEN_FILE_ASSIGNMENTS:\n{mapping_json}\n\n"
 
     @staticmethod
     def _format_fix_plan_context(fix_plan: FixPlan | None, step: str) -> str:
@@ -1002,6 +1034,8 @@ class PipelineOrchestrator:
         _interaction_json = json.dumps(interaction_subset, indent=2, ensure_ascii=False)
         _visualization_json = json.dumps(visualization_subset, indent=2, ensure_ascii=False)
         _plan_ctx = self._format_plan_context(interaction_plan)
+        _screen_mapping_ctx = self._format_screen_mapping_context(interaction_plan)
+        _screen_ctx = self._format_screen_files_context()
         if errors_for_step:
             _prev_output = json.dumps(
                 self.registry.states.model_dump(), indent=2, ensure_ascii=False
@@ -1016,6 +1050,8 @@ class PipelineOrchestrator:
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
                 f"{_plan_ctx}"
+                f"{_screen_mapping_ctx}"
+                f"{_screen_ctx}"
                 f"{_fix_ctx}"
                 f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
                 f"VALIDATION_ERRORS:\n{_errors_text}\n\n"
@@ -1028,8 +1064,11 @@ class PipelineOrchestrator:
                 f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
                 f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
                 f"{_plan_ctx}"
+                f"{_screen_mapping_ctx}"
+                f"{_screen_ctx}"
                 "Generate States.json for the confirmed scene context."
             )
+
         result = await _stream_agent_run(
             states_agent,
             states_input,
@@ -1049,7 +1088,7 @@ class PipelineOrchestrator:
             parsed = StatesFile.parse_obj(raw_payload)
 
         # Deterministic cross-reference checks against known registry entities.
-        # Screen file references are intentionally ignored in Phase 4C.
+        # Screen file cross-refs are deferred to the registry full gate.
         try:
             self._validate_states_cross_refs(parsed, registry_snapshot)
         except ValueError as exc:
@@ -1230,6 +1269,10 @@ class PipelineOrchestrator:
         if self.config.interaction_description:
             scene_raw.interaction_description = self.config.interaction_description
 
+        # Propagate available screen filenames into scene understanding
+        if self.config.screen_files:
+            scene_raw.available_screens = [sf.filename for sf in self.config.screen_files]
+
         self._write_artifact(attempt_index, "scene_raw.json", scene_raw)
         self._write_scene_meta(
             attempt_index,
@@ -1370,6 +1413,9 @@ class PipelineOrchestrator:
             parts.append(
                 f"INTERACTION_DESCRIPTION:\n{scene_confirmed.interaction_description}\n"
             )
+        _screen_ctx = self._format_screen_files_context()
+        if _screen_ctx:
+            parts.append(_screen_ctx)
         parts.append(
             "Analyze the confirmed scene and produce an InteractionPlan."
         )
@@ -1400,6 +1446,31 @@ class PipelineOrchestrator:
                 "InteractionPlan element_roles reference unknown scene objects: "
                 + ", ".join(repr(n) for n in unknown)
             )
+
+        # Validate screen_files assigned to planned states
+        if self.config.screen_files:
+            available = {sf.filename for sf in self.config.screen_files}
+            unknown_files: list[str] = []
+            for ps in parsed.planned_states:
+                if ps.screen_files:
+                    for f in ps.screen_files:
+                        if f not in available:
+                            unknown_files.append(f"PlannedState '{ps.name}': '{f}'")
+            if unknown_files:
+                LOGGER.warning(
+                    "InteractionPlan references screen files not in AVAILABLE_SCREEN_FILES: %s",
+                    "; ".join(unknown_files),
+                )
+            assigned: set[str] = set()
+            for ps in parsed.planned_states:
+                if ps.screen_files:
+                    assigned.update(ps.screen_files)
+            unassigned = available - assigned
+            if unassigned:
+                LOGGER.info(
+                    "Screen files not assigned to any planned state: %s",
+                    ", ".join(sorted(unassigned)),
+                )
 
         self._write_artifact(attempt_index, "interaction_plan.json", parsed)
         return parsed
@@ -1566,6 +1637,8 @@ class PipelineOrchestrator:
         self.run_root.mkdir(parents=True, exist_ok=True)
         # Reset per-run registry state deterministically.
         self.registry = RegistryFull.empty()
+        if self.config.screen_files:
+            self.registry.screens.files = [sf.filename for sf in self.config.screen_files]
         self._record_registry_change(reason="reset_registry_for_run", attempt_index=None)
         self._write_run_meta()
 

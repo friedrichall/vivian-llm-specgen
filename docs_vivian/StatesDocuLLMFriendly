@@ -57,7 +57,7 @@
    7.2. A `ScreenContentVisualization` condition object must have the following fields:
    7.2.1. `"Type"`: must be the string `"ScreenContentVisualization"`.
    7.2.2. `"VisualizationElement"`: the name (string) of the target `Screen` element.
-   7.2.3. `"FileName"`: a string specifying the file name or file path of the content (for example, an image or video).
+   7.2.3. `"FileName"`: a string specifying the file name of the content (for example, an image or video). **CRITICAL**: When an `AVAILABLE_SCREEN_FILES` list is provided in the input, you MUST pick a filename from that list. Do not invent filenames. See section 13 for the full constraint.
    7.3. You may optionally include a `"Texts"` field:
    7.3.1. `"Texts"` must be an array of text overlay objects.
    7.3.2. Each text overlay object must contain:
@@ -135,3 +135,12 @@
     12.2. Every `"InteractionElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase element names.
     12.3. All element names in States.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in the corresponding elements file.
     12.4. If a condition references an element name that does not appear in the provided elements context, you must remove or correct that condition before outputting the file.
+
+13. **Available screen files constraint (MANDATORY when AVAILABLE_SCREEN_FILES is present)**
+    13.1. When the input contains an `AVAILABLE_SCREEN_FILES` list, every `ScreenContentVisualization` condition's `"FileName"` MUST be chosen from that list. You MUST NOT invent, rename, abbreviate, or generate any filename that is not in the list. This is a hard constraint — filenames not in the list will fail validation.
+    13.2. When a `SCREEN_FILE_ASSIGNMENTS` block is provided in the input, it contains a JSON mapping of planned state names to screen filenames (e.g., `{"idle.state": ["home.png"], "settings.state": ["settings.png"]}`). Use this mapping as the **primary source** for `ScreenContentVisualization` `"FileName"` values. For each state in your output that corresponds to a planned state name in `SCREEN_FILE_ASSIGNMENTS`, use the assigned filename(s) for that state's `ScreenContentVisualization` conditions.
+    13.3. If `SCREEN_FILE_ASSIGNMENTS` is not provided, or a particular state has no assignment in the mapping, fall back to inferring appropriate filenames from the `AVAILABLE_SCREEN_FILES` list based on descriptive name matching.
+    13.4. If no `AVAILABLE_SCREEN_FILES` is provided in the input, you may propose filenames freely, but they should be descriptive and follow a consistent naming convention.
+    13.5. Each screen file may be referenced by multiple states if appropriate (for example, a "home.png" screen could appear in several states).
+    13.6. Not every available screen file needs to be referenced — only use files that are relevant to the prototype's states.
+    13.7. If none of the available screen files seem appropriate for a state and no assignment exists in `SCREEN_FILE_ASSIGNMENTS`, do NOT create a `ScreenContentVisualization` condition for that state rather than inventing a filename.

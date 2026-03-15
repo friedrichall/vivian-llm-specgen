@@ -58,6 +58,7 @@ class PlannedState(StrictModel):
     name: str
     description: str
     involved_elements: list[str]
+    screen_files: list[str] | None = None
 
 
 class PlannedTransition(StrictModel):

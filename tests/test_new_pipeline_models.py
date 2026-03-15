@@ -519,6 +519,73 @@ def test_planned_transition_guard_hints_default_none():
 
 
 # ---------------------------------------------------------------------------
+# PlannedState.screen_files
+# ---------------------------------------------------------------------------
+
+def test_planned_state_with_screen_files():
+    ps = PlannedState(
+        name="idle.state",
+        description="Home screen displayed",
+        involved_elements=["ButtonA"],
+        screen_files=["home.png", "logo.png"],
+    )
+    assert ps.screen_files == ["home.png", "logo.png"]
+
+
+def test_planned_state_screen_files_defaults_to_none():
+    plan = _make_plan()
+    for ps in plan.planned_states:
+        assert ps.screen_files is None
+
+
+def test_planned_state_screen_files_empty_list():
+    ps = PlannedState(
+        name="off.state",
+        description="No screen content",
+        involved_elements=["ButtonA"],
+        screen_files=[],
+    )
+    assert ps.screen_files == []
+
+
+def test_interaction_plan_serialization_includes_screen_files():
+    plan = _make_plan(
+        planned_states=[
+            PlannedState(
+                name="Off",
+                description="Initial",
+                involved_elements=["ButtonA"],
+                screen_files=["off_screen.png"],
+            ),
+            PlannedState(
+                name="On",
+                description="Active",
+                involved_elements=["ButtonA", "LightB"],
+                screen_files=None,
+            ),
+        ],
+    )
+    data = plan.model_dump()
+    assert data["planned_states"][0]["screen_files"] == ["off_screen.png"]
+    assert data["planned_states"][1]["screen_files"] is None
+    # Round-trip
+    restored = InteractionPlan.model_validate(data)
+    assert restored.planned_states[0].screen_files == ["off_screen.png"]
+    assert restored.planned_states[1].screen_files is None
+
+
+def test_planned_state_rejects_extra_fields_with_screen_files():
+    with pytest.raises(ValidationError):
+        PlannedState(
+            name="x.state",
+            description="d",
+            involved_elements=[],
+            screen_files=["a.png"],
+            bogus_field="nope",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Literal constraint enforcement for Transitions models
 # ---------------------------------------------------------------------------
 

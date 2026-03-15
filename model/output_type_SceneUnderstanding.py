@@ -111,5 +111,6 @@ class SceneUnderstanding(BaseModel):
     objects: List[ObjectEntry] = Field(default_factory=list)
     relations: List[Relation] = Field(default_factory=list)
     clusters: List[Cluster] = Field(default_factory=list)
+    available_screens: List[str] = Field(default_factory=list)
     diagnostics: List[Diagnostic] = Field(default_factory=list)
     user_feedback: List[UserFeedbackEntry] = Field(default_factory=list)

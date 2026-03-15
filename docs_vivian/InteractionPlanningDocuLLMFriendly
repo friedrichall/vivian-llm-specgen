@@ -9,6 +9,12 @@ Input you receive
 2.2. INTERACTION_DESCRIPTION (optional): A user-provided natural language description of desired interactions and behaviors.
 2.3. If an INTERACTION_DESCRIPTION is provided, treat it as the primary guide for planning. Objects and behaviors not mentioned may still be included if they are clearly implied by the scene structure.
 2.4. If no INTERACTION_DESCRIPTION is provided, infer reasonable interactions from the scene objects' roles, interaction_params, relations, and clusters.
+2.5. AVAILABLE_SCREEN_FILES (optional): A JSON list of screen image filenames (e.g., ["home.png", "settings.png"]) that are available on disk for this prototype. When provided, you MUST assign screen files to planned states using the screen_files field on each PlannedState.
+2.6. For each planned state where a screen should display content, set screen_files to a list of filenames from AVAILABLE_SCREEN_FILES that should appear on the Screen element in that state. Only use filenames exactly as they appear in the list — do not invent, rename, or abbreviate filenames.
+2.7. Not every state needs screen_files — only assign files to states where the screen content should change or be displayed.
+2.8. Not every available screen file needs to be assigned — only use files that are relevant to the planned states.
+2.9. A screen file may appear in multiple states (e.g., a home screen image may be used in several states).
+2.10. If no AVAILABLE_SCREEN_FILES is provided, omit the screen_files field or set it to null.
 
 Planning element_roles
 3.1. For each object you decide should be part of the FunctionalSpecification, create an ElementRole entry.
@@ -46,6 +52,7 @@ Planning states
 4.3. State names must be camelCase ending with '.state' (e.g., 'powerOff.state', 'idle.state', 'activeMode.state'). This matches the naming convention enforced by the states agent.
 4.4. Every prototype should have at least one initial/default state.
 4.5. Keep the number of states reasonable for the scene complexity. Simple scenes may need only 2-3 states; complex scenes may need more.
+4.6. If AVAILABLE_SCREEN_FILES are provided and a Screen visualization element is planned, assign relevant screen files to each state using the screen_files field. Use the filenames' descriptive names to infer which screen image belongs to which state (e.g., "settings.png" for a settings state, "home.png" for an idle/home state). This mapping will be passed directly to the states agent, so be specific and thorough.
 
 Planning transitions
 5.1. For each transition between states, create a PlannedTransition entry.

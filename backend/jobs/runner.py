@@ -29,6 +29,7 @@ from backend.pipeline.settings import (
     IMAGE_ANALYSIS_TASK,
     SEND_IMAGES_TO_AGENT,
 )
+from backend.pipeline.screen_discovery import discover_screen_files
 from backend.pipeline.view_selection import (
     collect_images_for_objects,
 )
@@ -128,6 +129,13 @@ async def _execute_pipeline(
     skip_scene_confirmation = _coerce_bool(
         request_data.get("skip_scene_confirmation"), False
     )
+
+    raw_screens_dir = request_data.get("screens_dir")
+    screen_files = []
+    if isinstance(raw_screens_dir, str) and raw_screens_dir.strip():
+        screens_path = _resolve_path(raw_screens_dir)
+        screen_files = discover_screen_files(screens_path)
+        print(f"Screen files discovered: {len(screen_files)}")
 
     manifest_objects = manifest_data.get("objects", []) if manifest_data else []
     selected_manifest_objects = manifest_objects
@@ -235,6 +243,7 @@ async def _execute_pipeline(
         on_phase_change=_on_phase_change,
         interaction_description=interaction_description,
         skip_scene_confirmation=skip_scene_confirmation,
+        screen_files=screen_files,
     )
     result = await run_pipeline_async(config=config, user_input=content)
     if not result.success:
