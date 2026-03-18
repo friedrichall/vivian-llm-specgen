@@ -91,6 +91,15 @@ class Movable(StrictModel):
     SnapPoses: list[SnapPose]
     TransitionTimeInMs: int | None = Field(default=None, ge=0)
 
+    @model_validator(mode="after")
+    def validate_contains_position_attribute(self) -> "Movable":
+        if not any(item.Attribute == "POSITION" for item in self.InitialAttributeValues):
+            raise ValueError(
+                "Movable.InitialAttributeValues must include at least one "
+                "entry with Attribute='POSITION'."
+            )
+        return self
+
 
 InteractionElement = Annotated[
     Button | ToggleButton | Slider | Rotatable | TouchArea | Movable,

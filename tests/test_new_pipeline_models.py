@@ -424,8 +424,8 @@ def test_compare_value_must_be_string():
 
 
 def test_guard_union_discriminates_by_field_presence():
-    from vivian_pipeline.models_funcspec.transitions import Transition
-    t = Transition(
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    t = EventTransition(
         SourceState="Idle",
         DestinationState="Active",
         InteractionElement="TouchArea",
@@ -451,12 +451,12 @@ def test_guard_union_discriminates_by_field_presence():
 
 def test_transition_with_guards_roundtrip():
     from vivian_pipeline.models_funcspec.transitions import (
-        Transition,
+        EventTransition,
         TransitionsFile,
         EventParameterGuard,
         InteractionElementAttributeGuard,
     )
-    t = Transition(
+    t = EventTransition(
         SourceState="Idle",
         DestinationState="Active",
         InteractionElement="TouchArea",
@@ -478,6 +478,20 @@ def test_transition_with_guards_roundtrip():
     data = TransitionsFile(Transitions=[t]).model_dump()
     reloaded = TransitionsFile.model_validate(data)
     assert len(reloaded.Transitions[0].Guards) == 2
+
+
+def test_timeout_transition_rejects_event_fields():
+    from pydantic import ValidationError
+    from vivian_pipeline.models_funcspec.transitions import TimeoutTransition
+    t = TimeoutTransition(SourceState="Idle", DestinationState="Active", Timeout=5)
+    assert t.Timeout == 5
+    with pytest.raises(ValidationError):
+        TimeoutTransition(
+            SourceState="Idle",
+            DestinationState="Active",
+            Timeout=5,
+            Event="TOUCH_END",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -502,3 +516,380 @@ def test_planned_transition_guard_hints_default_none():
         trigger_description="Click button",
     )
     assert pt.guard_hints is None
+
+
+# ---------------------------------------------------------------------------
+# PlannedState.screen_files
+# ---------------------------------------------------------------------------
+
+def test_planned_state_with_screen_files():
+    ps = PlannedState(
+        name="idle.state",
+        description="Home screen displayed",
+        involved_elements=["ButtonA"],
+        screen_files=["home.png", "logo.png"],
+    )
+    assert ps.screen_files == ["home.png", "logo.png"]
+
+
+def test_planned_state_screen_files_defaults_to_none():
+    plan = _make_plan()
+    for ps in plan.planned_states:
+        assert ps.screen_files is None
+
+
+def test_planned_state_screen_files_empty_list():
+    ps = PlannedState(
+        name="off.state",
+        description="No screen content",
+        involved_elements=["ButtonA"],
+        screen_files=[],
+    )
+    assert ps.screen_files == []
+
+
+def test_interaction_plan_serialization_includes_screen_files():
+    plan = _make_plan(
+        planned_states=[
+            PlannedState(
+                name="Off",
+                description="Initial",
+                involved_elements=["ButtonA"],
+                screen_files=["off_screen.png"],
+            ),
+            PlannedState(
+                name="On",
+                description="Active",
+                involved_elements=["ButtonA", "LightB"],
+                screen_files=None,
+            ),
+        ],
+    )
+    data = plan.model_dump()
+    assert data["planned_states"][0]["screen_files"] == ["off_screen.png"]
+    assert data["planned_states"][1]["screen_files"] is None
+    # Round-trip
+    restored = InteractionPlan.model_validate(data)
+    assert restored.planned_states[0].screen_files == ["off_screen.png"]
+    assert restored.planned_states[1].screen_files is None
+
+
+def test_planned_state_rejects_extra_fields_with_screen_files():
+    with pytest.raises(ValidationError):
+        PlannedState(
+            name="x.state",
+            description="d",
+            involved_elements=[],
+            screen_files=["a.png"],
+            bogus_field="nope",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Literal constraint enforcement for Transitions models
+# ---------------------------------------------------------------------------
+
+def test_event_transition_rejects_invalid_event():
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    with pytest.raises(ValidationError):
+        EventTransition(
+            SourceState="A", DestinationState="B",
+            InteractionElement="Btn", Event="INVALID_EVENT",
+        )
+
+
+def test_event_parameter_guard_rejects_invalid_parameter():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            EventParameter="INVALID_PARAM", Operator="EQUALS", CompareValue="1",
+        )
+
+
+def test_event_parameter_guard_rejects_invalid_operator():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    with pytest.raises(ValidationError):
+        EventParameterGuard(
+            EventParameter="SELECTED_VALUE", Operator="INVALID_OP", CompareValue="1",
+        )
+
+
+def test_interaction_element_guard_rejects_fixed_attribute():
+    """FIXED is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Slider", Attribute="FIXED",
+            Operator="EQUALS", CompareValue="true",
+        )
+
+
+def test_interaction_element_guard_rejects_rotation_attribute():
+    """ROTATION is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Rotatable", Attribute="ROTATION",
+            Operator="EQUALS", CompareValue="0.5",
+        )
+
+
+def test_interaction_element_guard_rejects_enabled_attribute():
+    """ENABLED is not supported in guard evaluation at runtime."""
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    with pytest.raises(ValidationError):
+        InteractionElementAttributeGuard(
+            InteractionElement="Btn", Attribute="ENABLED",
+            Operator="EQUALS", CompareValue="true",
+        )
+
+
+def test_all_valid_event_types_accepted():
+    from vivian_pipeline.models_funcspec.transitions import EventTransition
+    valid_events = [
+        "BUTTON_PRESS", "BUTTON_RELEASE",
+        "SLIDER_DRAG_START", "SLIDER_DRAG", "SLIDER_DRAG_END",
+        "ROTATABLE_DRAG_START", "ROTATABLE_DRAG", "ROTATABLE_DRAG_END",
+        "TOUCH_START", "TOUCH_SLIDE", "TOUCH_END",
+        "OBJECT_MOVE_START", "OBJECT_MOVE", "OBJECT_MOVE_END",
+        "SNAPPOSES_CHECK",
+    ]
+    for event in valid_events:
+        t = EventTransition(
+            SourceState="A", DestinationState="B",
+            InteractionElement="E", Event=event,
+        )
+        assert t.Event == event
+
+
+def test_all_valid_operators_accepted():
+    from vivian_pipeline.models_funcspec.transitions import EventParameterGuard
+    valid_ops = ["LARGER", "LARGER_EQUALS", "EQUALS", "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER"]
+    for op in valid_ops:
+        g = EventParameterGuard(
+            EventParameter="SELECTED_VALUE", Operator=op, CompareValue="0.5",
+        )
+        assert g.Operator == op
+
+
+def test_guard_attribute_only_value_and_position():
+    from vivian_pipeline.models_funcspec.transitions import InteractionElementAttributeGuard
+    for attr in ("VALUE", "POSITION"):
+        g = InteractionElementAttributeGuard(
+            InteractionElement="Elem", Attribute=attr,
+            Operator="EQUALS", CompareValue="0.5",
+        )
+        assert g.Attribute == attr
+
+
+# ---------------------------------------------------------------------------
+# RGBA range constraints
+# ---------------------------------------------------------------------------
+
+def test_rgba_valid_range():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    c = RGBA(r=0.5, g=0.0, b=1.0, a=1.0)
+    assert c.r == 0.5
+    assert c.b == 1.0
+
+
+def test_rgba_rejects_value_above_one():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    with pytest.raises(ValidationError):
+        RGBA(r=1.5, g=0.0, b=0.0, a=1.0)
+
+
+def test_rgba_rejects_negative_value():
+    from vivian_pipeline.models_funcspec.shared import RGBA
+    with pytest.raises(ValidationError):
+        RGBA(r=0.0, g=-0.1, b=0.0, a=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Movable POSITION validator
+# ---------------------------------------------------------------------------
+
+def test_movable_requires_position_attribute():
+    from vivian_pipeline.models_funcspec.interaction_elements import Movable, SnapPose
+    from vivian_pipeline.models_funcspec.shared import InitialAttributeValue
+    with pytest.raises(ValidationError, match="Attribute='POSITION'"):
+        Movable(
+            Type="Movable",
+            Name="Obj",
+            InitialAttributeValues=[
+                InitialAttributeValue(Attribute="ROTATION", Value="0 0 0 1"),
+            ],
+            SnapPoses=[SnapPose(Position="1 2 3")],
+        )
+
+
+def test_movable_accepts_position_attribute():
+    from vivian_pipeline.models_funcspec.interaction_elements import Movable, SnapPose
+    from vivian_pipeline.models_funcspec.shared import InitialAttributeValue
+    m = Movable(
+        Type="Movable",
+        Name="Obj",
+        InitialAttributeValues=[
+            InitialAttributeValue(Attribute="POSITION", Value="1 2 3"),
+        ],
+        SnapPoses=[SnapPose(Position="1 2 3")],
+    )
+    assert m.Name == "Obj"
+
+
+# ---------------------------------------------------------------------------
+# ElementRole funcspec_type Literal constraint
+# ---------------------------------------------------------------------------
+
+def test_element_role_rejects_invalid_funcspec_type():
+    with pytest.raises(ValidationError):
+        ElementRole(
+            object_name="X",
+            funcspec_type="InvalidType",
+            category="interaction",
+            rationale="r",
+        )
+
+
+def test_element_role_accepts_all_interaction_types():
+    for t in ("Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable"):
+        er = ElementRole(
+            object_name="X", funcspec_type=t, category="interaction", rationale="r",
+        )
+        assert er.funcspec_type == t
+
+
+def test_element_role_accepts_all_visualization_types():
+    for t in ("Light", "Screen", "AppearingObject", "SoundSource", "Animation", "Particles"):
+        er = ElementRole(
+            object_name="X", funcspec_type=t, category="visualization", rationale="r",
+        )
+        assert er.funcspec_type == t
+
+
+# ---------------------------------------------------------------------------
+# ElementRole category / funcspec_type pairing validator
+# ---------------------------------------------------------------------------
+
+def test_element_role_rejects_interaction_with_viz_type():
+    with pytest.raises(ValidationError, match="not a valid interaction"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Light",
+            category="interaction",
+            rationale="r",
+        )
+
+
+def test_element_role_rejects_visualization_with_interaction_type():
+    with pytest.raises(ValidationError, match="not a valid visualization"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Button",
+            category="visualization",
+            rationale="r",
+        )
+
+
+def test_element_role_valid_interaction_pairing():
+    er = ElementRole(
+        object_name="X", funcspec_type="Slider", category="interaction", rationale="r",
+    )
+    assert er.category == "interaction"
+    assert er.funcspec_type == "Slider"
+
+
+def test_element_role_valid_visualization_pairing():
+    er = ElementRole(
+        object_name="X", funcspec_type="Screen", category="visualization", rationale="r",
+    )
+    assert er.category == "visualization"
+    assert er.funcspec_type == "Screen"
+
+
+# ---------------------------------------------------------------------------
+# Cross-reference step attribution (stuck-retry-loop regression)
+# ---------------------------------------------------------------------------
+
+from vivian_pipeline.pipeline_orchestrator import (  # noqa: E402
+    ElementNameMismatchError,
+    PipelineOrchestrator,
+)
+from vivian_pipeline.models_funcspec.registry import Registry, ScreensRegistry
+from vivian_pipeline.models_funcspec.interaction_elements import (  # noqa: E402
+    InteractionElementsFile,
+)
+from vivian_pipeline.models_funcspec.visualization_elements import (  # noqa: E402
+    VisualizationElementsFile,
+)
+from vivian_pipeline.models_funcspec.states import StatesFile, State
+from vivian_pipeline.models_funcspec.transitions import (  # noqa: E402
+    EventTransition,
+    TransitionsFile,
+)
+from vivian_pipeline.rerun_policy import expand_dirty_steps  # noqa: E402
+
+
+def _make_registry_with_states(state_names: list[str]) -> Registry:
+    states = StatesFile(
+        States=[State(Name=n, Conditions=[]) for n in state_names]
+    )
+    return Registry(
+        interaction_elements=InteractionElementsFile(Elements=[]),
+        visualization_elements=VisualizationElementsFile(Elements=[]),
+        screens=ScreensRegistry(files=[]),
+        states=states,
+        transitions=TransitionsFile(Transitions=[]),
+    )
+
+
+def _event_transition(source: str, dest: str) -> EventTransition:
+    return EventTransition(
+        SourceState=source,
+        DestinationState=dest,
+        InteractionElement="Btn",
+        Event="BUTTON_PRESS",
+    )
+
+
+class TestTransitionStateRefAttribution:
+    """_validate_transition_state_refs must raise ValueError for bad state names."""
+
+    def test_unknown_source_state_raises(self):
+        tf = TransitionsFile(Transitions=[_event_transition("BAD_STATE", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        with pytest.raises(ValueError, match="unknown SourceState"):
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+
+    def test_unknown_dest_state_raises(self):
+        tf = TransitionsFile(Transitions=[_event_transition("Off", "GHOST_STATE")])
+        registry = _make_registry_with_states(["Off", "On"])
+        with pytest.raises(ValueError, match="unknown DestinationState"):
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+
+    def test_valid_state_refs_pass(self):
+        tf = TransitionsFile(Transitions=[_event_transition("Off", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        PipelineOrchestrator._validate_transition_state_refs(tf, registry)  # no raise
+
+    def test_wrapping_produces_step_states(self):
+        """Simulates the run_transitions wrapping: bad state ref → step='states'."""
+        tf = TransitionsFile(Transitions=[_event_transition("BAD", "On")])
+        registry = _make_registry_with_states(["Off", "On"])
+        try:
+            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+        except ValueError as exc:
+            err = ElementNameMismatchError(str(exc), step="states")
+            assert err.step == "states"
+        else:
+            pytest.fail("Expected ValueError from _validate_transition_state_refs")
+
+    def test_expand_dirty_steps_from_states_includes_transitions(self):
+        """expand_dirty_steps({'states'}) must cascade to transitions."""
+        result = expand_dirty_steps({"states"})
+        assert "states" in result
+        assert "transitions" in result
+
+    def test_expand_dirty_steps_from_interaction_includes_all_downstream(self):
+        result = expand_dirty_steps({"interaction"})
+        assert result >= {"interaction", "visualization", "states", "transitions"}

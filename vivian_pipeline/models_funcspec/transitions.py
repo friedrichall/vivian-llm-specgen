@@ -2,50 +2,71 @@
 
 from __future__ import annotations
 
-from pydantic import Field, model_validator
+from typing import Literal
+
+from pydantic import Field
 
 from vivian_pipeline.models_funcspec.shared import StrictModel
 
+# ---------------------------------------------------------------------------
+# Literal type aliases — mirror the C# enums in vivian-core
+# ---------------------------------------------------------------------------
+
+EventType = Literal[
+    "BUTTON_PRESS", "BUTTON_RELEASE",
+    "SLIDER_DRAG_START", "SLIDER_DRAG", "SLIDER_DRAG_END",
+    "ROTATABLE_DRAG_START", "ROTATABLE_DRAG", "ROTATABLE_DRAG_END",
+    "TOUCH_START", "TOUCH_SLIDE", "TOUCH_END",
+    "OBJECT_MOVE_START", "OBJECT_MOVE", "OBJECT_MOVE_END",
+    "SNAPPOSES_CHECK",
+]
+
+OperatorType = Literal[
+    "LARGER", "LARGER_EQUALS", "EQUALS",
+    "NOT_EQUALS", "SMALLER_EQUALS", "SMALLER",
+]
+
+EventParameterType = Literal[
+    "SELECTED_VALUE", "TOUCH_X_COORDINATE", "TOUCH_Y_COORDINATE",
+]
+
+# Only VALUE and POSITION are supported in guard evaluation at runtime.
+# FIXED, ENABLED, ROTATION throw ArgumentException in StateMachine.GuardsMatch().
+GuardAttributeType = Literal["VALUE", "POSITION"]
+
 
 class EventParameterGuard(StrictModel):
-    EventParameter: str
-    Operator: str
+    EventParameter: EventParameterType
+    Operator: OperatorType
     CompareValue: str
 
 
 class InteractionElementAttributeGuard(StrictModel):
     InteractionElement: str
-    Attribute: str
-    Operator: str
+    Attribute: GuardAttributeType
+    Operator: OperatorType
     CompareValue: str
 
 
 Guard = EventParameterGuard | InteractionElementAttributeGuard
 
 
-class Transition(StrictModel):
+class EventTransition(StrictModel):
     SourceState: str
     DestinationState: str
-    InteractionElement: str | None = None
-    Event: str | None = None
-    Timeout: int | None = Field(default=None, ge=0)
+    InteractionElement: str
+    Event: EventType
     Guards: list[Guard] | None = None
 
-    @model_validator(mode="after")
-    def validate_event_timeout_rules(self) -> "Transition":
-        has_event = self.Event is not None
-        has_timeout = self.Timeout is not None
 
-        if has_event == has_timeout:
-            raise ValueError("Exactly one of Event or Timeout must be set.")
+class TimeoutTransition(StrictModel):
+    SourceState: str
+    DestinationState: str
+    Timeout: int = Field(ge=0)
+    Guards: list[Guard] | None = None
 
-        if has_event and self.InteractionElement is None:
-            raise ValueError("InteractionElement must be set when Event is set.")
 
-        if has_timeout and self.InteractionElement is not None:
-            raise ValueError("InteractionElement must be unset when Timeout is set.")
-
-        return self
+Transition = EventTransition | TimeoutTransition
 
 
 class TransitionsFile(StrictModel):

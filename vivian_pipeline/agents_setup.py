@@ -35,7 +35,7 @@ interaction_elements_agent = Agent(
 )
 transitions_agent = Agent(
     name="transitions_agent",
-    model=MODEL_STRONG,
+    model=MODEL_BALANCED,
     instructions=TRANSITIONS_INSTRUCTIONS,
     output_type=TransitionsFile,
 )

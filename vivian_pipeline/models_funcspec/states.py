@@ -12,7 +12,7 @@ from vivian_pipeline.models_funcspec.shared import StrictModel, require_unique_n
 class FloatValueVisualization(StrictModel):
     Type: Literal["FloatValueVisualization"]
     VisualizationElement: str
-    Value: float
+    Value: str
 
 
 class FileVisualization(StrictModel):

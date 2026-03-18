@@ -75,6 +75,7 @@ class StartJobRequest(BaseModel):
     use_mock_scene_analysis: bool = False
     interaction_description: str | None = None
     skip_scene_confirmation: bool = False
+    screens_dir: str | None = None
 
     @field_validator("group_path")
     @classmethod
