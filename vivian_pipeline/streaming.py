@@ -78,7 +78,6 @@ async def _stream_agent_run(
         Intended for internal pipeline use with agents compatible with
         ``Runner.run_streamed(...)`` and event shapes handled in this function.
     """
-    print(f"[{label}] Received user input: {_summarize_user_input(user_input)}")
 
     for attempt in range(1, MAX_RETRIES + 2):  # 1 .. MAX_RETRIES+1
         print(f"[{label}] Starting streamed run (agent={agent.name}, attempt {attempt}/{MAX_RETRIES + 1})")
@@ -127,7 +126,7 @@ async def _stream_agent_run(
                             payload = raw or event.item
                         print(f"-- Got tool output from {tool_name}")
                     elif event.item.type == "message_output_item":
-                        print(f"-- Message output:\n {ItemHelpers.text_message_output(event.item)}")
+                        print(f"[{label}] Message output received.")
                     else:
                         pass
 

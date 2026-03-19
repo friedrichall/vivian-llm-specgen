@@ -68,7 +68,12 @@ Screen configuration ("Type": "Screen")
 6.4.1. "x": horizontal resolution in pixels, a positive integer.
 6.4.2. "y": vertical resolution in pixels, a positive integer.
 6.5. You must not add additional fields to a Screen element unless explicitly requested.
-6.5.1. PREREQUISITE: The named Unity GameObject must have a mesh (MeshFilter component on itself or its children). A Screen element without a MeshFilter will throw an exception during prototype initialization.
+6.5.1. PREREQUISITE: The named Unity GameObject MUST have a mesh.
+       Check the object's "renderer_type" and "mesh_stats" in CONFIRMED_SCENE_UNDERSTANDING_JSON.
+       The object must have renderer_type != "" OR mesh_stats.triangles > 0.
+       If a parent object (e.g. "Display") has no mesh but its child (e.g. "DisplayContent") does,
+       you MUST use the child's name, not the parent's.
+       A Screen element targeting a mesh-less object will crash Unity at runtime.
 6.6. Example conceptual structure:
 6.6.1. {"Type": "Screen", "Name": "MainDisplay", "Plane": {"x": 0.0, "y": 0.0, "z": 1.0}, "Resolution": {"x": 800, "y": 480}}
 

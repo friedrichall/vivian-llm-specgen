@@ -43,8 +43,11 @@ does not have confirmed Animation, Animator, or ParticleSystem components, alway
 Unity GameObject has a mesh (MeshFilter component on itself or its children). A TouchArea without a
 MeshFilter will throw an exception during prototype initialization.
 3.13. PREREQUISITE — "Screen" funcspec_type: Only assign funcspec_type "Screen" if the named Unity
-GameObject has a mesh (MeshFilter component on itself or its children). A Screen element without a
-MeshFilter will throw an exception during prototype initialization.
+GameObject has a mesh. Check the object's "renderer_type" and "mesh_stats" in the scene data.
+The object must have renderer_type != "" OR mesh_stats.triangles > 0.
+If a parent object (e.g. "Display") has no mesh but its child (e.g. "DisplayContent") does,
+you MUST use the child's name, not the parent's.
+A Screen element targeting a mesh-less object will crash Unity at runtime.
 
 Planning states
 4.1. For each system state, create a PlannedState entry with a descriptive name and description.

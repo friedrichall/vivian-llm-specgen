@@ -51,6 +51,7 @@ from vivian_pipeline.models_funcspec import (
     InteractionElementCondition,
     InteractionPlan,
     Registry as RegistryFull,
+    Screen,
     ScreenContentVisualization,
     StatesFile,
     TransitionsFile,
@@ -661,6 +662,43 @@ class PipelineOrchestrator:
             raise ValueError("\n".join(errors))
 
     @staticmethod
+    def _validate_screen_elements_have_mesh(
+        vis_elements: VisualizationElementsFile,
+        scene: SceneUnderstanding,
+    ) -> None:
+        """Ensure every Screen element points to a scene object that has a mesh."""
+        scene_objects = {obj.name: obj for obj in scene.objects}
+        errors: list[str] = []
+        for el in vis_elements.Elements:
+            if not isinstance(el, Screen):
+                continue
+            obj = scene_objects.get(el.Name)
+            if obj is None:
+                continue  # name mismatch caught by existing validation
+            has_mesh = (
+                obj.mesh_stats is not None
+                and (obj.mesh_stats.triangles or 0) > 0
+            ) or bool(obj.renderer_type)
+            if not has_mesh:
+                children_with_mesh = [
+                    child_obj.name
+                    for child_name in (obj.children or [])
+                    if (child_obj := scene_objects.get(child_name)) is not None
+                    and child_obj.mesh_stats is not None
+                    and (child_obj.mesh_stats.triangles or 0) > 0
+                ]
+                hint = ""
+                if children_with_mesh:
+                    hint = f" Did you mean one of its children? {children_with_mesh}"
+                errors.append(
+                    f"Screen element '{el.Name}' references a GameObject with no mesh "
+                    f"(renderer_type='{obj.renderer_type or ''}', "
+                    f"triangles={obj.mesh_stats.triangles if obj.mesh_stats else 0}).{hint}"
+                )
+        if errors:
+            raise ValueError("\n".join(errors))
+
+    @staticmethod
     def _collect_screen_files_from_states(states_file: StatesFile) -> list[str]:
         names: set[str] = set()
         for state in states_file.States:
@@ -1012,6 +1050,7 @@ class PipelineOrchestrator:
                 scene_confirmed,
                 "VisualizationElement",
             )
+            self._validate_screen_elements_have_mesh(parsed, scene_confirmed)
         except ValueError as exc:
             raise ElementNameMismatchError(str(exc), step="visualization") from exc
         return parsed

@@ -89,7 +89,7 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
         if event.type == "run_item_stream_event":
             print(f"[scene_analysis_agent] Event: {event.item.type}")
             if event.item.type == "message_output_item":
-                print(ItemHelpers.text_message_output(event.item))
+                print("[scene_analysis_agent] Message output received.")
             continue
     output = getattr(result, "final_output", None)
     if not isinstance(output, SceneUnderstanding):
