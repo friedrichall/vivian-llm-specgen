@@ -8,7 +8,7 @@ from model.output_type_SceneUnderstanding import SceneUnderstanding
 SCENE_SUMMARY_FILENAME = "scene_understanding_summary.txt"
 MOCK_SCENE_UNDERSTANDING_FILENAME = "scene_understanding.json"
 
-PublishSceneReviewFn = Callable[[int, str, Dict[str, Any]], None]
+PublishSceneReviewFn = Callable[[int, str, Dict[str, Any], Dict[str, Any] | None], None]
 PhaseUpdateFn = Callable[[str], None]
 
 

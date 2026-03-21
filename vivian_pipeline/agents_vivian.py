@@ -30,7 +30,6 @@ from vivian_pipeline.context import (
 )
 from vivian_pipeline.scene_confirmation import (
     _load_mock_scene_understanding,
-    await_scene_confirmation,
     scene_analysis_tool,
 )
 from vivian_pipeline.streaming import _stream_agent_run
@@ -78,7 +77,7 @@ def build_vivian_prompt(description: str, objects: Dict[str, str]) -> str:
 def build_manager_agent(
     *,
     scene_analysis_tool: Any,
-    await_scene_confirmation: Any,
+    await_scene_confirmation: Any = None,
     only_scene_analysis: bool = False,
 ) -> Agent:
     """Create the manager agent with scene and specification-generation tools.
@@ -261,7 +260,6 @@ async def run_vivian(
 
     manager_agent = build_manager_agent(
         scene_analysis_tool=scene_analysis_tool,
-        await_scene_confirmation=await_scene_confirmation,
         only_scene_analysis=only_scene_analysis,
     )
     print("[manager_agent] Starting orchestrated run...")
