@@ -126,9 +126,6 @@ async def _execute_pipeline(
     start_pipeline = _coerce_bool(request_data.get("start_pipeline"), True)
     max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 5))
     interaction_description = request_data.get("interaction_description") or None
-    skip_scene_confirmation = _coerce_bool(
-        request_data.get("skip_scene_confirmation"), False
-    )
 
     raw_screens_dir = request_data.get("screens_dir")
     screen_files = []
@@ -200,6 +197,7 @@ async def _execute_pipeline(
         revision: int,
         summary: str,
         scene_understanding: dict[str, Any],
+        interaction_plan: dict[str, Any] | None = None,
     ) -> None:
         manager.publish_scene_review(
             job_id=job.job_id,
@@ -207,6 +205,7 @@ async def _execute_pipeline(
                 revision=revision,
                 summary=summary,
                 scene_understanding=scene_understanding,
+                interaction_plan=interaction_plan,
                 updated_at=datetime.now(timezone.utc),
             ),
         )
@@ -242,7 +241,6 @@ async def _execute_pipeline(
         await_scene_decision=_await_scene_decision,
         on_phase_change=_on_phase_change,
         interaction_description=interaction_description,
-        skip_scene_confirmation=skip_scene_confirmation,
         screen_files=screen_files,
     )
     result = await run_pipeline_async(config=config, user_input=content)

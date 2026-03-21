@@ -9,6 +9,7 @@ from agents import Agent
 
 from constants.agent_instructions import SCENE_ANALYSIS_INSTRUCTIONS
 from model.output_type_SceneUnderstanding import SceneUnderstanding, ObjectEntry, UserFeedbackEntry
+from vivian_pipeline.models_funcspec.interaction_plan import InteractionPlan
 
 
 INTERACTION_ROLE_HINTS = {
@@ -143,6 +144,69 @@ def summarize_scene_understanding(
         lines.append("User feedback:")
         for entry in scene_understanding.user_feedback[-5:]:
             lines.append(f"- {entry.text}")
+
+    return "\n".join(lines)
+
+
+def summarize_interaction_plan(
+    scene_understanding: SceneUnderstanding,
+    interaction_plan: InteractionPlan,
+) -> str:
+    """Build a human-readable interaction-focused summary for user confirmation.
+
+    Instead of listing raw objects and relations, this summary shows the planned
+    interaction semantics: which elements are interactive vs. visual, what states
+    exist, and which transitions connect them.
+    """
+    lines: List[str] = []
+    scene_id = scene_understanding.scene_id or "(unknown scene)"
+    lines.append(f"Scene: {scene_id}")
+    if scene_understanding.description:
+        lines.append(scene_understanding.description)
+    lines.append("")
+
+    # --- Interaction Elements ---
+    interaction_roles = [
+        er for er in interaction_plan.element_roles if er.category == "interaction"
+    ]
+    if interaction_roles:
+        lines.append(f"Interaction Elements ({len(interaction_roles)}):")
+        for er in interaction_roles:
+            lines.append(f"  - {er.object_name:<24} -> {er.funcspec_type:<16} {er.rationale}")
+
+    # --- Visualization Elements ---
+    visualization_roles = [
+        er for er in interaction_plan.element_roles if er.category == "visualization"
+    ]
+    if visualization_roles:
+        lines.append(f"\nVisualization Elements ({len(visualization_roles)}):")
+        for er in visualization_roles:
+            lines.append(f"  - {er.object_name:<24} -> {er.funcspec_type:<16} {er.rationale}")
+
+    # --- States ---
+    if interaction_plan.planned_states:
+        lines.append(f"\nStates ({len(interaction_plan.planned_states)}):")
+        for ps in interaction_plan.planned_states:
+            screen_info = ""
+            if ps.screen_files:
+                screen_info = f" [screens: {', '.join(ps.screen_files)}]"
+            lines.append(f"  - {ps.name:<28} {ps.description}{screen_info}")
+
+    # --- Transitions ---
+    if interaction_plan.planned_transitions:
+        lines.append(f"\nTransitions ({len(interaction_plan.planned_transitions)}):")
+        for pt in interaction_plan.planned_transitions:
+            trigger = pt.trigger_element or "timeout/auto"
+            lines.append(
+                f"  {pt.source_state} -> {pt.destination_state}: "
+                f"{trigger} ({pt.trigger_description})"
+            )
+
+    # --- User Feedback (if any accumulated) ---
+    if scene_understanding.user_feedback:
+        lines.append("\nUser feedback:")
+        for entry in scene_understanding.user_feedback[-5:]:
+            lines.append(f"  - {entry.text}")
 
     return "\n".join(lines)
 

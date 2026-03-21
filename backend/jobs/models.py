@@ -74,7 +74,6 @@ class StartJobRequest(BaseModel):
     only_scene_analysis: bool = False
     use_mock_scene_analysis: bool = False
     interaction_description: str | None = None
-    skip_scene_confirmation: bool = False
     screens_dir: str | None = None
 
     @field_validator("group_path")
@@ -139,6 +138,7 @@ class SceneReviewPayload(BaseModel):
     revision: int = Field(ge=1)
     summary: str
     scene_understanding: dict[str, Any]
+    interaction_plan: dict[str, Any] | None = None
     updated_at: datetime
 
 

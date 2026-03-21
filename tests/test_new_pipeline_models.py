@@ -292,17 +292,14 @@ def test_start_job_request_new_fields():
     req = StartJobRequest(
         group_path="/some/path",
         interaction_description="Do stuff",
-        skip_scene_confirmation=True,
     )
     assert req.interaction_description == "Do stuff"
-    assert req.skip_scene_confirmation is True
 
 
 def test_start_job_request_new_fields_defaults():
     from backend.jobs.models import StartJobRequest
     req = StartJobRequest(group_path="/some/path")
     assert req.interaction_description is None
-    assert req.skip_scene_confirmation is False
 
 
 # ---------------------------------------------------------------------------
@@ -351,17 +348,14 @@ def test_pipeline_config_new_fields():
     config = PipelineConfig.default(
         run_id="test",
         interaction_description="desc",
-        skip_scene_confirmation=True,
     )
     assert config.interaction_description == "desc"
-    assert config.skip_scene_confirmation is True
 
 
 def test_pipeline_config_new_fields_defaults():
     from vivian_pipeline.pipeline_orchestrator import PipelineConfig
     config = PipelineConfig.default(run_id="test")
     assert config.interaction_description is None
-    assert config.skip_scene_confirmation is False
 
 
 # ---------------------------------------------------------------------------

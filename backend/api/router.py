@@ -198,7 +198,12 @@ def run_orchestrator_test(
     LOGGER.info("POST /orchestrator/test max_attempts=%d", max_attempts)
     run_id = f"debug-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    def _publish_scene_review(revision: int, summary: str, scene_understanding: dict[str, object]) -> None:
+    def _publish_scene_review(
+        revision: int,
+        summary: str,
+        scene_understanding: dict[str, object],
+        interaction_plan: dict[str, object] | None = None,
+    ) -> None:
         LOGGER.info(
             "orchestrator/test review published revision=%d summary_len=%d payload_keys=%d",
             revision,

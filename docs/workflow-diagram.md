@@ -5,15 +5,32 @@ flowchart TD
     START([START]) --> INIT["Initialisierung<br/><i>PipelineConfig laden</i>"]
     INIT --> SCENE_ANALYSIS
 
-    subgraph SCENE ["Phase 1 – Scene Analysis (einmalig pro Run)"]
+    subgraph SCENE ["Phase 1 – Scene Analysis + Interaction Planning + Confirmation (einmalig pro Run)"]
         SCENE_ANALYSIS["🔍 ANALYZING_SCENE<br/><i>scene_analysis_agent · gpt-5.4</i>"]
-        SCENE_ANALYSIS --> SKIP_CONFIRM{skip_scene_confirmation?}
-        SKIP_CONFIRM -- Ja --> SCENE_CACHED["Scene bestätigt<br/>(gecacht für alle Attempts)"]
-        SKIP_CONFIRM -- Nein --> AWAIT_CONFIRM["⏳ AWAITING_SCENE_CONFIRMATION<br/><i>Warte auf User-Entscheidung</i>"]
-        AWAIT_CONFIRM --> USER_DECISION{User bestätigt?}
-        USER_DECISION -- "Nein (Feedback)" --> APPLY_FB["Feedback anwenden<br/><i>apply_scene_feedback()</i>"]
-        APPLY_FB --> AWAIT_CONFIRM
-        USER_DECISION -- Ja --> SCENE_CACHED
+        SCENE_ANALYSIS --> PROPAGATE["Scene-Kontext anreichern<br/><i>interaction_description +<br/>available_screens propagieren</i>"]
+        PROPAGATE --> PLAN_INIT["📋 PLANNING_INTERACTIONS<br/><i>interaction_planner_agent · gpt-5.4</i><br/><i>Erzeugt InteractionPlan</i>"]
+
+        subgraph CONFIRM_LOOP ["Bestätigungs-Loop (Revision #N)"]
+            SUMMARY["📝 summarize_interaction_plan()<br/><i>Lesbarer Review-Text:<br/>ElementRoles, PlannedStates,<br/>PlannedTransitions</i>"]
+            SUMMARY --> PUBLISH_REVIEW["📤 publish_review()<br/><i>Revision #N an Frontend senden<br/>(scene_understanding +<br/>interaction_plan + summary)</i>"]
+            PUBLISH_REVIEW --> AWAIT["⏳ await_decision()<br/><i>Wartet auf User-Antwort<br/>(async Queue, blockiert Pipeline)</i>"]
+            AWAIT --> HAS_FEEDBACK{Feedback<br/>vorhanden?}
+
+            HAS_FEEDBACK -- Ja --> APPLY_FB["apply_scene_feedback()<br/><i>Feedback an<br/>scene.user_feedback anhängen</i>"]
+            APPLY_FB --> REPLAN["📋 _replan_with_feedback()<br/><i>interaction_planner_agent re-run<br/>Input: Scene + Previous Plan +<br/>User-Feedback</i>"]
+            REPLAN --> VALIDATE_REPLAN["Replannten Plan validieren<br/><i>object_names ∈ scene.objects?</i>"]
+            VALIDATE_REPLAN --> CONFIRMED_CHECK
+
+            HAS_FEEDBACK -- Nein --> CONFIRMED_CHECK{User hat<br/>bestätigt?}
+
+            CONFIRMED_CHECK -- "Nein<br/>(confirmed=false,<br/>Feedback ist Pflicht!)" --> REVISION_UP["revision += 1"]
+            REVISION_UP --> SUMMARY
+
+            CONFIRMED_CHECK -- "Ja<br/>(confirmed=true)" --> WRITE_ARTIFACTS["Artifacts schreiben<br/><i>scene_confirmed.json +<br/>interaction_plan_confirmed.json</i>"]
+        end
+
+        PLAN_INIT --> SUMMARY
+        WRITE_ARTIFACTS --> SCENE_CACHED["✅ Scene + Plan bestätigt<br/>(gecacht für alle Attempts)"]
     end
 
     SCENE_CACHED --> ATTEMPT_LOOP
@@ -21,24 +38,13 @@ flowchart TD
     subgraph RETRY_LOOP ["Retry-Loop (max_attempts, default 3)"]
         ATTEMPT_LOOP["═══════════════════<br/>Attempt #N starten<br/>═══════════════════"]
 
-        subgraph PLANNING ["Phase 2 – Interaction Planning (einmalig)"]
-            PLAN_CHECK{Interaction Plan<br/>bereits gecacht?}
-            PLAN_CHECK -- Ja --> USE_CACHED_PLAN["Gecachten Plan verwenden"]
-            PLAN_CHECK -- Nein --> PLAN_EXEC["📋 PLANNING_INTERACTIONS<br/><i>interaction_planner_agent · gpt-5.4</i>"]
-            PLAN_EXEC --> PLAN_VALIDATE["Plan validieren<br/><i>object_names ∈ scene.objects?</i><br/><i>screen_files vorhanden?</i>"]
-            PLAN_VALIDATE --> PLAN_OK{Plan gültig?}
-            PLAN_OK -- Ja --> DERIVE_STEPS["active_steps ableiten<br/><i>aus files_needed</i>"]
-            PLAN_OK -- Nein --> FALLBACK_ALL["⚠️ Fallback:<br/>alle Steps aktiv"]
-        end
-
-        ATTEMPT_LOOP --> PLAN_CHECK
-        USE_CACHED_PLAN --> DETERMINE_DIRTY
+        ATTEMPT_LOOP --> DERIVE_STEPS
+        DERIVE_STEPS["active_steps aus<br/>InteractionPlan.files_needed ableiten"]
         DERIVE_STEPS --> DETERMINE_DIRTY
-        FALLBACK_ALL --> DETERMINE_DIRTY
 
         DETERMINE_DIRTY["dirty_steps ∩ active_steps<br/>bestimmen"]
 
-        subgraph GENERATION ["Phase 3 – FuncSpec Generation"]
+        subgraph GENERATION ["Phase 2 – FuncSpec Generation"]
             direction TB
             GEN_START["Für jeden Step in Reihenfolge:"]
 
@@ -88,7 +94,7 @@ flowchart TD
         ATTEMPTS_LEFT_EARLY -- Ja --> ATTEMPT_LOOP
         ATTEMPTS_LEFT_EARLY -- Nein --> FAILED
 
-        subgraph REVIEW ["Phase 4 – Consistency Review"]
+        subgraph REVIEW ["Phase 3 – Consistency Review"]
             CONSISTENCY["🔎 REVIEWING_CONSISTENCY<br/><i>consistency_reviewer_agent · gpt-5.1</i>"]
             CONSISTENCY --> CONS_ERRORS{Semantische<br/>Fehler gefunden?}
         end
@@ -102,7 +108,7 @@ flowchart TD
         ATTEMPTS_LEFT_CONS -- Ja --> ATTEMPT_LOOP
         ATTEMPTS_LEFT_CONS -- Nein --> FAILED
 
-        subgraph VALIDATION ["Phase 5 – Unity Validation"]
+        subgraph VALIDATION ["Phase 4 – Unity Validation"]
             UNITY_VAL["✅ Unity Validator<br/><i>Strukturelle Validierung<br/>der FuncSpec-Dateien</i>"]
             UNITY_VAL --> VAL_PASS{Validierung<br/>bestanden?}
         end
@@ -111,7 +117,7 @@ flowchart TD
 
         VAL_PASS -- Nein --> FIX_PLAN
 
-        subgraph FIX ["Phase 6 – Fix & Retry"]
+        subgraph FIX ["Phase 5 – Fix & Retry"]
             FIX_PLAN["🔧 GENERATING_FIX_PLAN<br/><i>fixer_agent · gpt-5-mini</i><br/><i>Patches & Guidance erzeugen</i>"]
             FIX_PLAN --> FIX_OK{Fix Plan<br/>erfolgreich?}
             FIX_OK -- Ja --> RETRY_SCOPE_FIX["🔄 DETERMINING_RETRY_SCOPE<br/><i>map_errors_to_dirty_steps()</i><br/><i>+ expand downstream</i>"]
@@ -138,6 +144,17 @@ flowchart TD
     style RETRY_SCOPE_FIX fill:#FF5722,color:#fff
     style RETRY_SCOPE_FIX_NOPLAN fill:#FF5722,color:#fff
     style PUBLISH fill:#2196F3,color:#fff
+    style SCENE_ANALYSIS fill:#7E57C2,color:#fff
+    style PLAN_INIT fill:#7E57C2,color:#fff
+    style REPLAN fill:#7E57C2,color:#fff
+    style SUMMARY fill:#9575CD,color:#fff
+    style PUBLISH_REVIEW fill:#9575CD,color:#fff
+    style AWAIT fill:#FFB74D,color:#000
+    style APPLY_FB fill:#AB47BC,color:#fff
+    style VALIDATE_REPLAN fill:#AB47BC,color:#fff
+    style WRITE_ARTIFACTS fill:#66BB6A,color:#fff
+    style SCENE_CACHED fill:#66BB6A,color:#fff
+    style REVISION_UP fill:#FF8A65,color:#000
 ```
 
 ## Legende
@@ -146,7 +163,9 @@ flowchart TD
 |--------|-----------|
 | 🔍 | Analyse-Phase |
 | ⏳ | Warte auf User-Input |
-| 📋 | Planungs-Phase |
+| 📋 | Planungs-Phase (LLM-Call) |
+| 📝 | Summary-Erzeugung |
+| 📤 | Review-Publish an Frontend |
 | ⚙️ | Generierungs-Phase |
 | 🔎 | Review-Phase |
 | ✅ | Validierungs-Gate |
@@ -155,13 +174,66 @@ flowchart TD
 | 📦 | Publishing |
 | ⏭ | Step übersprungen |
 
+## Pipeline-Phasen im Überblick
+
+| Phase | Beschreibung | Innerhalb Retry-Loop? |
+|-------|-------------|----------------------|
+| Phase 1 | Scene Analysis + Interaction Planning + Confirmation | Nein (einmalig, gecacht) |
+| Phase 2 | FuncSpec Generation (4 sequenzielle Agents) | Ja |
+| Phase 3 | Consistency Review | Ja |
+| Phase 4 | Unity Validation | Ja |
+| Phase 5 | Fix & Retry (Fixer Agent) | Ja |
+| Publishing | Final Output schreiben | Nein (nur bei Erfolg) |
+
+## Bestätigungsschritt im Detail (Phase 1)
+
+Der Bestätigungsschritt ist eine **`while True`-Schleife** innerhalb von `await_scene_confirmation()`. Pro Revision wird:
+
+1. **Summary erzeugt** via `summarize_interaction_plan(scene, plan)` — zeigt:
+   - **Interaction Elements**: Welches Objekt → welcher FuncSpec-Typ (Button, Toggle, ...)
+   - **Visualization Elements**: Welches Objekt → Screen, FloatValue, ...
+   - **PlannedStates**: Name + Beschreibung + zugehörige Screen-Dateien
+   - **PlannedTransitions**: source → destination via trigger (Beschreibung)
+   - **Bisheriges User-Feedback** (letzte 5 Einträge)
+
+2. **Review published** via `publish_review(revision, summary, scene_payload, plan_payload)` → Frontend zeigt dem User den Plan
+
+3. **Pipeline blockiert** bei `await_decision(revision)` — wartet auf User-Antwort über die async Queue (gefüttert durch `POST /v1/jobs/{id}/scene-review`)
+
+### Drei Entscheidungspfade
+
+| Fall | confirmed | feedback | Was passiert |
+|------|-----------|----------|-------------|
+| **Bestätigt ohne Feedback** | `true` | `null` | Direkt weiter → Scene + Plan gecacht |
+| **Bestätigt MIT Feedback** | `true` | `"..."` | `apply_scene_feedback()` → `_replan_with_feedback()` (LLM-Call) → neuer Plan gecacht |
+| **Abgelehnt mit Feedback** | `false` | `"..."` (Pflicht!) | `apply_scene_feedback()` → `_replan_with_feedback()` (LLM-Call) → `revision++` → neue Summary → erneut publizieren → warten |
+
+> **API-Validierung**: `confirmed=false` ohne Feedback wird mit HTTP 422 abgelehnt (`SceneReviewDecisionRequest.validate_feedback_requirement`).
+
+### Was `_replan_with_feedback()` macht
+
+Der Interaction Planner wird **erneut als LLM aufgerufen** mit folgendem Prompt:
+- `CONFIRMED_SCENE_UNDERSTANDING_JSON` — aktuelle Scene (mit angehängtem Feedback)
+- `INTERACTION_DESCRIPTION` — falls vorhanden
+- `SCREEN_FILES` — verfügbare Screen-Dateien
+- `PREVIOUS_INTERACTION_PLAN` — der bisherige Plan als JSON
+- `USER_FEEDBACK` — der Feedback-Text + Anweisung, den Plan entsprechend anzupassen
+
+Danach wird der neue Plan **validiert**: alle `object_names` in `element_roles` müssen in `scene.objects` existieren. Bei ungültigen Referenzen wird ein `ValueError` geworfen.
+
+### Was `apply_scene_feedback()` macht
+
+Hängt den Feedback-Text als `UserFeedbackEntry(text, timestamp)` an `scene_understanding.user_feedback` an. Dieses Feedback wird dann:
+- In der nächsten `summarize_interaction_plan()` angezeigt (letzte 5 Einträge)
+- In der Scene-JSON an den Interaction Planner weitergegeben
+
 ## Retry-Mechanismus
 
 Die Pipeline implementiert eine **selbstkorrigierende Retry-Strategie**:
 
 1. **Dirty-Steps-Tracking**: Nur fehlgeschlagene Steps und deren Downstream-Abhängigkeiten werden wiederholt
 2. **Kaskadierende Abhängigkeiten**: Ein Fehler in `interaction` erzwingt Neugenerierung von `visualization → states → transitions`
-3. **Caching**: Scene-Analyse und Interaction-Plan werden nach dem ersten Attempt gecacht
+3. **Caching**: Scene-Analyse, Interaction-Plan und Bestätigung werden nach Phase 1 gecacht — **kein erneuter User-Eingriff bei Retries**
 4. **Fix-Plan**: Bei Validierungsfehlern erzeugt der Fixer-Agent gezielte Patches für den nächsten Attempt
 
 ### Abhängigkeitskaskade (expand_dirty_steps)

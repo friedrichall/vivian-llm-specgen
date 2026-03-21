@@ -31,7 +31,7 @@ from vivian_pipeline.context import (
     SceneReviewDecision,
     VivianRunContext,
 )
-from vivian_pipeline.scene_analysis import apply_scene_feedback, summarize_scene_understanding
+from vivian_pipeline.scene_analysis import apply_scene_feedback, summarize_interaction_plan
 from vivian_pipeline.scene_confirmation import scene_analysis_tool
 from vivian_pipeline.streaming import _stream_agent_run
 from vivian_pipeline.validator_unity import _run_vivian_validator
@@ -91,7 +91,6 @@ class PipelineConfig:
     await_scene_decision: AwaitSceneDecisionFn | None = None
     on_phase_change: PhaseUpdateFn | None = None
     interaction_description: str | None = None
-    skip_scene_confirmation: bool = False
     screen_files: list[ScreenFileInfo] = field(default_factory=list)
 
     @classmethod
@@ -106,7 +105,6 @@ class PipelineConfig:
         await_scene_decision: AwaitSceneDecisionFn | None = None,
         on_phase_change: PhaseUpdateFn | None = None,
         interaction_description: str | None = None,
-        skip_scene_confirmation: bool = False,
         screen_files: list[ScreenFileInfo] | None = None,
     ) -> "PipelineConfig":
         resolved_run_id = (run_id or "orchestrator-run").strip()
@@ -126,7 +124,6 @@ class PipelineConfig:
             await_scene_decision=await_scene_decision,
             on_phase_change=on_phase_change,
             interaction_description=interaction_description,
-            skip_scene_confirmation=skip_scene_confirmation,
             screen_files=screen_files or [],
         )
 
@@ -1222,24 +1219,28 @@ class PipelineOrchestrator:
         *,
         attempt_index: int,
         scene_raw: SceneUnderstanding,
-    ) -> SceneUnderstanding:
+        interaction_plan: InteractionPlan,
+    ) -> tuple[SceneUnderstanding, InteractionPlan]:
         publish_review = self.config.publish_scene_review
         await_decision = self.config.await_scene_decision
         if publish_review is None or await_decision is None:
             raise RuntimeError("Scene confirmation bridge is not configured.")
 
         scene_current = self._clone_scene_understanding(scene_raw)
+        current_plan = interaction_plan
         request_history: list[dict[str, Any]] = []
         response_history: list[dict[str, Any]] = []
         revision = 1
 
         while True:
-            summary = summarize_scene_understanding(scene_current)
+            summary = summarize_interaction_plan(scene_current, current_plan)
             scene_payload = scene_current.model_dump()
+            plan_payload = current_plan.model_dump()
             review_payload = {
                 "revision": revision,
                 "summary": summary,
                 "scene_understanding": scene_payload,
+                "interaction_plan": plan_payload,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             get_response_shape = {
@@ -1259,7 +1260,7 @@ class PipelineOrchestrator:
                 },
             )
 
-            publish_review(revision, summary, scene_payload)
+            publish_review(revision, summary, scene_payload, plan_payload)
             decision: SceneReviewDecision = await await_decision(revision)
             response_payload = {
                 "revision": decision.revision,
@@ -1279,10 +1280,23 @@ class PipelineOrchestrator:
             feedback = (decision.feedback or "").strip()
             if feedback:
                 apply_scene_feedback(scene_current, feedback)
+                # Re-run interaction planner with feedback context
+                LOGGER.info(
+                    "Attempt %d revision %d: re-running interaction planner with user feedback",
+                    attempt_index, revision,
+                )
+                self._emit_phase("PLANNING_INTERACTIONS")
+                current_plan = await self._replan_with_feedback(
+                    attempt_index=attempt_index,
+                    scene=scene_current,
+                    previous_plan=current_plan,
+                    feedback=feedback,
+                )
 
             if decision.confirmed:
                 self._write_artifact(attempt_index, "scene_confirmed.json", scene_current)
-                return scene_current
+                self._write_artifact(attempt_index, "interaction_plan_confirmed.json", current_plan)
+                return scene_current, current_plan
 
             revision += 1
 
@@ -1319,19 +1333,25 @@ class PipelineOrchestrator:
             finished_at=finished_at,
         )
 
-        if self.config.skip_scene_confirmation:
-            LOGGER.info("Attempt %d: skip_scene_confirmation=True, using scene analysis directly", attempt_index)
-            self._write_artifact(attempt_index, "scene_confirmed.json", scene_raw)
-            self.scene_confirmed = scene_raw
-            return scene_raw, "auto_confirmed"
+        # Run interaction planning BEFORE confirmation so the user can review
+        # the planned interactions (which button triggers what, which screen
+        # shows what) rather than just raw object detection.
+        initial_plan = await self.run_interaction_planning(
+            attempt_index=attempt_index,
+            scene_confirmed=scene_raw,
+        )
 
         LOGGER.info("Attempt %d: phase AWAITING_SCENE_CONFIRMATION", attempt_index)
         self._emit_phase("AWAITING_SCENE_CONFIRMATION")
-        scene_confirmed = await self.await_scene_confirmation(
+
+        scene_confirmed, confirmed_plan = await self.await_scene_confirmation(
             attempt_index=attempt_index,
             scene_raw=scene_raw,
+            interaction_plan=initial_plan,
         )
         self.scene_confirmed = scene_confirmed
+        self.interaction_plan = confirmed_plan
+
         return scene_confirmed, "executed"
 
     async def _run_dirty_funcspec_steps(
@@ -1512,6 +1532,70 @@ class PipelineOrchestrator:
                 )
 
         self._write_artifact(attempt_index, "interaction_plan.json", parsed)
+        return parsed
+
+    async def _replan_with_feedback(
+        self,
+        *,
+        attempt_index: int,
+        scene: SceneUnderstanding,
+        previous_plan: InteractionPlan,
+        feedback: str,
+    ) -> InteractionPlan:
+        """Re-run the interaction planner incorporating user feedback.
+
+        Builds a prompt that includes the previous plan and the user's
+        corrections, then runs the interaction planner agent to produce
+        an updated plan.
+        """
+        _scene_trimmed = self._trim_scene_for_agent(scene, "full")
+        _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
+        _plan_json = json.dumps(previous_plan.model_dump(), indent=2, ensure_ascii=False)
+        parts = [f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n"]
+        if scene.interaction_description:
+            parts.append(
+                f"INTERACTION_DESCRIPTION:\n{scene.interaction_description}\n"
+            )
+        _screen_ctx = self._format_screen_files_context()
+        if _screen_ctx:
+            parts.append(_screen_ctx)
+        parts.append(f"PREVIOUS_INTERACTION_PLAN:\n{_plan_json}\n")
+        parts.append(
+            f"USER_FEEDBACK:\n{feedback}\n\n"
+            "The user has reviewed the previous interaction plan and provided "
+            "the feedback above. Produce an updated InteractionPlan that "
+            "incorporates the user's corrections while keeping unchanged parts "
+            "intact."
+        )
+        planning_input = "\n".join(parts)
+
+        result = await _stream_agent_run(
+            interaction_planner_agent,
+            planning_input,
+            label="interaction_planner_agent_replan",
+        )
+        raw_output = getattr(result, "final_output", None)
+        if raw_output is None:
+            raise TypeError("interaction_planner_agent returned no output on replan.")
+
+        raw_payload = self._to_json_payload(raw_output)
+        self._write_artifact(attempt_index, "interaction_plan_replan_raw.json", raw_payload)
+
+        if hasattr(InteractionPlan, "model_validate"):
+            parsed = InteractionPlan.model_validate(raw_payload)
+        else:
+            parsed = InteractionPlan.parse_obj(raw_payload)
+
+        # Validate object_names exist in scene
+        valid_names = {obj.name for obj in scene.objects}
+        unknown = [er.object_name for er in parsed.element_roles if er.object_name not in valid_names]
+        if unknown:
+            raise ValueError(
+                "Replanned InteractionPlan element_roles reference unknown scene objects: "
+                + ", ".join(repr(n) for n in unknown)
+            )
+
+        self._write_artifact(attempt_index, "interaction_plan_replan.json", parsed)
         return parsed
 
     # ------------------------------------------------------------------
@@ -1696,37 +1780,24 @@ class PipelineOrchestrator:
                 reasons=reason_summary,
             )
 
-            # Stage 1+2: Scene (cached after first attempt)
+            # Stage 1+2+3: Scene Analysis + Interaction Planning + Confirmation
+            # (all cached after first attempt)
             scene_confirmed, scene_mode = await self._obtain_scene_confirmed(
                 attempt_index=attempt_index,
                 user_input=user_input,
             )
 
-            # Stage 3: Interaction Planning (cached after first attempt)
-            if self.interaction_plan is None:
-                try:
-                    self.interaction_plan = await self.run_interaction_planning(
-                        attempt_index=attempt_index,
-                        scene_confirmed=scene_confirmed,
-                    )
-                    self.active_steps = self._map_files_needed_to_steps(
-                        self.interaction_plan.files_needed
-                    )
-                    # Update registry active_files for conditional cross-ref validation
-                    self.registry.active_files = set(self.interaction_plan.files_needed)
-                    dirty_steps = dirty_steps & self.active_steps
-                    LOGGER.info(
-                        "Interaction plan produced. active_steps=%s",
-                        ",".join(sorted(self.active_steps)),
-                    )
-                except Exception as exc:
-                    LOGGER.warning(
-                        "Interaction planning failed (%s); using all steps.",
-                        exc,
-                    )
-                    self._write_artifact(
-                        attempt_index, "interaction_plan_error.json", {"error": str(exc)}
-                    )
+            # Apply interaction plan to active steps (plan set by _obtain_scene_confirmed)
+            if self.interaction_plan is not None:
+                self.active_steps = self._map_files_needed_to_steps(
+                    self.interaction_plan.files_needed
+                )
+                self.registry.active_files = set(self.interaction_plan.files_needed)
+                dirty_steps = dirty_steps & self.active_steps
+                LOGGER.info(
+                    "Interaction plan active. active_steps=%s",
+                    ",".join(sorted(self.active_steps)),
+                )
 
             # Stage 4: Generation (only dirty & active steps)
             try:
