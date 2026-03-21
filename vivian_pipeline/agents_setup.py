@@ -25,8 +25,6 @@ MODEL_STRONG = "gpt-5.2"     # Logic-intensive tasks (transitions)
 MODEL_BALANCED = "gpt-5.1"   # Structured generation (spec agents, review)
 MODEL_FAST = "gpt-5-mini"    # Simple tasks (visualization elements, fixer)
 
-BASE_MODEL = MODEL_FAST  # Legacy alias for agents_vivian.py
-
 interaction_elements_agent = Agent(
     name="interaction_elements_agent",
     model=MODEL_BALANCED,

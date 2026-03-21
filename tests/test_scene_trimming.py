@@ -20,7 +20,7 @@ from model.output_type_SceneUnderstanding import (
     Vec3,
     Vec4,
 )
-from vivian_pipeline.pipeline_orchestrator import PipelineOrchestrator
+from vivian_pipeline.prompt_formatting import trim_scene_for_agent
 
 
 def _make_scene() -> SceneUnderstanding:
@@ -110,43 +110,43 @@ def _make_scene() -> SceneUnderstanding:
 class TestMinimalLevel:
     def test_contains_only_names(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert "objects" in result
         for obj in result["objects"]:
             assert set(obj.keys()) == {"name"}
 
     def test_object_names_correct(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         names = [obj["name"] for obj in result["objects"]]
         assert names == ["ToasterButton", "Slider"]
 
     def test_excludes_relations_clusters(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert "relations" not in result
         assert "clusters" not in result
 
     def test_excludes_diagnostics_feedback(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert "diagnostics" not in result
         assert "user_feedback" not in result
 
     def test_includes_scene_id(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert result["scene_id"] == "test-scene-001"
 
     def test_includes_interaction_description_when_present(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert result["interaction_description"] == "User can press a button and drag a slider."
 
     def test_omits_interaction_description_when_absent(self) -> None:
         scene = _make_scene()
         scene.interaction_description = None
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "minimal")
+        result = trim_scene_for_agent(scene, "minimal")
         assert "interaction_description" not in result
 
 
@@ -157,7 +157,7 @@ class TestMinimalLevel:
 class TestStandardLevel:
     def test_contains_roles_and_params(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "standard")
+        result = trim_scene_for_agent(scene, "standard")
         button_obj = result["objects"][0]
         assert "roles" in button_obj
         assert button_obj["roles"] == ["button", "interactive"]
@@ -167,13 +167,13 @@ class TestStandardLevel:
         scene = _make_scene()
         # Remove interaction_params from first object.
         scene.objects[0].interaction_params = None
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "standard")
+        result = trim_scene_for_agent(scene, "standard")
         button_obj = result["objects"][0]
         assert "interaction_params" not in button_obj
 
     def test_excludes_transform_mesh_bbox(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "standard")
+        result = trim_scene_for_agent(scene, "standard")
         for obj in result["objects"]:
             assert "transform" not in obj
             assert "mesh_stats" not in obj
@@ -190,7 +190,7 @@ class TestStandardLevel:
 
     def test_excludes_relations_clusters(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "standard")
+        result = trim_scene_for_agent(scene, "standard")
         assert "relations" not in result
         assert "clusters" not in result
 
@@ -202,7 +202,7 @@ class TestStandardLevel:
 class TestFullLevel:
     def test_contains_relations_clusters(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         assert "relations" in result
         assert len(result["relations"]) == 1
         assert "clusters" in result
@@ -210,7 +210,7 @@ class TestFullLevel:
 
     def test_relations_exclude_confidence_evidence(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         rel = result["relations"][0]
         assert "confidence" not in rel
         assert "evidence" not in rel
@@ -220,7 +220,7 @@ class TestFullLevel:
 
     def test_clusters_exclude_confidence_rationale(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         cluster = result["clusters"][0]
         assert "confidence" not in cluster
         assert "rationale" not in cluster
@@ -229,7 +229,7 @@ class TestFullLevel:
 
     def test_contains_materials(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         button_obj = result["objects"][0]
         assert "materials" in button_obj
         assert len(button_obj["materials"]) == 1
@@ -237,13 +237,13 @@ class TestFullLevel:
     def test_object_without_materials_omits_key(self) -> None:
         scene = _make_scene()
         scene.objects[0].materials = []
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         button_obj = result["objects"][0]
         assert "materials" not in button_obj
 
     def test_excludes_transform_mesh_bbox(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         for obj in result["objects"]:
             assert "transform" not in obj
             assert "mesh_stats" not in obj
@@ -254,7 +254,7 @@ class TestFullLevel:
 
     def test_excludes_diagnostics_feedback(self) -> None:
         scene = _make_scene()
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         assert "diagnostics" not in result
         assert "user_feedback" not in result
 
@@ -267,7 +267,7 @@ class TestEdgeCases:
     def test_empty_scene(self) -> None:
         scene = SceneUnderstanding()
         for level in ("minimal", "standard", "full"):
-            result = PipelineOrchestrator._trim_scene_for_agent(scene, level)  # type: ignore[arg-type]
+            result = trim_scene_for_agent(scene, level)  # type: ignore[arg-type]
             assert "objects" in result
             assert result["objects"] == []
 
@@ -275,7 +275,7 @@ class TestEdgeCases:
         scene = SceneUnderstanding(
             objects=[ObjectEntry(name="OnlyName")],
         )
-        result = PipelineOrchestrator._trim_scene_for_agent(scene, "full")
+        result = trim_scene_for_agent(scene, "full")
         assert len(result["objects"]) == 1
         obj = result["objects"][0]
         assert obj["name"] == "OnlyName"

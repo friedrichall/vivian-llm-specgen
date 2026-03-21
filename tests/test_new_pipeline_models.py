@@ -805,9 +805,9 @@ def test_element_role_valid_visualization_pairing():
 # Cross-reference step attribution (stuck-retry-loop regression)
 # ---------------------------------------------------------------------------
 
-from vivian_pipeline.pipeline_orchestrator import (  # noqa: E402
-    ElementNameMismatchError,
-    PipelineOrchestrator,
+from vivian_pipeline.config import ElementNameMismatchError  # noqa: E402
+from vivian_pipeline.cross_ref_validation import (  # noqa: E402
+    validate_transition_state_refs,
 )
 from vivian_pipeline.models_funcspec.registry import Registry, ScreensRegistry
 from vivian_pipeline.models_funcspec.interaction_elements import (  # noqa: E402
@@ -853,25 +853,25 @@ class TestTransitionStateRefAttribution:
         tf = TransitionsFile(Transitions=[_event_transition("BAD_STATE", "On")])
         registry = _make_registry_with_states(["Off", "On"])
         with pytest.raises(ValueError, match="unknown SourceState"):
-            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+            validate_transition_state_refs(tf, registry)
 
     def test_unknown_dest_state_raises(self):
         tf = TransitionsFile(Transitions=[_event_transition("Off", "GHOST_STATE")])
         registry = _make_registry_with_states(["Off", "On"])
         with pytest.raises(ValueError, match="unknown DestinationState"):
-            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+            validate_transition_state_refs(tf, registry)
 
     def test_valid_state_refs_pass(self):
         tf = TransitionsFile(Transitions=[_event_transition("Off", "On")])
         registry = _make_registry_with_states(["Off", "On"])
-        PipelineOrchestrator._validate_transition_state_refs(tf, registry)  # no raise
+        validate_transition_state_refs(tf, registry)  # no raise
 
     def test_wrapping_produces_step_states(self):
         """Simulates the run_transitions wrapping: bad state ref → step='states'."""
         tf = TransitionsFile(Transitions=[_event_transition("BAD", "On")])
         registry = _make_registry_with_states(["Off", "On"])
         try:
-            PipelineOrchestrator._validate_transition_state_refs(tf, registry)
+            validate_transition_state_refs(tf, registry)
         except ValueError as exc:
             err = ElementNameMismatchError(str(exc), step="states")
             assert err.step == "states"
