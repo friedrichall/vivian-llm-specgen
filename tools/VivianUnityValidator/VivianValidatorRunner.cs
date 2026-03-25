@@ -232,14 +232,34 @@ public static class VivianValidatorRunner
             return "Unknown error.";
         }
 
-        string typeName = ex.GetType().Name;
-        string message = ex.Message ?? "";
+        // Unwrap TargetInvocationException to expose the real cause
+        Exception inner = ex;
+        while (inner is System.Reflection.TargetInvocationException && inner.InnerException != null)
+        {
+            inner = inner.InnerException;
+        }
+
+        string typeName = inner.GetType().Name;
+        string message = inner.Message ?? "";
         if (string.IsNullOrEmpty(message))
         {
             return typeName;
         }
 
-        return typeName + ": " + message;
+        string result = typeName + ": " + message;
+
+        // Append condensed stack trace for debugging
+        if (inner.StackTrace != null)
+        {
+            string[] lines = inner.StackTrace.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            int limit = Math.Min(lines.Length, 5);
+            for (int i = 0; i < limit; i++)
+            {
+                result += " | " + lines[i].Trim();
+            }
+        }
+
+        return result;
     }
 
     private static T DeserializeWrapperFromFile<T>(string inputDir, string fileName)
