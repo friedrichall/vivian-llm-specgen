@@ -145,390 +145,221 @@
     13.6. Not every available screen file needs to be referenced — only use files that are relevant to the prototype's states.
     13.7. If none of the available screen files seem appropriate for a state and no assignment exists in `SCREEN_FILE_ASSIGNMENTS`, do NOT create a `ScreenContentVisualization` condition for that state rather than inventing a filename.
 
-14. **Few-Shot-Example**
+14. **Few-Shot-Examples** (based on validated prototypes)
+
+Example A — TV Remote (simple states with FloatValueVisualization and ScreenContentVisualization):
 {
     "States": [
         {
-            "Name": "off",
+            "Name": "off.state",
             "Conditions": [
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "WarningLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "SteamSimulation"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "FanAnimation"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "BakingTray"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "FIXED",
-                    "Value": "false"
-                }
-            ]
-        },
-        {
-            "Name": "standby",
-            "Conditions": [
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementBottom"
+                    "VisualizationElement": "Screen",
+                    "Value": 0.0
                 },
                 {
                     "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "DisplayContent",
-                    "FileName": "menu_main.png"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "FIXED",
-                    "Value": "false"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "TemperatureSlider",
-                    "Attribute": "FIXED",
-                    "Value": "false"
+                    "VisualizationElement": "TVLED",
+                    "FileName": "LED_off.png"
                 }
             ]
         },
         {
-            "Name": "preheating",
+            "Name": "channel1.state",
             "Conditions": [
                 {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "ValueOfInteractionElementVisualization",
-                    "VisualizationElement": "HeatingElements",
-                    "InteractionElement": "TemperatureSlider"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "FanAnimation"
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "Screen",
+                    "FileName": "Channel1Video.mp4"
                 },
                 {
                     "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "DisplayContent",
-                    "FileName": "preheating.png"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "VALUE",
-                    "Value": "0.0"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "FIXED",
-                    "Value": "true"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "TemperatureSlider",
-                    "Attribute": "FIXED",
-                    "Value": "true"
+                    "VisualizationElement": "TVLED",
+                    "FileName": "LED_on.png"
                 }
             ]
         },
         {
-            "Name": "ready",
+            "Name": "channel2.state",
             "Conditions": [
                 {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "Screen",
+                    "FileName": "Channel2Video.mp4"
                 },
                 {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.8,
-                    "VisualizationElement": "HeatingElementTop"
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "TVLED",
+                    "FileName": "LED_on.png"
+                }
+            ]
+        },
+        {
+            "Name": "channel3.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "Screen",
+                    "FileName": "Channel3Image.JPG"
                 },
                 {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.8,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "FanAnimation"
-                },
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "TVLED",
+                    "FileName": "LED_on.png"
+                }
+            ]
+        }
+    ]
+}
+
+Example B — Microwave (states with InteractionElementCondition, ScreenContentVisualization, FloatValueVisualization, timeout countdown pattern):
+{
+    "States": [
+        {
+            "Name": "ready.state",
+            "Conditions": [
                 {
                     "Type": "ScreenContentVisualization",
                     "VisualizationElement": "DisplayContent",
                     "FileName": "ready.png"
                 },
                 {
-                    "Type": "FileVisualization",
-                    "FileName": "Audio/ReadyBeep.mp3",
-                    "VisualizationElement": "Buzzer"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "FIXED",
-                    "Value": "true"
-                }
-            ]
-        },
-        {
-            "Name": "baking",
-            "Conditions": [
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "FanAnimation"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.5,
-                    "VisualizationElement": "SteamSimulation"
-                },
-                {
-                    "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "DisplayContent",
-                    "FileName": "baking.png"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "FIXED",
-                    "Value": "true"
-                },
-                {
-                    "Type": "InteractionElementCondition",
-                    "InteractionElement": "BakingTray",
-                    "Attribute": "POSITION",
-                    "Value": "(0.0, -0.1, 0.0)"
-                },
-                {
-                    "Type": "ValueOfInteractionElementVisualization",
-                    "VisualizationElement": "Buzzer",
-                    "InteractionElement": "TimerKnob"
-                }
-            ]
-        },
-        {
-            "Name": "done",
-            "Conditions": [
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
                     "Type": "FloatValueVisualization",
                     "Value": 0.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "FanAnimation"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "SteamSimulation"
-                },
-                {
-                    "Type": "FileVisualization",
-                    "FileName": "Audio/DoneAlarm.mp3",
-                    "VisualizationElement": "Buzzer"
+                    "VisualizationElement": "Light"
                 },
                 {
                     "Type": "InteractionElementCondition",
-                    "InteractionElement": "TimerKnob",
+                    "InteractionElement": "Door",
                     "Attribute": "VALUE",
                     "Value": "0.0"
                 },
                 {
                     "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
+                    "InteractionElement": "Door",
                     "Attribute": "FIXED",
                     "Value": "true"
                 }
             ]
         },
         {
-            "Name": "door_open",
+            "Name": "opening.state",
             "Conditions": [
                 {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "FanAnimation"
-                },
-                {
-                    "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "DisplayContent",
-                    "FileName": "door_open.png"
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "VALUE",
+                    "Value": "0.2"
                 },
                 {
                     "Type": "InteractionElementCondition",
-                    "InteractionElement": "OvenDoor",
+                    "InteractionElement": "Door",
                     "Attribute": "FIXED",
                     "Value": "false"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
                 }
             ]
         },
         {
-            "Name": "menu_settings",
+            "Name": "opened.state",
             "Conditions": [
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 1.0,
-                    "VisualizationElement": "StatusLED"
-                },
-                {
-                    "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "Touchscreen",
-                    "FileName": "settings.png"
-                },
-                {
-                    "Type": "ScreenContentVisualization",
-                    "VisualizationElement": "Touchscreen",
-                    "Texts": [
-                        {
-                            "Text": "Einstellungen",
-                            "Size": 36,
-                            "Position": "(400, 40)",
-                            "Color": "#FFFFFF"
-                        },
-                        {
-                            "Text": "Temperatur: 180 C",
-                            "Size": 24,
-                            "Position": "(400, 120)",
-                            "Color": "#CCCCCC"
-                        }
-                    ]
-                },
                 {
                     "Type": "InteractionElementCondition",
-                    "InteractionElement": "RackHeight",
-                    "Attribute": "VALUE",
-                    "Value": "TemperatureSlider"
-                }
-            ]
-        },
-        {
-            "Name": "error_overheated",
-            "Conditions": [
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "StatusLED"
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "false"
                 },
                 {
                     "Type": "FloatValueVisualization",
                     "Value": 1.0,
-                    "VisualizationElement": "WarningLED"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementTop"
-                },
-                {
-                    "Type": "FloatValueVisualization",
-                    "Value": 0.0,
-                    "VisualizationElement": "HeatingElementBottom"
-                },
+                    "VisualizationElement": "Light"
+                }
+            ]
+        },
+        {
+            "Name": "heating3.state",
+            "Conditions": [
                 {
                     "Type": "ScreenContentVisualization",
                     "VisualizationElement": "DisplayContent",
-                    "FileName": "error.png"
+                    "FileName": "3.png"
                 },
                 {
-                    "Type": "FileVisualization",
-                    "FileName": "Audio/ErrorAlarm.mp3",
-                    "VisualizationElement": "Buzzer"
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
                 },
                 {
                     "Type": "InteractionElementCondition",
-                    "InteractionElement": "TemperatureSlider",
-                    "Attribute": "VALUE",
-                    "Value": "0.0"
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "heating2.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "2.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "heating1.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "1.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "done.state",
+            "Conditions": [
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Mug"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
                 }
             ]
         }
     ]
 }
+

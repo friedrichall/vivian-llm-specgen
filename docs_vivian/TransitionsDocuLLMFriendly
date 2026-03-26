@@ -132,253 +132,159 @@ Validation rules and error handling
 11.6. All interaction element names used in Transitions.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in InteractionElements.json.
 11.7. If a transition or guard references an interaction element name that does not appear in the provided elements context, you must remove or correct that reference before outputting the file.
 
-Few-Shot-Example
+Few-Shot-Examples (based on validated prototypes)
+
+Example A — TV Remote (simple BUTTON_PRESS transitions, no guards):
 {
     "Transitions": [
         {
-            "SourceState": "off",
+            "SourceState": "off.state",
             "InteractionElement": "PowerButton",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "standby"
+            "DestinationState": "channel1.state"
         },
         {
-            "SourceState": "standby",
+            "SourceState": "channel1.state",
             "InteractionElement": "PowerButton",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "off"
+            "DestinationState": "off.state"
         },
+        {
+            "SourceState": "channel2.state",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "off.state"
+        },
+        {
+            "SourceState": "channel3.state",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "off.state"
+        },
+        {
+            "SourceState": "channel1.state",
+            "InteractionElement": "ChannelUp",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel2.state"
+        },
+        {
+            "SourceState": "channel2.state",
+            "InteractionElement": "ChannelUp",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel3.state"
+        },
+        {
+            "SourceState": "channel3.state",
+            "InteractionElement": "ChannelUp",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel1.state"
+        },
+        {
+            "SourceState": "channel3.state",
+            "InteractionElement": "ChannelDown",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel2.state"
+        },
+        {
+            "SourceState": "channel2.state",
+            "InteractionElement": "ChannelDown",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel1.state"
+        },
+        {
+            "SourceState": "channel1.state",
+            "InteractionElement": "ChannelDown",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "channel3.state"
+        }
+    ]
+}
 
+Example B — Microwave (EventParameterGuard, InteractionElementAttributeGuard, timeout chain):
+{
+    "Transitions": [
         {
-            "SourceState": "standby",
-            "InteractionElement": "StartButton",
+            "SourceState": "ready.state",
+            "InteractionElement": "ButtonPushDoor",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "preheating",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "opening.state",
+            "Timeout": 50,
+            "DestinationState": "opened.state"
+        },
+        {
+            "SourceState": "opened.state",
+            "InteractionElement": "Door",
+            "Event": "ROTATABLE_DRAG_END",
+            "DestinationState": "ready.state",
             "Guards": [
                 {
-                    "InteractionElement": "OvenDoor",
-                    "Attribute": "VALUE",
+                    "EventParameter": "SELECTED_VALUE",
                     "Operator": "SMALLER_EQUALS",
-                    "CompareValue": "0.05"
-                },
-                {
-                    "InteractionElement": "ChildLock",
-                    "Attribute": "VALUE",
-                    "Operator": "EQUALS",
-                    "CompareValue": "false"
-                },
-                {
-                    "InteractionElement": "TemperatureSlider",
-                    "Attribute": "VALUE",
-                    "Operator": "LARGER",
                     "CompareValue": "0.1"
                 }
             ]
         },
-
         {
-            "SourceState": "preheating",
-            "Timeout": 15000,
-            "DestinationState": "ready"
-        },
-
-        {
-            "SourceState": "ready",
-            "InteractionElement": "StartButton",
+            "SourceState": "ready.state",
+            "InteractionElement": "ButtonHeat",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "baking",
+            "DestinationState": "heating3.state",
             "Guards": [
                 {
-                    "InteractionElement": "TimerKnob",
-                    "Attribute": "VALUE",
-                    "Operator": "LARGER",
-                    "CompareValue": "0.0"
-                }
-            ]
-        },
-
-        {
-            "SourceState": "baking",
-            "Timeout": 30000,
-            "DestinationState": "done"
-        },
-
-        {
-            "SourceState": "done",
-            "Timeout": 5000,
-            "DestinationState": "standby"
-        },
-
-        {
-            "SourceState": "standby",
-            "InteractionElement": "OvenDoor",
-            "Event": "ROTATABLE_DRAG_END",
-            "DestinationState": "door_open",
-            "Guards": [
-                {
-                    "EventParameter": "SELECTED_VALUE",
-                    "Operator": "LARGER_EQUALS",
-                    "CompareValue": 0.3
-                }
-            ]
-        },
-
-        {
-            "SourceState": "door_open",
-            "InteractionElement": "OvenDoor",
-            "Event": "ROTATABLE_DRAG_END",
-            "DestinationState": "standby",
-            "Guards": [
-                {
-                    "EventParameter": "SELECTED_VALUE",
-                    "Operator": "SMALLER_EQUALS",
-                    "CompareValue": 0.05
-                }
-            ]
-        },
-
-        {
-            "SourceState": "standby",
-            "InteractionElement": "TemperatureSlider",
-            "Event": "SLIDER_DRAG_END",
-            "DestinationState": "menu_settings",
-            "Guards": [
-                {
-                    "EventParameter": "SELECTED_VALUE",
-                    "Operator": "LARGER_EQUALS",
-                    "CompareValue": 0.5
-                }
-            ]
-        },
-
-        {
-            "SourceState": "menu_settings",
-            "Timeout": 3000,
-            "DestinationState": "standby",
-            "Guards": [
-                {
-                    "InteractionElement": "LightSwitch",
-                    "Attribute": "VALUE",
-                    "Operator": "EQUALS",
-                    "CompareValue": "true"
-                }
-            ]
-        },
-        {
-            "SourceState": "menu_settings",
-            "Timeout": 10000,
-            "DestinationState": "standby"
-        },
-
-        {
-            "SourceState": "standby",
-            "InteractionElement": "Touchscreen",
-            "Event": "TOUCH_END",
-            "DestinationState": "menu_settings",
-            "Guards": [
-                {
-                    "EventParameter": "TOUCH_X_COORDINATE",
-                    "Operator": "LARGER",
-                    "CompareValue": 600.0
-                },
-                {
-                    "EventParameter": "TOUCH_Y_COORDINATE",
-                    "Operator": "LARGER",
-                    "CompareValue": 380.0
-                },
-                {
-                    "EventParameter": "TOUCH_X_COORDINATE",
-                    "Operator": "SMALLER",
-                    "CompareValue": 780.0
-                },
-                {
-                    "EventParameter": "TOUCH_Y_COORDINATE",
-                    "Operator": "SMALLER",
-                    "CompareValue": 460.0
-                }
-            ]
-        },
-        {
-            "SourceState": "menu_settings",
-            "InteractionElement": "Touchscreen",
-            "Event": "TOUCH_END",
-            "DestinationState": "standby",
-            "Guards": [
-                {
-                    "EventParameter": "TOUCH_X_COORDINATE",
-                    "Operator": "LARGER",
-                    "CompareValue": 20.0
-                },
-                {
-                    "EventParameter": "TOUCH_Y_COORDINATE",
-                    "Operator": "LARGER",
-                    "CompareValue": 20.0
-                },
-                {
-                    "EventParameter": "TOUCH_X_COORDINATE",
-                    "Operator": "SMALLER",
-                    "CompareValue": 100.0
-                },
-                {
-                    "EventParameter": "TOUCH_Y_COORDINATE",
-                    "Operator": "SMALLER",
-                    "CompareValue": 60.0
-                }
-            ]
-        },
-
-        {
-            "SourceState": "door_open",
-            "InteractionElement": "BakingTray",
-            "Event": "SNAPPOSES_CHECK",
-            "DestinationState": "standby",
-            "Guards": [
-                {
-                    "InteractionElement": "BakingTray",
-                    "Attribute": "POSITION",
-                    "Operator": "LARGER_EQUALS",
-                    "CompareValue": "(-0.1, -0.2, -0.1)"
-                },
-                {
-                    "InteractionElement": "BakingTray",
-                    "Attribute": "POSITION",
-                    "Operator": "SMALLER_EQUALS",
-                    "CompareValue": "(0.1, 0.0, 0.1)"
-                },
-                {
-                    "InteractionElement": "OvenDoor",
+                    "InteractionElement": "Door",
                     "Attribute": "VALUE",
                     "Operator": "SMALLER_EQUALS",
-                    "CompareValue": "0.05"
+                    "CompareValue": "0.1"
                 }
             ]
         },
-
         {
-            "SourceState": "baking",
-            "InteractionElement": "PowerButton",
+            "SourceState": "heating3.state",
+            "InteractionElement": "ButtonHeat",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "standby"
+            "DestinationState": "heating3.state"
         },
-
         {
-            "SourceState": "baking",
-            "Timeout": 60000,
-            "DestinationState": "error_overheated",
-            "Guards": [
-                {
-                    "InteractionElement": "TemperatureSlider",
-                    "Attribute": "VALUE",
-                    "Operator": "LARGER_EQUALS",
-                    "CompareValue": "0.9"
-                }
-            ]
+            "SourceState": "heating3.state",
+            "Timeout": 1000,
+            "DestinationState": "heating2.state"
         },
-
         {
-            "SourceState": "error_overheated",
-            "InteractionElement": "PowerButton",
+            "SourceState": "heating2.state",
+            "Timeout": 1000,
+            "DestinationState": "heating1.state"
+        },
+        {
+            "SourceState": "heating1.state",
+            "Timeout": 1000,
+            "DestinationState": "done.state"
+        },
+        {
+            "SourceState": "heating3.state",
+            "InteractionElement": "ButtonPushDoor",
             "Event": "BUTTON_PRESS",
-            "DestinationState": "off"
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "heating2.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "heating1.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "done.state",
+            "Timeout": 100,
+            "DestinationState": "ready.state"
         }
     ]
 }
+

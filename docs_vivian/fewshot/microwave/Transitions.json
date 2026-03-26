@@ -1,0 +1,86 @@
+{
+    "Transitions": [
+        {
+            "SourceState": "ready.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "opening.state",
+            "Timeout": 50,
+            "DestinationState": "opened.state"
+        },
+        {
+            "SourceState": "opened.state",
+            "InteractionElement": "Door",
+            "Event": "ROTATABLE_DRAG_END",
+            "DestinationState": "ready.state",
+            "Guards": [
+                {
+                    "EventParameter": "SELECTED_VALUE",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": "0.1"
+                }
+            ]
+        },
+        {
+            "SourceState": "ready.state",
+            "InteractionElement": "ButtonHeat",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "heating3.state",
+            "Guards": [
+                {
+                    "InteractionElement": "Door",
+                    "Attribute": "VALUE",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": "0.1"
+                }
+            ]
+        },
+        {
+            "SourceState": "heating3.state",
+            "InteractionElement": "ButtonHeat",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "heating3.state"
+        },
+        {
+            "SourceState": "heating3.state",
+            "Timeout": 1000,
+            "DestinationState": "heating2.state"
+        },
+        {
+            "SourceState": "heating2.state",
+            "Timeout": 1000,
+            "DestinationState": "heating1.state"
+        },
+        {
+            "SourceState": "heating1.state",
+            "Timeout": 1000,
+            "DestinationState": "done.state"
+        },
+        {
+            "SourceState": "heating3.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "heating2.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "heating1.state",
+            "InteractionElement": "ButtonPushDoor",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "opening.state"
+        },
+        {
+            "SourceState": "done.state",
+            "Timeout": 100,
+            "DestinationState": "ready.state"
+        }
+    ]
+}

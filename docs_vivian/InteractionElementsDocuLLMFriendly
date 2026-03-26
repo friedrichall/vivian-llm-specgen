@@ -199,166 +199,85 @@ Source of element names
 12.4. You must not create an element whose "Name" does not appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects.
 12.5. Name consistency across files: names used here will be referenced by States.json and Transitions.json. A single typo or renamed element will break cross-file consistency. This makes exact name copying a strict requirement, not a suggestion.
 
-Few-Shot-Example
+Few-Shot-Examples (based on validated prototypes)
+
+Example A — TV Remote (simple, buttons only):
 {
     "Elements": [
+        {
+            "Type": "Button",
+            "Name": "ChannelDown"
+        },
+        {
+            "Type": "Button",
+            "Name": "ChannelUp"
+        },
         {
             "Type": "Button",
             "Name": "PowerButton"
         },
         {
             "Type": "Button",
-            "Name": "StartButton"
+            "Name": "VolumeDown"
         },
         {
-            "Type": "ToggleButton",
-            "Name": "LightSwitch",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "false" }
-            ]
-        },
-        {
-            "Type": "ToggleButton",
-            "Name": "ChildLock",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "true" }
-            ]
-        },
-        {
-            "Type": "Slider",
-            "Name": "TemperatureSlider",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "0.3" }
-            ],
-            "MinPosition": {
-                "x": -0.1,
-                "y": 0.0,
-                "z": 0.0
-            },
-            "MaxPosition": {
-                "x": 0.1,
-                "y": 0.0,
-                "z": 0.0
-            },
-            "PositionResolution": 10,
-            "TransitionTimeInMs": 300
-        },
-        {
-            "Type": "Slider",
-            "Name": "RackHeight",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "0.5" }
-            ],
-            "MinPosition": {
-                "x": 0.0,
-                "y": 0.0,
-                "z": 0.0
-            },
-            "MaxPosition": {
-                "x": 0.0,
-                "y": 0.15,
-                "z": 0.0
-            },
-            "PositionResolution": 3
-        },
-        {
-            "Type": "Rotatable",
-            "Name": "TimerKnob",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "0.0" }
-            ],
-            "MinRotation": 0.0,
-            "MaxRotation": 270.0,
-            "RotationAxis": {
-                "Origin": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "Direction": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 1.0
-                }
-            },
-            "PositionResolution": 12
-        },
-        {
-            "Type": "Rotatable",
-            "Name": "ModeSelector",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "0.0" }
-            ],
-            "MinRotation": 0.0,
-            "MaxRotation": 360.0,
-            "RotationAxis": {
-                "Origin": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "Direction": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 1.0
-                }
-            },
-            "AllowsForInfiniteRotation": true,
-            "PositionResolution": 5
-        },
-        {
-            "Type": "Rotatable",
-            "Name": "OvenDoor",
-            "InitialAttributeValues": [
-                { "Attribute": "VALUE", "Value": "0.0" }
-            ],
-            "MinRotation": 0.0,
-            "MaxRotation": 120.0,
-            "RotationAxis": {
-                "Origin": {
-                    "x": -0.25,
-                    "y": -0.2,
-                    "z": 0.0
-                },
-                "Direction": {
-                    "x": 1.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            }
-        },
-        {
-            "Type": "TouchArea",
-            "Name": "Touchscreen",
-            "Plane": {
-                "x": 0.0,
-                "y": 0.0,
-                "z": 1.0
-            },
-            "Resolution": {
-                "x": 800.0,
-                "y": 480.0
-            }
+            "Type": "Button",
+            "Name": "VolumeUp"
         },
         {
             "Type": "Movable",
-            "Name": "BakingTray",
+            "Name": "Remote",
             "InitialAttributeValues": [
-                { "Attribute": "POSITION", "Value": "(0.5, 0.0, 0.3)" },
-                { "Attribute": "ROTATION", "Value": "(0.0, 0.0, 0.0)" }
-            ],
-            "SnapPoses": [
-                { "Position": "(0.0, -0.1, 0.0)", "Rotation": "(0.0, 0.0, 0.0)" },
-                { "Position": "(0.0, 0.05, 0.0)", "Rotation": "(0.0, 0.0, 0.0)" }
-            ]
-        },
-        {
-            "Type": "Movable",
-            "Name": "FoodItem",
-            "SnapPoses": [
-                { "Position": "(0.0, 0.02, 0.0)" },
-                { "Position": "(0.1, 0.02, 0.05)", "Rotation": "(0.0, 45.0, 0.0)" }
+                { "Attribute": "POSITION", "Value": "(0.0,0.0,0.0)" }
             ]
         }
     ]
 }
+
+Example B — Microwave (Rotatable, Movable with SnapPoses):
+{
+    "Elements": [
+        {
+            "Type": "Button",
+            "Name": "ButtonPushDoor"
+        },
+        {
+            "Type": "Button",
+            "Name": "ButtonHeat"
+        },
+        {
+            "Type": "Rotatable",
+            "Name": "Door",
+            "InitialAttributeValues": [
+                { "Attribute": "VALUE", "Value": "0.0" }
+            ],
+            "MinRotation": 0.0,
+            "MaxRotation": 90.0,
+            "RotationAxis": {
+                "Origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
+                "Direction": { "x": 0.0, "y": 1.0, "z": 0.0 }
+            }
+        },
+        {
+            "Type": "Movable",
+            "Name": "Mug",
+            "InitialAttributeValues": [
+                { "Attribute": "POSITION", "Value": "(0.077,0.04,0.016)" }
+            ],
+            "SnapPoses": [
+                { "Position": "(0.077,0.04,0.016)", "Rotation": "(0,45,0)" }
+            ]
+        },
+        {
+            "Type": "Movable",
+            "Name": "Pie",
+            "InitialAttributeValues": [
+                { "Attribute": "POSITION", "Value": "(-0.47,-0.083,0.043)" }
+            ],
+            "SnapPoses": [
+                { "Position": "(0.0761,-0.0552,-0.0259)", "Rotation": "(-80,115,0)" }
+            ]
+        }
+    ]
+}
+

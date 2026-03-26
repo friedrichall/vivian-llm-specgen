@@ -1,0 +1,148 @@
+{
+    "States": [
+        {
+            "Name": "ready.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "ready.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 0.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "VALUE",
+                    "Value": "0.0"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "opening.state",
+            "Conditions": [
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "VALUE",
+                    "Value": "0.2"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "false"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                }
+            ]
+        },
+        {
+            "Name": "opened.state",
+            "Conditions": [
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "false"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                }
+            ]
+        },
+        {
+            "Name": "heating3.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "3.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "heating2.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "2.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "heating1.state",
+            "Conditions": [
+                {
+                    "Type": "ScreenContentVisualization",
+                    "VisualizationElement": "DisplayContent",
+                    "FileName": "1.png"
+                },
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Light"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        },
+        {
+            "Name": "done.state",
+            "Conditions": [
+                {
+                    "Type": "FloatValueVisualization",
+                    "Value": 1.0,
+                    "VisualizationElement": "Mug"
+                },
+                {
+                    "Type": "InteractionElementCondition",
+                    "InteractionElement": "Door",
+                    "Attribute": "FIXED",
+                    "Value": "true"
+                }
+            ]
+        }
+    ]
+}
