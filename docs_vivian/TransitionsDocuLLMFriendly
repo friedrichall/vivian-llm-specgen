@@ -131,3 +131,254 @@ Validation rules and error handling
 11.5. Every guard's "InteractionElement" value must also exactly match a "Name" from the InteractionElements context. Do not invent names in guards either.
 11.6. All interaction element names used in Transitions.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in InteractionElements.json.
 11.7. If a transition or guard references an interaction element name that does not appear in the provided elements context, you must remove or correct that reference before outputting the file.
+
+Few-Shot-Example
+{
+    "Transitions": [
+        {
+            "SourceState": "off",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "standby"
+        },
+        {
+            "SourceState": "standby",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "off"
+        },
+
+        {
+            "SourceState": "standby",
+            "InteractionElement": "StartButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "preheating",
+            "Guards": [
+                {
+                    "InteractionElement": "OvenDoor",
+                    "Attribute": "VALUE",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": "0.05"
+                },
+                {
+                    "InteractionElement": "ChildLock",
+                    "Attribute": "VALUE",
+                    "Operator": "EQUALS",
+                    "CompareValue": "false"
+                },
+                {
+                    "InteractionElement": "TemperatureSlider",
+                    "Attribute": "VALUE",
+                    "Operator": "LARGER",
+                    "CompareValue": "0.1"
+                }
+            ]
+        },
+
+        {
+            "SourceState": "preheating",
+            "Timeout": 15000,
+            "DestinationState": "ready"
+        },
+
+        {
+            "SourceState": "ready",
+            "InteractionElement": "StartButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "baking",
+            "Guards": [
+                {
+                    "InteractionElement": "TimerKnob",
+                    "Attribute": "VALUE",
+                    "Operator": "LARGER",
+                    "CompareValue": "0.0"
+                }
+            ]
+        },
+
+        {
+            "SourceState": "baking",
+            "Timeout": 30000,
+            "DestinationState": "done"
+        },
+
+        {
+            "SourceState": "done",
+            "Timeout": 5000,
+            "DestinationState": "standby"
+        },
+
+        {
+            "SourceState": "standby",
+            "InteractionElement": "OvenDoor",
+            "Event": "ROTATABLE_DRAG_END",
+            "DestinationState": "door_open",
+            "Guards": [
+                {
+                    "EventParameter": "SELECTED_VALUE",
+                    "Operator": "LARGER_EQUALS",
+                    "CompareValue": 0.3
+                }
+            ]
+        },
+
+        {
+            "SourceState": "door_open",
+            "InteractionElement": "OvenDoor",
+            "Event": "ROTATABLE_DRAG_END",
+            "DestinationState": "standby",
+            "Guards": [
+                {
+                    "EventParameter": "SELECTED_VALUE",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": 0.05
+                }
+            ]
+        },
+
+        {
+            "SourceState": "standby",
+            "InteractionElement": "TemperatureSlider",
+            "Event": "SLIDER_DRAG_END",
+            "DestinationState": "menu_settings",
+            "Guards": [
+                {
+                    "EventParameter": "SELECTED_VALUE",
+                    "Operator": "LARGER_EQUALS",
+                    "CompareValue": 0.5
+                }
+            ]
+        },
+
+        {
+            "SourceState": "menu_settings",
+            "Timeout": 3000,
+            "DestinationState": "standby",
+            "Guards": [
+                {
+                    "InteractionElement": "LightSwitch",
+                    "Attribute": "VALUE",
+                    "Operator": "EQUALS",
+                    "CompareValue": "true"
+                }
+            ]
+        },
+        {
+            "SourceState": "menu_settings",
+            "Timeout": 10000,
+            "DestinationState": "standby"
+        },
+
+        {
+            "SourceState": "standby",
+            "InteractionElement": "Touchscreen",
+            "Event": "TOUCH_END",
+            "DestinationState": "menu_settings",
+            "Guards": [
+                {
+                    "EventParameter": "TOUCH_X_COORDINATE",
+                    "Operator": "LARGER",
+                    "CompareValue": 600.0
+                },
+                {
+                    "EventParameter": "TOUCH_Y_COORDINATE",
+                    "Operator": "LARGER",
+                    "CompareValue": 380.0
+                },
+                {
+                    "EventParameter": "TOUCH_X_COORDINATE",
+                    "Operator": "SMALLER",
+                    "CompareValue": 780.0
+                },
+                {
+                    "EventParameter": "TOUCH_Y_COORDINATE",
+                    "Operator": "SMALLER",
+                    "CompareValue": 460.0
+                }
+            ]
+        },
+        {
+            "SourceState": "menu_settings",
+            "InteractionElement": "Touchscreen",
+            "Event": "TOUCH_END",
+            "DestinationState": "standby",
+            "Guards": [
+                {
+                    "EventParameter": "TOUCH_X_COORDINATE",
+                    "Operator": "LARGER",
+                    "CompareValue": 20.0
+                },
+                {
+                    "EventParameter": "TOUCH_Y_COORDINATE",
+                    "Operator": "LARGER",
+                    "CompareValue": 20.0
+                },
+                {
+                    "EventParameter": "TOUCH_X_COORDINATE",
+                    "Operator": "SMALLER",
+                    "CompareValue": 100.0
+                },
+                {
+                    "EventParameter": "TOUCH_Y_COORDINATE",
+                    "Operator": "SMALLER",
+                    "CompareValue": 60.0
+                }
+            ]
+        },
+
+        {
+            "SourceState": "door_open",
+            "InteractionElement": "BakingTray",
+            "Event": "SNAPPOSES_CHECK",
+            "DestinationState": "standby",
+            "Guards": [
+                {
+                    "InteractionElement": "BakingTray",
+                    "Attribute": "POSITION",
+                    "Operator": "LARGER_EQUALS",
+                    "CompareValue": "(-0.1, -0.2, -0.1)"
+                },
+                {
+                    "InteractionElement": "BakingTray",
+                    "Attribute": "POSITION",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": "(0.1, 0.0, 0.1)"
+                },
+                {
+                    "InteractionElement": "OvenDoor",
+                    "Attribute": "VALUE",
+                    "Operator": "SMALLER_EQUALS",
+                    "CompareValue": "0.05"
+                }
+            ]
+        },
+
+        {
+            "SourceState": "baking",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "standby"
+        },
+
+        {
+            "SourceState": "baking",
+            "Timeout": 60000,
+            "DestinationState": "error_overheated",
+            "Guards": [
+                {
+                    "InteractionElement": "TemperatureSlider",
+                    "Attribute": "VALUE",
+                    "Operator": "LARGER_EQUALS",
+                    "CompareValue": "0.9"
+                }
+            ]
+        },
+
+        {
+            "SourceState": "error_overheated",
+            "InteractionElement": "PowerButton",
+            "Event": "BUTTON_PRESS",
+            "DestinationState": "off"
+        }
+    ]
+}
