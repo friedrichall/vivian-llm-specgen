@@ -183,3 +183,35 @@ class SceneReviewDecisionResponse(BaseModel):
     review_state: SceneReviewState
     accepted_revision: int
     message: str
+
+
+# ---------------------------------------------------------------------------
+# Standalone validation
+# ---------------------------------------------------------------------------
+
+
+class ValidateRequest(BaseModel):
+    """Input for standalone FunctionalSpecification validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    funcspec_dir: str = Field(min_length=1)
+    screens_dir: str | None = None
+
+
+class ValidationErrorItem(BaseModel):
+    """One validation error with source context."""
+
+    file: str
+    stage: str  # "parse", "cross_reference", "schema", "unity_batchmode"
+    message: str
+
+
+class ValidateResponse(BaseModel):
+    """Result of standalone FunctionalSpecification validation."""
+
+    valid: bool
+    parse_errors: list[ValidationErrorItem]
+    cross_reference_errors: list[ValidationErrorItem]
+    schema_errors: list[ValidationErrorItem]
+    unity_errors: list[ValidationErrorItem]
