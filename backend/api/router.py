@@ -1,11 +1,13 @@
 """Top-level API router and job endpoints."""
 
 import asyncio
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import ValidationError as PydanticValidationError
 
 from backend.jobs.manager import JobManager
 from backend.jobs.models import (
@@ -20,10 +22,21 @@ from backend.jobs.models import (
     JobStatusResponse,
     StartJobRequest,
     StartJobResponse,
+    ValidateRequest,
+    ValidateResponse,
+    ValidationErrorItem,
 )
 from backend.jobs.runner import run_job
+from backend.pipeline.screen_discovery import discover_screen_files
 from vivian_pipeline.context import SceneReviewDecision
+from vivian_pipeline.cross_ref_validation import collect_screen_files_from_states
+from vivian_pipeline.models_funcspec.interaction_elements import InteractionElementsFile
+from vivian_pipeline.models_funcspec.registry import Registry, ScreensRegistry
+from vivian_pipeline.models_funcspec.states import StatesFile
+from vivian_pipeline.models_funcspec.transitions import TransitionsFile
+from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
 from vivian_pipeline.pipeline_orchestrator import PipelineConfig, run_pipeline
+from vivian_pipeline.validator_unity import _run_vivian_validator
 
 MAX_LOG_CHUNK_BYTES = 64 * 1024
 
@@ -227,3 +240,106 @@ def run_orchestrator_test(
         "max_attempts": result.max_attempts,
         "attempts_completed": result.attempts_completed,
     }
+
+
+# ---------------------------------------------------------------------------
+# Standalone validation
+# ---------------------------------------------------------------------------
+
+_FUNCSPEC_FILE_MODELS: dict[str, type] = {
+    "InteractionElements.json": InteractionElementsFile,
+    "VisualizationElements.json": VisualizationElementsFile,
+    "States.json": StatesFile,
+    "Transitions.json": TransitionsFile,
+}
+
+_REQUIRED_FILES = [
+    "InteractionElements.json",
+    "VisualizationElements.json",
+    "VisualizationArrays.json",
+    "States.json",
+    "Transitions.json",
+]
+
+
+@api_router.post("/validate", response_model=ValidateResponse, tags=["validation"])
+async def validate_funcspec(request: ValidateRequest) -> ValidateResponse:
+    """Validate existing FunctionalSpecification files without running the pipeline."""
+    LOGGER.info("POST /validate dir=%s", request.funcspec_dir)
+
+    funcspec_path = Path(request.funcspec_dir)
+    if not funcspec_path.is_dir():
+        raise HTTPException(status_code=400, detail=f"Directory not found: {request.funcspec_dir}")
+
+    parse_errors: list[ValidationErrorItem] = []
+    cross_ref_errors: list[ValidationErrorItem] = []
+    schema_errors: list[ValidationErrorItem] = []
+    unity_errors: list[ValidationErrorItem] = []
+
+    # --- A) Check required files exist ---
+    for fname in _REQUIRED_FILES:
+        if not (funcspec_path / fname).exists():
+            parse_errors.append(ValidationErrorItem(
+                file=fname, stage="parse", message=f"File not found: {fname}",
+            ))
+
+    # --- B) Load and parse JSON into Pydantic models ---
+    parsed: dict[str, object] = {}
+    for fname, model_cls in _FUNCSPEC_FILE_MODELS.items():
+        fpath = funcspec_path / fname
+        if not fpath.exists():
+            continue
+        try:
+            raw = json.loads(fpath.read_text(encoding="utf-8"))
+            parsed[fname] = model_cls.model_validate(raw)
+        except (json.JSONDecodeError, PydanticValidationError, OSError) as exc:
+            parse_errors.append(ValidationErrorItem(
+                file=fname, stage="parse", message=f"{type(exc).__name__}: {exc}",
+            ))
+
+    # --- C) Cross-reference validation (only if all 4 files parsed) ---
+    if len(parsed) == len(_FUNCSPEC_FILE_MODELS):
+        if request.screens_dir:
+            screens_path = Path(request.screens_dir)
+            screen_file_list = [sf.filename for sf in discover_screen_files(screens_path)]
+        else:
+            screen_file_list = collect_screen_files_from_states(parsed["States.json"])  # type: ignore[arg-type]
+
+        try:
+            Registry(
+                interaction_elements=parsed["InteractionElements.json"],  # type: ignore[arg-type]
+                visualization_elements=parsed["VisualizationElements.json"],  # type: ignore[arg-type]
+                screens=ScreensRegistry(files=screen_file_list),
+                states=parsed["States.json"],  # type: ignore[arg-type]
+                transitions=parsed["Transitions.json"],  # type: ignore[arg-type]
+            )
+        except (ValueError, PydanticValidationError) as exc:
+            for line in str(exc).split("\n"):
+                line = line.strip()
+                if line:
+                    cross_ref_errors.append(ValidationErrorItem(
+                        file="", stage="cross_reference", message=line,
+                    ))
+
+    # --- D) Schema + Unity validation ---
+    raw_errors = await asyncio.to_thread(_run_vivian_validator, funcspec_path)
+    if raw_errors:
+        for err in raw_errors:
+            item = ValidationErrorItem(
+                file=err.get("file", ""),
+                stage=err.get("stage", "unknown"),
+                message=err.get("message", ""),
+            )
+            if err.get("stage") == "schema":
+                schema_errors.append(item)
+            else:
+                unity_errors.append(item)
+
+    valid = not any([parse_errors, cross_ref_errors, schema_errors, unity_errors])
+    return ValidateResponse(
+        valid=valid,
+        parse_errors=parse_errors,
+        cross_reference_errors=cross_ref_errors,
+        schema_errors=schema_errors,
+        unity_errors=unity_errors,
+    )
