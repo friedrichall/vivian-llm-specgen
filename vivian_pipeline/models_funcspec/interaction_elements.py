@@ -88,7 +88,7 @@ class Movable(StrictModel):
     Type: Literal["Movable"]
     Name: str
     InitialAttributeValues: list[InitialAttributeValue]
-    SnapPoses: list[SnapPose]
+    SnapPoses: list[SnapPose] = []
     TransitionTimeInMs: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")

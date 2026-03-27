@@ -408,6 +408,7 @@
                     "type": "array"
                 },
                 "SnapPoses": {
+                    "default": [],
                     "items": {
                         "$ref": "#/$defs/SnapPose"
                     },
@@ -431,8 +432,7 @@
             "required": [
                 "Type",
                 "Name",
-                "InitialAttributeValues",
-                "SnapPoses"
+                "InitialAttributeValues"
             ],
             "title": "Movable",
             "type": "object"
