@@ -138,44 +138,4 @@ Source of element names
 12.4. You must not create an element whose "Name" does not appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects.
 12.5. Name consistency across files: names used here will be referenced by States.json and Transitions.json. A single typo or renamed element will break cross-file consistency. This makes exact name copying a strict requirement, not a suggestion.
 
-Few-Shot-Examples (based on validated prototypes)
-
-Example A — TV Remote (Screen elements):
-{
-    "Elements": [
-        {
-            "Type": "Screen",
-            "Name": "Screen",
-            "Plane": { "x": 0.0, "y": 0.0, "z": 1.0 },
-            "Resolution": { "x": 400.0, "y": 150.0 }
-        },
-        {
-            "Type": "Screen",
-            "Name": "TVLED",
-            "Plane": { "x": 0.0, "y": 0.0, "z": 1.0 },
-            "Resolution": { "x": 400.0, "y": 150.0 }
-        }
-    ]
-}
-
-Example B — Microwave (Screen, Light, Particles):
-{
-    "Elements": [
-        {
-            "Type": "Screen",
-            "Name": "DisplayContent",
-            "Plane": { "x": 0.0, "y": 0.0, "z": 1.0 },
-            "Resolution": { "x": 400.0, "y": 150.0 }
-        },
-        {
-            "Type": "Light",
-            "Name": "Light",
-            "EmissionColor": { "r": 0.93, "g": 0.87, "b": 0.18, "a": 1.0 }
-        },
-        {
-            "Type": "Particles",
-            "Name": "Mug"
-        }
-    ]
-}
 

@@ -2,10 +2,30 @@ from pathlib import Path
 
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs_vivian"
+FEWSHOT_DIR = DOCS_DIR / "fewshot"
 
 
 def _read_doc(doc_name: str) -> str:
     return (DOCS_DIR / doc_name).read_text(encoding="utf-8")
+
+
+def _load_fewshot_examples(json_filename: str) -> str:
+    """Load few-shot examples for a FuncSpec file from all fewshot prototype dirs."""
+    examples: list[str] = []
+    for prototype_dir in sorted(FEWSHOT_DIR.iterdir()):
+        if not prototype_dir.is_dir():
+            continue
+        fpath = prototype_dir / json_filename
+        if fpath.exists():
+            content = fpath.read_text(encoding="utf-8").strip()
+            examples.append(f"Example — {prototype_dir.name}:\n{content}")
+    if not examples:
+        return ""
+    return (
+        "\n\nFew-Shot-Examples (based on validated prototypes)\n\n"
+        + "\n\n".join(examples)
+        + "\n"
+    )
 
 
 SCENE_FEEDBACK_INSTRUCTIONS: str = """
@@ -80,10 +100,10 @@ SCENE_ANALYSIS_INSTRUCTIONS: str = """
         - Return only valid JSON that matches the SceneUnderstanding schema.
         """
 
-INTERACTION_ELEMENTS_INSTRUCTIONS = _read_doc("InteractionElementsDocuLLMFriendly")
-TRANSITIONS_INSTRUCTIONS = _read_doc("TransitionsDocuLLMFriendly")
-STATES_INSTRUCTIONS = _read_doc("StatesDocuLLMFriendly")
-VISUALIZATION_ELEMENTS_INSTRUCTIONS = _read_doc("VisualizationElementsDocuLLMFriendly")
+INTERACTION_ELEMENTS_INSTRUCTIONS = _read_doc("InteractionElementsDocuLLMFriendly") + _load_fewshot_examples("InteractionElements.json")
+TRANSITIONS_INSTRUCTIONS = _read_doc("TransitionsDocuLLMFriendly") + _load_fewshot_examples("Transitions.json")
+STATES_INSTRUCTIONS = _read_doc("StatesDocuLLMFriendly") + _load_fewshot_examples("States.json")
+VISUALIZATION_ELEMENTS_INSTRUCTIONS = _read_doc("VisualizationElementsDocuLLMFriendly") + _load_fewshot_examples("VisualizationElements.json")
 INTERACTION_PLANNING_INSTRUCTIONS = _read_doc("InteractionPlanningDocuLLMFriendly")
 CONSISTENCY_REVIEW_INSTRUCTIONS = _read_doc("ConsistencyReviewDocuLLMFriendly")
 FIXER_INSTRUCTIONS = _read_doc("FixerDocuLLMFriendly")
