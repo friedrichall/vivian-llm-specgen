@@ -408,11 +408,19 @@
                     "type": "array"
                 },
                 "SnapPoses": {
-                    "items": {
-                        "$ref": "#/$defs/SnapPose"
-                    },
-                    "title": "Snapposes",
-                    "type": "array"
+                    "anyOf": [
+                        {
+                            "items": {
+                                "$ref": "#/$defs/SnapPose"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Snapposes"
                 },
                 "TransitionTimeInMs": {
                     "anyOf": [
@@ -431,8 +439,7 @@
             "required": [
                 "Type",
                 "Name",
-                "InitialAttributeValues",
-                "SnapPoses"
+                "InitialAttributeValues"
             ],
             "title": "Movable",
             "type": "object"

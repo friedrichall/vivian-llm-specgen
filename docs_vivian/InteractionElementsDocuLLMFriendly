@@ -163,22 +163,22 @@ TouchArea configuration ("Type": "TouchArea")
 9.4.1. {"Type": "TouchArea", "Name": "Screen", "Plane": {"x": 0, "y": 0, "z": 1}, "Resolution": {"x": 800, "y": 480}}
 
 Movable configuration ("Type": "Movable")
-10.1. A Movable represents any object that can move freely to predefined positions (snap poses).
+10.1. A Movable represents any object that can be picked up and moved freely in the scene.
 10.2. For a Movable element, you must include:
 10.2.1. "Type" with the value "Movable".
 10.2.2. "Name" with a string identifier.
 10.2.3. "InitialAttributeValues" as an array of attribute objects.
-10.2.4. "SnapPoses" as an array of snap pose objects.
 10.3. In "InitialAttributeValues" you must include:
 10.3.1. At least one object with "Attribute": "POSITION" and "Value" as a string representing the initial position, for example: "(0.1, 3.15, 3.4)".
 10.3.2. Optionally, an object with "Attribute": "ROTATION" and "Value" as a string representing Euler angles in degrees, for example: "(0, 25, 25)".
-10.4. In "SnapPoses":
+10.4. You may optionally include "SnapPoses" as an array of snap pose objects. SnapPoses define predefined positions where the object snaps to when released nearby. If the object has no meaningful snap targets, omit "SnapPoses" entirely.
 10.4.1. Each entry must contain "Position" as a string representing a 3D coordinate, for example: "(-0.73, 4.5, 0.75)".
 10.4.2. Each entry may optionally contain "Rotation" as a string of Euler angles, for example: "(0, 25, 25)".
 10.5. You may optionally include "TransitionTimeInMs":
 10.5.1. If present, it must be a non-negative integer representing how long the Movable transitions from a position close to a snap pose to the exact snap pose.
-10.6. Example structure (conceptual):
-10.6.1. {"Type": "Movable", "Name": "Cup", "InitialAttributeValues": [ {"Attribute": "POSITION", "Value": "(0.1, 3.15, 3.4)"} ], "SnapPoses": [ {"Position": "(-0.73, 4.5, 0.75)", "Rotation": "(0, 25, 25)"} ]}
+10.6. Example structures (conceptual):
+10.6.1. With SnapPoses: {"Type": "Movable", "Name": "Cup", "InitialAttributeValues": [ {"Attribute": "POSITION", "Value": "(0.1, 3.15, 3.4)"} ], "SnapPoses": [ {"Position": "(-0.73, 4.5, 0.75)", "Rotation": "(0, 25, 25)"} ]}
+10.6.2. Without SnapPoses: {"Type": "Movable", "Name": "Remote", "InitialAttributeValues": [ {"Attribute": "POSITION", "Value": "(0.0, 0.0, 0.0)"} ]}
 
 Validation rules and conflict handling
 11.1. When generating or editing InteractionElements.json, you must ensure that the JSON is syntactically valid.
