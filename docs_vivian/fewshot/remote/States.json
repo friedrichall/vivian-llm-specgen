@@ -6,7 +6,7 @@
                 {
                     "Type": "FloatValueVisualization",
                     "VisualizationElement": "Screen",
-                    "Value": 0.0
+                    "Value": "0.0"
                 },
                 {
                     "Type": "ScreenContentVisualization",

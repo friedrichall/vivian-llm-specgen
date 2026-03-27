@@ -10,7 +10,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 0.0,
+                    "Value": "0.0",
                     "VisualizationElement": "Light"
                 },
                 {
@@ -44,7 +44,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Light"
                 }
             ]
@@ -60,7 +60,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Light"
                 }
             ]
@@ -75,7 +75,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Light"
                 },
                 {
@@ -96,7 +96,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Light"
                 },
                 {
@@ -117,7 +117,7 @@
                 },
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Light"
                 },
                 {
@@ -133,7 +133,7 @@
             "Conditions": [
                 {
                     "Type": "FloatValueVisualization",
-                    "Value": 1.0,
+                    "Value": "1.0",
                     "VisualizationElement": "Mug"
                 },
                 {
