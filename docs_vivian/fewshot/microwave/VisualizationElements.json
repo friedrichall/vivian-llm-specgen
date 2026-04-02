@@ -1,3 +1,4 @@
+Note: "Mug" appears as both a Movable (InteractionElements) and Particles here. This is valid when the same GameObject has both capabilities (e.g., a movable mug with a steam ParticleSystem).
 {
     "Elements": [
         {
