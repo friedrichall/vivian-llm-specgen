@@ -56,15 +56,24 @@ def build_input_items(
     include_images: bool = True,
     skip_images_note: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Build one message payload with scene/manifest text and optional images."""
+    """Build one message payload with scene, manifest, and image inputs.
+
+    Scene JSON, views manifest, and images are mandatory inputs to the
+    scene_analysis_agent. ``include_images=False`` is reserved for
+    test/debug paths and replaces the image block with ``skip_images_note``.
+    """
+    if not bundle.views_manifest_text:
+        raise ValueError("VIEWS_MANIFEST_JSON is required but missing from input bundle.")
+
     content: list[dict[str, Any]] = [
         {"type": "input_text", "text": task_text},
         {"type": "input_text", "text": f"SCENE_JSON:\n{bundle.scene_json_text}"},
+        {"type": "input_text", "text": f"VIEWS_MANIFEST_JSON:\n{bundle.views_manifest_text}"},
     ]
-    if bundle.views_manifest_text:
-        content.append({"type": "input_text", "text": f"VIEWS_MANIFEST_JSON:\n{bundle.views_manifest_text}"})
 
-    if include_images and bundle.images:
+    if include_images:
+        if not bundle.images:
+            raise ValueError("Images are required but missing from input bundle.")
         if use_uploads:
             uploaded_items, failed = build_uploaded_image_items(bundle.images)
             content.extend(uploaded_items)
