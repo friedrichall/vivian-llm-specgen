@@ -251,7 +251,7 @@ async def await_scene_confirmation(
             )
 
         if decision.confirmed:
-            write_artifact(attempt_root, "scene_confirmed.json", scene_current)
+            write_artifact(attempt_root, "scene_understanding_confirmed.json", scene_current)
             write_artifact(attempt_root, "interaction_plan_confirmed.json", current_plan)
             return scene_current, current_plan
 
@@ -267,7 +267,7 @@ async def obtain_scene_confirmed(
     if orch.scene_confirmed is not None:
         write_artifact(
             orch._attempt_root(attempt_index),
-            "scene_confirmed.json",
+            "scene_understanding_confirmed.json",
             orch.scene_confirmed,
         )
         return orch.scene_confirmed, "reused"
@@ -288,7 +288,7 @@ async def obtain_scene_confirmed(
         scene_raw.available_screens = [sf.filename for sf in orch.config.screen_files]
 
     attempt_root = orch._attempt_root(attempt_index)
-    write_artifact(attempt_root, "scene_raw.json", scene_raw)
+    write_artifact(attempt_root, "scene_understanding.json", scene_raw)
     from vivian_pipeline.scene_confirmation import scene_analysis_tool
     write_scene_meta(
         attempt_root,
