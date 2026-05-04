@@ -51,8 +51,7 @@ def _make_scene() -> SceneUnderstanding:
                         main_texture="red_plastic.png",
                     ),
                 ],
-                roles=["button", "interactive"],
-                interaction_params=InteractionParams(type="button"),
+                interaction_params=InteractionParams(),
                 unity_tag="Interactable",
                 is_part_of_device=True,
                 renderer_type="MeshRenderer",
@@ -66,8 +65,7 @@ def _make_scene() -> SceneUnderstanding:
             ObjectEntry(
                 name="Slider",
                 path="/Root/Slider",
-                roles=["slider", "interactive"],
-                interaction_params=InteractionParams(type="slider", axis="x", range=1.0),
+                interaction_params=InteractionParams(axis="x", range=1.0),
                 materials=[
                     MaterialEntry(name="Metal", color=ColorRGBA(r=0.5, g=0.5, b=0.5, a=1.0)),
                 ],
@@ -115,6 +113,14 @@ class TestMinimalLevel:
         for obj in result["objects"]:
             assert set(obj.keys()) == {"name"}
 
+    def test_excludes_roles_and_funcspec_type(self) -> None:
+        """Regression: SceneUnderstanding has no FuncSpec classification fields."""
+        scene = _make_scene()
+        result = trim_scene_for_agent(scene, "minimal")
+        for obj in result["objects"]:
+            assert "roles" not in obj
+            assert "interaction_params" not in obj  # minimal mode strips it
+
     def test_object_names_correct(self) -> None:
         scene = _make_scene()
         result = trim_scene_for_agent(scene, "minimal")
@@ -155,13 +161,23 @@ class TestMinimalLevel:
 # -----------------------------------------------------------------------
 
 class TestStandardLevel:
-    def test_contains_roles_and_params(self) -> None:
+    def test_contains_interaction_params(self) -> None:
         scene = _make_scene()
         result = trim_scene_for_agent(scene, "standard")
         button_obj = result["objects"][0]
-        assert "roles" in button_obj
-        assert button_obj["roles"] == ["button", "interactive"]
         assert "interaction_params" in button_obj
+        slider_obj = result["objects"][1]
+        assert slider_obj["interaction_params"]["axis"] == "x"
+        assert slider_obj["interaction_params"]["range"] == 1.0
+
+    def test_excludes_roles_and_funcspec_type(self) -> None:
+        """Regression: SceneUnderstanding has no FuncSpec classification fields."""
+        scene = _make_scene()
+        result = trim_scene_for_agent(scene, "standard")
+        for obj in result["objects"]:
+            assert "roles" not in obj
+            if "interaction_params" in obj:
+                assert "type" not in obj["interaction_params"]
 
     def test_object_without_interaction_params_omits_key(self) -> None:
         scene = _make_scene()
@@ -233,6 +249,15 @@ class TestFullLevel:
         button_obj = result["objects"][0]
         assert "materials" in button_obj
         assert len(button_obj["materials"]) == 1
+
+    def test_excludes_roles_and_funcspec_type(self) -> None:
+        """Regression: SceneUnderstanding has no FuncSpec classification fields."""
+        scene = _make_scene()
+        result = trim_scene_for_agent(scene, "full")
+        for obj in result["objects"]:
+            assert "roles" not in obj
+            if "interaction_params" in obj:
+                assert "type" not in obj["interaction_params"]
 
     def test_object_without_materials_omits_key(self) -> None:
         scene = _make_scene()

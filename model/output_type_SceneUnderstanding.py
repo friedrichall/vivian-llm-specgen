@@ -38,7 +38,6 @@ class MaterialEntry(BaseModel):
 
 
 class InteractionParams(BaseModel):
-    type: Optional[str] = None
     axis: Optional[str] = None
     range: Optional[float] = None
 
@@ -64,7 +63,6 @@ class ObjectEntry(BaseModel):
     child_paths: List[str] = Field(default_factory=list)
     transform: Optional[Transform] = None
     materials: List[MaterialEntry] = Field(default_factory=list)
-    roles: List[str] = Field(default_factory=list)
     interaction_params: Optional[InteractionParams] = None
     unity_tag: Optional[str] = None
     is_part_of_device: Optional[bool] = None

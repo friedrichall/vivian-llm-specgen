@@ -3,34 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 from agents import Agent
 
 from constants.agent_instructions import SCENE_ANALYSIS_INSTRUCTIONS
-from model.output_type_SceneUnderstanding import SceneUnderstanding, ObjectEntry, UserFeedbackEntry
+from model.output_type_SceneUnderstanding import SceneUnderstanding, UserFeedbackEntry
 from vivian_pipeline.models_funcspec.interaction_plan import InteractionPlan
-
-
-INTERACTION_ROLE_HINTS = {
-    "InteractionElement",
-    "Button",
-    "ToggleButton",
-    "Slider",
-    "Rotatable",
-    "TouchArea",
-    "Movable",
-}
-VISUAL_ROLE_HINTS = {
-    "VisualizationElement",
-    "Light",
-    "Screen",
-    "Display",
-    "Audio",
-    "Sound",
-    "Animation",
-    "ParticleSystem",
-}
 
 
 def build_scene_analysis_agent(model: str) -> Agent:
@@ -78,10 +57,12 @@ def summarize_scene_understanding(
 ) -> str:
     """Build a human-readable scene summary from ``SceneUnderstanding``.
 
-    The summary includes scene metadata, detected objects, relations, clusters,
-    diagnostics, and recent user feedback. Object, relation, and cluster
-    sections are truncated according to the corresponding ``max_*`` limits, and
-    an overflow line is appended when additional entries exist.
+    The summary lists scene metadata, detected objects (name, path, optional
+    interaction parameters), relations, clusters, diagnostics, and recent user
+    feedback. It intentionally omits any FuncSpec classification because
+    SceneUnderstanding no longer carries one — the interaction planner output
+    (rendered separately by ``summarize_interaction_plan``) is the place to
+    show roles/types to the user.
 
     Args:
         scene_understanding: Parsed scene analysis output to summarize.
@@ -103,12 +84,16 @@ def summarize_scene_understanding(
     objects = scene_understanding.objects or []
     lines.append(f"Objects detected: {len(objects)}")
     for obj in objects[:max_objects]:
-        roles = ", ".join(obj.roles) if obj.roles else "no roles"
         path = obj.path or obj.name
-        lines.append(f"- {obj.name} [{path}] roles: {roles}")
-        if obj.interaction_params and obj.interaction_params.type:
+        lines.append(f"- {obj.name} [{path}]")
+        if obj.interaction_params and (
+            obj.interaction_params.axis is not None
+            or obj.interaction_params.range is not None
+        ):
             params = obj.interaction_params
-            lines.append(f"  interactionParams: type={params.type}, axis={params.axis}, range={params.range}")
+            lines.append(
+                f"  interactionParams: axis={params.axis}, range={params.range}"
+            )
     if len(objects) > max_objects:
         lines.append(f"...and {len(objects) - max_objects} more objects")
 
@@ -242,67 +227,7 @@ def is_scene_feedback_confirmed(text: str) -> bool:
     return cleaned in confirmations
 
 
-def build_scene_context(scene_understanding: SceneUnderstanding) -> str:
-    """Build a context string for manager and sub-agents."""
-    payload = scene_understanding.model_dump()
-    json_payload = json.dumps(payload, indent=2, ensure_ascii=False)
-
-    interaction_objects = _filter_objects_by_roles(scene_understanding.objects, INTERACTION_ROLE_HINTS)
-    visualization_objects = _filter_objects_by_roles(scene_understanding.objects, VISUAL_ROLE_HINTS)
-
-    interaction_lines = _format_object_lines(interaction_objects) or ["(none)"]
-    visualization_lines = _format_object_lines(visualization_objects) or ["(none)"]
-
-    feedback_lines = [entry.text for entry in scene_understanding.user_feedback] or ["(none)"]
-
-    return "\n".join(
-        [
-            "CONFIRMED_SCENE_UNDERSTANDING_JSON:",
-            json_payload,
-            "",
-            "Interactive objects (from roles/interactionParams):",
-            *interaction_lines,
-            "",
-            "Visualization objects (from roles):",
-            *visualization_lines,
-            "",
-            "User feedback (authoritative):",
-            *feedback_lines,
-        ]
-    )
-
-
 def _next_scene_understanding_index(output_dir: Path) -> int:
     """Return the next sequential index for scene-understanding log files."""
     existing = sorted(output_dir.glob("scene-understanding-*.json"))
     return len(existing) + 1
-
-
-def _filter_objects_by_roles(
-    objects: Iterable[ObjectEntry],
-    role_hints: set[str],
-) -> List[ObjectEntry]:
-    """Filter objects by role hints, with interaction fallback for interactive hints."""
-    filtered: List[ObjectEntry] = []
-    for obj in objects or []:
-        roles = set(obj.roles or [])
-        if roles & role_hints:
-            filtered.append(obj)
-            continue
-        if obj.interaction_params and obj.interaction_params.type:
-            if role_hints is INTERACTION_ROLE_HINTS:
-                filtered.append(obj)
-    return filtered
-
-
-def _format_object_lines(objects: Iterable[ObjectEntry]) -> List[str]:
-    """Format object entries as human-readable bullet lines."""
-    lines: List[str] = []
-    for obj in objects:
-        role_str = ", ".join(obj.roles) if obj.roles else "no roles"
-        line = f"- {obj.name}: roles={role_str}"
-        if obj.interaction_params and obj.interaction_params.type:
-            params = obj.interaction_params
-            line += f" | interactionParams(type={params.type}, axis={params.axis}, range={params.range})"
-        lines.append(line)
-    return lines
