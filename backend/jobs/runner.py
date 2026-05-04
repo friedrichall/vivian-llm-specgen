@@ -26,7 +26,6 @@ from backend.pipeline.scene_io import (
     select_manifest_objects,
 )
 from backend.pipeline.settings import (
-    IMAGE_ANALYSIS_TASK,
     SEND_IMAGES_TO_AGENT,
 )
 from backend.pipeline.screen_discovery import discover_screen_files
@@ -173,7 +172,7 @@ async def _execute_pipeline(
         }
     )
 
-    task_text = f"{IMAGE_ANALYSIS_TASK}\n\n{_build_vivian_prompt(description, all_objects)}"
+    task_text = _build_vivian_prompt(description, all_objects)
     input_bundle = InputBundle(
         group_name=group,
         interaction_description=description,
