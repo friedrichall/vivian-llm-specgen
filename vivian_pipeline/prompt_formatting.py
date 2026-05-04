@@ -22,9 +22,13 @@ def trim_scene_for_agent(
 
     Levels:
         minimal  — object names only (transitions, states)
-        standard — names + roles + interaction_params (interaction_elements)
-        full     — names + roles + interaction_params + materials + relations
+        standard — names + interaction_params (interaction_elements)
+        full     — names + interaction_params + materials + relations
                    + clusters (visualization_elements, interaction_planning)
+
+    SceneUnderstanding intentionally carries no FuncSpec classification — the
+    interaction planner is the sole authority on element types. Agents derive
+    role from object names plus interaction_params/materials/geometry.
     """
     base: dict[str, Any] = {}
     if scene.scene_id:
@@ -38,7 +42,6 @@ def trim_scene_for_agent(
         base["objects"] = [
             {
                 "name": obj.name,
-                "roles": obj.roles,
                 **(
                     {"interaction_params": obj.interaction_params.model_dump()}
                     if obj.interaction_params
@@ -51,7 +54,6 @@ def trim_scene_for_agent(
         base["objects"] = [
             {
                 "name": obj.name,
-                "roles": obj.roles,
                 **(
                     {"interaction_params": obj.interaction_params.model_dump()}
                     if obj.interaction_params

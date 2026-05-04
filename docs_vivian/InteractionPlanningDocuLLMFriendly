@@ -8,7 +8,7 @@ Input you receive
 2.1. CONFIRMED_SCENE_UNDERSTANDING_JSON: The confirmed scene analysis output containing all objects, their properties, relations, and clusters.
 2.2. INTERACTION_DESCRIPTION (optional): A user-provided natural language description of desired interactions and behaviors.
 2.3. If an INTERACTION_DESCRIPTION is provided, treat it as the primary guide for planning. Objects and behaviors not mentioned may still be included if they are clearly implied by the scene structure.
-2.4. If no INTERACTION_DESCRIPTION is provided, infer reasonable interactions from the scene objects' roles, interaction_params, relations, and clusters.
+2.4. If no INTERACTION_DESCRIPTION is provided, infer reasonable interactions from the scene objects' name, path, interaction_params (axis/range), materials, geometry (bounding_box, mesh_stats), unity_tag, relations, and clusters. SceneUnderstanding does NOT pre-classify objects into FuncSpec types — you are the sole authority on funcspec_type.
 2.5. AVAILABLE_SCREEN_FILES (optional): A JSON list of screen image filenames (e.g., ["home.png", "settings.png"]) that are available on disk for this prototype. When provided, you MUST assign screen files to planned states using the screen_files field on each PlannedState.
 2.6. For each planned state where a screen should display content, set screen_files to a list of filenames from AVAILABLE_SCREEN_FILES that should appear on the Screen element in that state. Only use filenames exactly as they appear in the list — do not invent, rename, or abbreviate filenames.
 2.7. Not every state needs screen_files — only assign files to states where the screen content should change or be displayed.
@@ -23,7 +23,7 @@ Planning element_roles
 3.4. category must be "interaction" for interactive elements or "visualization" for visual feedback elements.
 3.5. rationale must briefly explain why this object should have this role (e.g., "Has button role in scene data", "User requested this as a toggle switch", "Screen object for displaying status").
 3.6. You must not assign roles to objects that do not exist in SceneUnderstanding.objects.
-3.7. Consider the object's roles, interaction_params, materials, and relations when deciding its funcspec_type.
+3.7. Consider the object's name (Unity scenes typically encode roles in names like "StartButton", "DonenessKnob", "PowerSlider", "LcdScreen", "LedIndicator"), interaction_params.axis/range (slider/rotatable evidence — translating geometry implies Slider, rotating geometry implies Rotatable), materials (color/texture), bounding_box/mesh_stats (geometry), unity_tag, relations, and clusters when deciding its funcspec_type. SceneUnderstanding does NOT pre-classify objects — you are the sole authority on funcspec_type.
 3.8. PREREQUISITE — "Animation" funcspec_type: Only assign funcspec_type "Animation" if the scene
 understanding EXPLICITLY confirms that the corresponding Unity GameObject has an Animation or
 Animator component. If this is uncertain or not confirmed, use "AppearingObject" instead for
