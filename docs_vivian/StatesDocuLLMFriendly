@@ -116,6 +116,7 @@
    9.5.1. `"Value"` must be a string representing Euler angles in degrees, in the format `"(rx,ry,rz)"` (for example, `"(0,90,0)"`).
    9.6. When `"Attribute"` is `"FIXED"`:
    9.6.1. `"Value"` must be `"true"` or `"false"` as a string, fixing the element in place and preventing user interaction.
+   9.6.2. `"FIXED"` persists across state transitions — Vivian only applies the conditions of the entered state and does not reset prior attribute values. If you set `"FIXED"` to `"true"` in any state, you must add an explicit `InteractionElementCondition` with `"Attribute": "FIXED"` and `"Value": "false"` to every state in which the user should be able to interact with that element again.
    9.8. Example structures (conceptual):
    9.8.1. `{ "Type": "InteractionElementCondition", "InteractionElement": "Door", "Attribute": "FIXED", "Value": "false" }`
    9.8.2. `{ "Type": "InteractionElementCondition", "InteractionElement": "Slider2", "Attribute": "VALUE", "Value": "Slider1" }`
