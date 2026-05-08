@@ -26,6 +26,7 @@ What to check
      states, verify that the generated States.json uses those assignments. If a planned state has
      screen_files assigned but the corresponding generated state has no ScreenContentVisualization
      condition or uses a different filename, flag as a warning.
+3.11. FIXED lifecycle: For every `InteractionElementCondition` that sets `FIXED=true` on an element, verify that at least one state reachable from that state via Transitions sets `FIXED=false` on the same element. If no reset is reachable, flag as error — the user will be permanently locked out of that element after the state is first entered.
 
 Severity levels
 4.1. Use severity "error" for issues that will cause the FunctionalSpecification to malfunction or fail validation:
