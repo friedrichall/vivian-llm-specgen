@@ -20,7 +20,7 @@ from vivian_pipeline.models_funcspec.transitions import TransitionsFile
 from vivian_pipeline.models_funcspec.visualization_elements import VisualizationElementsFile
 from vivian_pipeline.scene_analysis import build_scene_analysis_agent
 
-MODEL_FLAGSHIP = "gpt-5.4"   # Critical reasoning + multimodal (scene analysis, planning)
+MODEL_FLAGSHIP = "gpt-5.5"   # Critical reasoning + multimodal (scene analysis, planning)
 MODEL_STRONG = "gpt-5.2"     # Logic-intensive tasks (transitions)
 MODEL_BALANCED = "gpt-5.1"   # Structured generation (spec agents, review)
 MODEL_FAST = "gpt-5-mini"    # Simple tasks (visualization elements, fixer)
