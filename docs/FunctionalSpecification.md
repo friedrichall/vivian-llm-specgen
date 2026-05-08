@@ -27,7 +27,6 @@ This page is auto-generated from the Pydantic model schema.
 |---|---|---|---|
 | `Type` | `'AppearingObject'` | yes |  |
 | `Name` | `string` | yes |  |
-| `Value` | `number | null` | no |  |
 
 ### Button
 
@@ -40,9 +39,27 @@ This page is auto-generated from the Pydantic model schema.
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `EventParameter` | `string` | yes |  |
-| `Operator` | `string` | yes |  |
+| `EventParameter` | `enum('SELECTED_VALUE', 'TOUCH_X_COORDINATE', 'TOUCH_Y_COORDINATE')` | yes |  |
+| `Operator` | `enum('LARGER', 'LARGER_EQUALS', 'EQUALS', 'NOT_EQUALS', 'SMALLER_EQUALS', 'SMALLER')` | yes |  |
 | `CompareValue` | `string` | yes |  |
+
+### EventTransition
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `SourceState` | `string` | yes |  |
+| `DestinationState` | `string` | yes |  |
+| `InteractionElement` | `string` | yes |  |
+| `Event` | `enum('BUTTON_PRESS', 'BUTTON_RELEASE', 'SLIDER_DRAG_START', 'SLIDER_DRAG', 'SLIDER_DRAG_END', 'ROTATABLE_DRAG_START', 'ROTATABLE_DRAG', 'ROTATABLE_DRAG_END', 'TOUCH_START', 'TOUCH_SLIDE', 'TOUCH_END', 'OBJECT_MOVE_START', 'OBJECT_MOVE', 'OBJECT_MOVE_END', 'SNAPPOSES_CHECK')` | yes |  |
+| `Guards` | `array[EventParameterGuard | InteractionElementAttributeGuard] | null` | no |  |
+
+### FileVisualization
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `Type` | `'FileVisualization'` | yes |  |
+| `VisualizationElement` | `string` | yes |  |
+| `FileName` | `string` | yes |  |
 
 ### FloatValueVisualization
 
@@ -50,7 +67,7 @@ This page is auto-generated from the Pydantic model schema.
 |---|---|---|---|
 | `Type` | `'FloatValueVisualization'` | yes |  |
 | `VisualizationElement` | `string` | yes |  |
-| `Value` | `number` | yes |  |
+| `Value` | `string` | yes |  |
 
 ### InitialAttributeValue
 
@@ -64,8 +81,8 @@ This page is auto-generated from the Pydantic model schema.
 | Field | Type | Required? | Description |
 |---|---|---|---|
 | `InteractionElement` | `string` | yes |  |
-| `Attribute` | `string` | yes |  |
-| `Operator` | `string` | yes |  |
+| `Attribute` | `enum('VALUE', 'POSITION')` | yes |  |
+| `Operator` | `enum('LARGER', 'LARGER_EQUALS', 'EQUALS', 'NOT_EQUALS', 'SMALLER_EQUALS', 'SMALLER')` | yes |  |
 | `CompareValue` | `string` | yes |  |
 
 ### InteractionElementCondition
@@ -74,7 +91,7 @@ This page is auto-generated from the Pydantic model schema.
 |---|---|---|---|
 | `Type` | `'InteractionElementCondition'` | yes |  |
 | `InteractionElement` | `string` | yes |  |
-| `Attribute` | `enum('FIXED', 'VALUE', 'POSITION')` | yes |  |
+| `Attribute` | `enum('FIXED', 'VALUE', 'POSITION', 'ROTATION')` | yes |  |
 | `Value` | `string` | yes |  |
 
 ### InteractionElementsFile
@@ -154,6 +171,7 @@ This page is auto-generated from the Pydantic model schema.
 | `Type` | `'ScreenContentVisualization'` | yes |  |
 | `VisualizationElement` | `string` | yes |  |
 | `FileName` | `string` | yes |  |
+| `Texts` | `array[TextOverlay] | null` | no |  |
 
 ### Slider
 
@@ -186,13 +204,31 @@ This page is auto-generated from the Pydantic model schema.
 | Field | Type | Required? | Description |
 |---|---|---|---|
 | `Name` | `string` | yes |  |
-| `Conditions` | `array[FloatValueVisualization | ScreenContentVisualization | ValueOfInteractionElementVisualization | InteractionElementCondition]` | yes |  |
+| `Conditions` | `array[FloatValueVisualization | FileVisualization | ScreenContentVisualization | ValueOfInteractionElementVisualization | InteractionElementCondition]` | yes |  |
 
 ### StatesFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
 | `States` | `array[State]` | yes |  |
+
+### TextOverlay
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `Text` | `string` | yes |  |
+| `Size` | `integer` | yes |  |
+| `Position` | `string` | yes |  |
+| `Color` | `string` | yes |  |
+
+### TimeoutTransition
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| `SourceState` | `string` | yes |  |
+| `DestinationState` | `string` | yes |  |
+| `Timeout` | `integer` | yes |  |
+| `Guards` | `array[EventParameterGuard | InteractionElementAttributeGuard] | null` | no |  |
 
 ### ToggleButton
 
@@ -211,22 +247,11 @@ This page is auto-generated from the Pydantic model schema.
 | `Plane` | `Vec3` | yes |  |
 | `Resolution` | `Vec2` | yes |  |
 
-### Transition
-
-| Field | Type | Required? | Description |
-|---|---|---|---|
-| `SourceState` | `string` | yes |  |
-| `DestinationState` | `string` | yes |  |
-| `InteractionElement` | `string | null` | no |  |
-| `Event` | `string | null` | no |  |
-| `Timeout` | `integer | null` | no |  |
-| `Guards` | `array[EventParameterGuard | InteractionElementAttributeGuard] | null` | no |  |
-
 ### TransitionsFile
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| `Transitions` | `array[Transition]` | yes |  |
+| `Transitions` | `array[EventTransition | TimeoutTransition]` | yes |  |
 
 ### ValueOfInteractionElementVisualization
 

@@ -48,6 +48,22 @@ The object must have renderer_type != "" OR mesh_stats.triangles > 0.
 If a parent object (e.g. "Display") has no mesh but its child (e.g. "DisplayContent") does,
 you MUST use the child's name, not the parent's.
 A Screen element targeting a mesh-less object will crash Unity at runtime.
+3.14. interaction_params on ElementRole:
+    - For ElementRoles with funcspec_type "Slider" or "Rotatable", you MUST copy the
+      corresponding scene object's interaction_params (axis and range) into the
+      ElementRole.interaction_params field verbatim. Downstream FuncSpec agents do
+      NOT see SceneUnderstanding and rely on the plan as the single source of truth
+      for axis and range.
+    - For all other funcspec_types (Button, ToggleButton, TouchArea, Movable, Light,
+      Screen, AppearingObject, SoundSource, Animation, Particles), you MUST omit
+      interaction_params or set it to null. Including interaction_params for these
+      types is a schema validation error.
+    - axis must be one of "x", "y", "z" exactly as written in the scene's interaction_params.
+    - range must be the numeric value from the scene's interaction_params.
+    - If the scene object has no interaction_params but you are classifying it as
+      Slider or Rotatable, this is a planning error — either the classification is
+      wrong, or the scene analysis is incomplete. Choose a different funcspec_type
+      or downgrade to Button/ToggleButton.
 
 Planning states
 4.1. For each system state, create a PlannedState entry with a descriptive name and description.
@@ -81,9 +97,22 @@ Reasoning
 7.1. The reasoning field should explain your overall planning rationale in 2-5 sentences.
 7.2. Mention key decisions: why certain objects were included/excluded, how the user description influenced the plan, what interaction patterns you identified.
 
+Plan-level interaction_description
+7a.1. The InteractionPlan has a top-level optional field "interaction_description".
+7a.2. If the input contains an INTERACTION_DESCRIPTION (or the scene's interaction_description), copy
+    that text verbatim into InteractionPlan.interaction_description. Do NOT paraphrase or summarise
+    it — downstream agents may rely on the original wording (e.g. for slider/rotatable sign and
+    direction cues).
+7a.3. If neither input provides an interaction_description, omit the field or set it to null.
+
 General principles
 8.1. A Vivian virtual prototype is a static 3D model made interactive through configuration files. Your plan determines the scope and structure of those files.
 8.2. Prefer simplicity: only plan interactions that are clearly supported by the scene structure or requested by the user.
 8.3. Do not over-plan: if a scene has 50 objects but only 5 are interactive, plan roles only for those 5.
 8.4. All names must be consistent: object_names must match scene objects, state names must be consistent across planned_states and planned_transitions.
 8.5. The plan you produce will be used as context by downstream generation agents. Be precise and complete.
+8.6. The four FuncSpec generation agents (interaction_elements, visualization_elements, states,
+    transitions) NO LONGER receive SceneUnderstanding. Your InteractionPlan is the SOLE
+    structured input describing scene objects to those agents. Anything they need to know about
+    a scene object — its name, its axis/range for sliders/rotatables, the user's interaction
+    description — must therefore be present in the plan.

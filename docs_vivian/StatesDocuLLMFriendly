@@ -1,3 +1,19 @@
+0. **Inputs you receive**
+   0.1. `INTERACTION_PLAN_JSON`: The confirmed InteractionPlan. This is the SOLE structured
+        input describing scene objects — you no longer receive `SceneUnderstanding`.
+        Use `planned_states[]` and `planned_transitions[]` from the plan as the blueprint
+        for which states to produce and which conditions belong in each state.
+        Use `element_roles[]` to know which object_names exist and which category they
+        belong to.
+   0.2. `INTERACTION_ELEMENTS_SUBSET_JSON`: a list of `{Name, Type}` for already-generated
+        interaction elements. Use these names verbatim in `InteractionElement` and
+        `ValueOfInteractionElementVisualization.InteractionElement` fields.
+   0.3. `VISUALIZATION_ELEMENTS_SUBSET_JSON`: a list of `{Name, Type}` for already-generated
+        visualization elements. Use these names verbatim in `VisualizationElement` fields.
+   0.4. Optional: `SCREEN_FILE_ASSIGNMENTS` and `AVAILABLE_SCREEN_FILES` (see section 13).
+   0.5. On retry attempts you may also receive `FIX_PLAN`, `PREVIOUS_OUTPUT_JSON`, and
+        `VALIDATION_ERRORS`.
+
 1. **File name and location**
    1.1. When defining states, you must produce a JSON file named `States.json`.
    1.2. You must assume this file is stored in the virtual prototype’s `FunctionalSpecification` folder.
@@ -133,7 +149,7 @@
 12. **Cross-reference and name consistency rules**
     12.1. Every `"VisualizationElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the VisualizationElements context provided in your input. Do not invent, rename, or paraphrase element names.
     12.2. Every `"InteractionElement"` value in a condition must exactly match (case-sensitively) a `"Name"` from the InteractionElements context provided in your input. Do not invent, rename, or paraphrase element names.
-    12.3. All element names in States.json ultimately originate from Unity object names in the scene (CONFIRMED_SCENE_UNDERSTANDING_JSON). You must not use any element name that was not confirmed in the scene and defined in the corresponding elements file.
+    12.3. All element names in States.json ultimately originate from Unity object names selected by the planner (`INTERACTION_PLAN_JSON.element_roles[*].object_name`). You must not use any element name that does not appear in the provided InteractionElements / VisualizationElements subsets.
     12.4. If a condition references an element name that does not appear in the provided elements context, you must remove or correct that condition before outputting the file.
 
 13. **Available screen files constraint (MANDATORY when AVAILABLE_SCREEN_FILES is present)**

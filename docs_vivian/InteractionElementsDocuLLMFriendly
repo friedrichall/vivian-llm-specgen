@@ -3,6 +3,23 @@ Scope and role of the agent
 1.2. When the user asks you to create, update, or validate interaction elements, you must follow these instructions exactly.
 1.3. When you are explicitly asked to output the contents of InteractionElements.json, you must output only valid JSON, with no explanations or additional text.
 
+Inputs you receive
+1a.1. INTERACTION_PLAN_JSON: The confirmed InteractionPlan from the interaction_planner_agent.
+    This is the SOLE source of truth for object names, axes, ranges, and the user's
+    interaction description. You no longer receive SceneUnderstanding — anything you need
+    must come from the plan.
+1a.2. The plan contains:
+    - element_roles[]: each role has object_name, funcspec_type, category, rationale, and
+      (for Slider/Rotatable only) interaction_params with axis and range.
+    - planned_states[], planned_transitions[]: planned state machine context. You may use
+      these for context but you are only generating InteractionElements.json.
+    - interaction_description (optional): the user's free-text description, used for
+      directional cues (slider sign, etc.).
+    - files_needed: the list of FuncSpec files the planner determined are required.
+1a.3. On retry attempts you may also receive FIX_PLAN, PREVIOUS_OUTPUT_JSON, and VALIDATION_ERRORS.
+1a.4. Generate one element per ElementRole whose category is "interaction". Skip
+    visualization roles — those are handled by a separate agent.
+
 File name and location
 2.1. You must produce a file named InteractionElements.json.
 2.2. You must assume this file is stored in the virtual prototype’s FunctionalSpecification folder.
@@ -19,7 +36,7 @@ General rules for interaction elements
 4.1. Every element object must contain a "Type" field.
 4.2. "Type" must be one of the following strings: "Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable".
 4.3. Every element object must contain a "Name" field.
-4.4. "Name" must be a string copied verbatim and case-sensitively from the "name" field of the corresponding entry in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. You must not invent names, rename, abbreviate, add prefixes or suffixes, or paraphrase Unity object names. Only names that appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects are valid.
+4.4. "Name" must be a string copied verbatim and case-sensitively from the "object_name" field of the corresponding entry in INTERACTION_PLAN_JSON.element_roles. You must not invent names, rename, abbreviate, add prefixes or suffixes, or paraphrase Unity object names. Only names that appear as object_name in element_roles whose category is "interaction" are valid.
 4.5. "Name" must uniquely identify the element within InteractionElements.json.
 4.6. You must not create two elements with the same "Name" in the same file.
 4.7. You must not add fields to an element that are not described for its type in this policy, unless the user explicitly instructs you to extend the schema and acknowledges that this deviates from the Vivian specification.
@@ -63,7 +80,8 @@ Slider configuration ("Type": "Slider")
 7.4. At MinPosition the slider’s value is 0.0; at MaxPosition it is 1.0.
 7.4.1. Always set "MinPosition" to {"x": 0.0, "y": 0.0, "z": 0.0}. This anchors the track’s
        minimum endpoint at the object’s current rest position.
-7.4.2. Derive "MaxPosition" from the scene JSON interaction_params:
+7.4.2. Derive "MaxPosition" from INTERACTION_PLAN_JSON.element_roles[*].interaction_params for
+       this Slider's role:
        - axis ("x", "y", or "z") identifies the movement axis.
        - range is the total travel distance in meters.
        - Set the matching axis component to ±range; set all other components to 0.0.
@@ -71,7 +89,7 @@ Slider configuration ("Type": "Slider")
 
          SIGN DETERMINATION RULES (apply the first matching rule):
 
-         1. interaction_description text (highest priority):
+         1. INTERACTION_PLAN_JSON.interaction_description text (highest priority):
             "push down", "press down", "slide down", "pushed down", "pulls down" → NEGATIVE
             "pull up", "lift up", "pushed up", "slides up"                       → POSITIVE (y)
             "slide left", "move left", "pushed left"                             → NEGATIVE (x)
@@ -92,10 +110,11 @@ Slider configuration ("Type": "Slider")
        Example (rightward slider): axis="x", range=0.0575 →
            MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
 
-       NEVER infer or override the movement axis from bounding_box dimensions, mesh shape, or
-       image evidence. interaction_params.axis is the authoritative source for the movement axis.
-7.4.3. NEVER use bounding_box.min or bounding_box.max from the scene JSON as MinPosition or
-       MaxPosition. Those are world-space mesh corners, not slider track endpoints.
+       NEVER infer or override the movement axis. The plan's interaction_params.axis is the
+       authoritative source for the movement axis.
+7.4.3. You no longer have access to scene-level fields such as bounding_box, mesh_stats, or
+       transforms. Treat MinPosition/MaxPosition strictly as offsets derived from the plan's
+       interaction_params (axis + range), never as world-space coordinates.
 7.5. You may optionally include "InitialAttributeValues" as an array of attribute objects:
 7.5.1. To set the initial value, include an object with "Attribute": "VALUE" and "Value" as a numeric value or numeric string between 0.0 and 1.0 inclusive.
 7.5.2. To make the slider initially non-interactive, include an object with "Attribute": "FIXED" and "Value": "true".
@@ -104,8 +123,8 @@ Slider configuration ("Type": "Slider")
 7.6.2. If absent, the slider must be treated as having an effectively infinite (continuous) number of positions.
 7.6.3. For sliders that physically latch or snap to a fixed number of positions (e.g. a toaster
        handle that is either fully up or fully down), set "PositionResolution" to the number of
-       discrete positions (e.g. 2). Use scene description and interaction_params as evidence;
-       if in doubt, omit it (continuous slider).
+       discrete positions (e.g. 2). Use the plan's interaction_description and the role's
+       rationale as evidence; if in doubt, omit it (continuous slider).
 7.7. You may optionally include "TransitionTimeInMs":
 7.7.1. If present, "TransitionTimeInMs" must be a non-negative integer representing the time in milliseconds for the slider to transition to a position defined by a state change.
 7.8. Example minimal structure (conceptual):
@@ -124,15 +143,15 @@ Rotatable configuration ("Type": "Rotatable")
 8.3.5.1.1. "Origin" is an offset from the rotatable object's current rest position in the parent
             object's local coordinate space (same convention as Slider MinPosition).
             For a knob that rotates around its own center, use {"x": 0.0, "y": 0.0, "z": 0.0}.
-            NEVER use the object's world position from the scene JSON as the Origin.
+            You do not have access to scene world positions — never substitute one here.
 8.3.5.2. "Direction": an object { "x": number, "y": number, "z": number } representing the direction of the rotation axis.
-          Derive "Direction" from interaction_params.axis in CONFIRMED_SCENE_UNDERSTANDING_JSON
+          Derive "Direction" from interaction_params.axis on this role in INTERACTION_PLAN_JSON
           (same field used for Slider MaxPosition):
           - axis="x" → Direction: {"x": 1.0, "y": 0.0, "z": 0.0}
           - axis="y" → Direction: {"x": 0.0, "y": 1.0, "z": 0.0}
           - axis="z" → Direction: {"x": 0.0, "y": 0.0, "z": 1.0}
-          NEVER infer the rotation axis from bounding_box, mesh shape, or image evidence;
-          interaction_params.axis is the authoritative source.
+          NEVER infer the rotation axis from anything other than the plan's
+          interaction_params.axis — that is the authoritative source.
           If interaction_params.axis is absent or null, default to axis="z" as a last resort only.
 8.4. At "MinRotation", the Rotatable value corresponds to 0.0.
 8.5. At "MaxRotation", the Rotatable value corresponds to 1.0.
@@ -190,11 +209,19 @@ Validation rules and conflict handling
 11.6.1. Adjust the configuration to satisfy the Vivian specification while preserving the user’s intent as closely as possible, and clearly reflect the correct structure in the JSON you output; or
 11.6.2. Explain which constraints are violated and propose a corrected configuration that follows this policy, if you are asked to explain instead of outputting pure JSON.
 11.7. When the user requests only the JSON file content, you must not include any natural language explanation; you must return only the JSON structure that satisfies all applicable rules in this policy.
-11.8. You must verify that every element "Name" in the output exactly matches one of the "name" values from CONFIRMED_SCENE_UNDERSTANDING_JSON.objects. Any "Name" that does not appear in that list is invalid and must not appear in the output.
+11.8. You must verify that every element "Name" in the output exactly matches an "object_name" of an
+      ElementRole with category "interaction" in INTERACTION_PLAN_JSON.element_roles. Any "Name" that
+      does not appear in that list is invalid and must not appear in the output.
 
 Source of element names
-12.1. The authoritative source for all element "Name" values is the CONFIRMED_SCENE_UNDERSTANDING_JSON provided in the input, specifically the "name" field of each entry in the "objects" array.
-12.2. You must use the exact string from "objects[*].name" — character-for-character, including capitalisation, underscores, and spacing.
-12.3. You must not invent names, rename objects, use shortened versions, add prefixes or suffixes, or paraphrase Unity object names.
-12.4. You must not create an element whose "Name" does not appear in CONFIRMED_SCENE_UNDERSTANDING_JSON.objects.
-12.5. Name consistency across files: names used here will be referenced by States.json and Transitions.json. A single typo or renamed element will break cross-file consistency. This makes exact name copying a strict requirement, not a suggestion.
+12.1. The authoritative source for all element "Name" values is INTERACTION_PLAN_JSON.element_roles —
+      specifically the "object_name" field of each role whose "category" is "interaction".
+12.2. You must use the exact string from "object_name" — character-for-character, including
+      capitalisation, underscores, and spacing.
+12.3. You must not invent names, rename objects, use shortened versions, add prefixes or suffixes,
+      or paraphrase Unity object names.
+12.4. You must not create an element whose "Name" does not appear as an interaction-category role
+      in INTERACTION_PLAN_JSON.element_roles.
+12.5. Name consistency across files: names used here will be referenced by States.json and
+      Transitions.json. A single typo or renamed element will break cross-file consistency.
+      This makes exact name copying a strict requirement, not a suggestion.
