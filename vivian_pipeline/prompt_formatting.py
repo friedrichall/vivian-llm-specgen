@@ -20,15 +20,16 @@ def trim_scene_for_agent(
 ) -> dict[str, Any]:
     """Return a trimmed scene dict sized for the consuming agent.
 
-    Levels:
-        minimal  — object names only (transitions, states)
-        standard — names + interaction_params (interaction_elements)
-        full     — names + interaction_params + materials + relations
-                   + clusters (visualization_elements, interaction_planning)
+    The four FuncSpec generation agents (interaction/visualization elements,
+    states, transitions) no longer receive scene data — they consume the
+    InteractionPlan instead. This helper is currently used only by the
+    interaction_planner_agent (level "full") and the consistency reviewer.
 
-    SceneUnderstanding intentionally carries no FuncSpec classification — the
-    interaction planner is the sole authority on element types. Agents derive
-    role from object names plus interaction_params/materials/geometry.
+    Levels:
+        minimal  — object names only
+        standard — names + interaction_params
+        full     — names + interaction_params + materials + relations
+                   + clusters (interaction_planning)
     """
     base: dict[str, Any] = {}
     if scene.scene_id:

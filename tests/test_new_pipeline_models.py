@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from model.output_type_SceneUnderstanding import InteractionParams
 from vivian_pipeline.models_funcspec.interaction_plan import (
     ElementRole,
     InteractionPlan,
@@ -747,9 +748,12 @@ def test_element_role_rejects_invalid_funcspec_type():
 
 def test_element_role_accepts_all_interaction_types():
     for t in ("Button", "ToggleButton", "Slider", "Rotatable", "TouchArea", "Movable"):
-        er = ElementRole(
+        kwargs = dict(
             object_name="X", funcspec_type=t, category="interaction", rationale="r",
         )
+        if t in ("Slider", "Rotatable"):
+            kwargs["interaction_params"] = InteractionParams(axis="y", range=0.05)
+        er = ElementRole(**kwargs)
         assert er.funcspec_type == t
 
 
@@ -787,10 +791,46 @@ def test_element_role_rejects_visualization_with_interaction_type():
 
 def test_element_role_valid_interaction_pairing():
     er = ElementRole(
-        object_name="X", funcspec_type="Slider", category="interaction", rationale="r",
+        object_name="X",
+        funcspec_type="Slider",
+        category="interaction",
+        rationale="r",
+        interaction_params=InteractionParams(axis="y", range=0.05),
     )
     assert er.category == "interaction"
     assert er.funcspec_type == "Slider"
+
+
+def test_element_role_slider_requires_interaction_params():
+    with pytest.raises(ValidationError, match="must include interaction_params"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Slider",
+            category="interaction",
+            rationale="r",
+        )
+
+
+def test_element_role_slider_requires_non_empty_axis():
+    with pytest.raises(ValidationError, match="non-empty"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Slider",
+            category="interaction",
+            rationale="r",
+            interaction_params=InteractionParams(axis=None, range=0.05),
+        )
+
+
+def test_element_role_button_rejects_interaction_params():
+    with pytest.raises(ValidationError, match="must NOT include interaction_params"):
+        ElementRole(
+            object_name="X",
+            funcspec_type="Button",
+            category="interaction",
+            rationale="r",
+            interaction_params=InteractionParams(axis="y", range=0.05),
+        )
 
 
 def test_element_role_valid_visualization_pairing():

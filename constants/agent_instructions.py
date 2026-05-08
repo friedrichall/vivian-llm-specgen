@@ -152,28 +152,13 @@ First match wins. Apply rules in the listed order. The two rule sets below
 are selected purely by GEOMETRY/EVIDENCE - never by FuncSpec role.
 
 ### For an object that translates linearly (slot/lever/handle geometry):
-  Rule A (image evidence):
-    Inspect the bboxPx region in each view. Observe the 
-    visible direction of motion in the scene images:
-    - Moves up/down in the image --> "y"
-    - Moves left/right in the image --> "x"
-    - Moves toward/away from camera (depth) --> "z"
-    If a translating part sits in a slot, 
-    take the slot's long direction as motion direction. Translate the
-    observed in-image motion direction to a world axis using Step 3.
-  Rule B (semantic description):
-    Examine SCENE_JSON.description and the object's name.
-      "push down" / "press down" / "slide down"  --> "y"
-      "pull up"  / "lift up"                     --> "y"
-      "slide left" / "slide right" / "horizontal"--> "x"
-      "push forward" / "slide back" / "depth"    --> "z"
-  Rule C (geometry):
-    Compute world extents e_i = worldAabb.max[i] - worldAabb.min[i] for
-    i in {x, y, z}. A translating part typically moves along the axis
-    with the SHORTEST extent (it sits tight in its slot perpendicular
-    to travel).
-  Rule D (fallback):
-    Use "y" and append a Diagnostic level "warning" reporting low confidence.
+  Reason like a human user would: study the object's images for the
+  orientation of any visible slot, track, or pivot; combine that with the
+  object's shape, name, and SCENE_JSON.description; decide which world
+  axis ("x", "y", "z") the part slides along. Use coordinateConventions
+  (Step 3) to translate an observed in-image direction to a world axis
+  when the answer is not obvious. If the direction is still genuinely
+  ambiguous, fall back to "y" and append a Diagnostic level "warning".
 
 ### For an object that rotates around an axis (knob/dial/hinge/wheel geometry):
   Rule A (image evidence):

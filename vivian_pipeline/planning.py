@@ -31,6 +31,70 @@ def clone_scene_understanding(scene_understanding: SceneUnderstanding) -> SceneU
     return scene_understanding.copy(deep=True)
 
 
+_PARAMETERIZED_TYPES = {"Slider", "Rotatable"}
+
+
+def _validate_plan_interaction_params(
+    plan: InteractionPlan,
+    scene: SceneUnderstanding,
+    *,
+    label: str,
+) -> None:
+    """Cross-check that the plan's interaction_params match the scene for
+    Slider/Rotatable roles. The plan must be the sole source of truth for
+    downstream agents, so axis/range must be faithfully copied from the scene.
+    """
+    scene_params = {obj.name: obj.interaction_params for obj in scene.objects}
+    errors: list[str] = []
+    for er in plan.element_roles:
+        if er.funcspec_type not in _PARAMETERIZED_TYPES:
+            continue
+        scene_ip = scene_params.get(er.object_name)
+        if scene_ip is None:
+            errors.append(
+                f"{label} ElementRole '{er.object_name}' is "
+                f"'{er.funcspec_type}' but the scene object has no "
+                "interaction_params."
+            )
+            continue
+        plan_ip = er.interaction_params
+        if plan_ip is None:
+            errors.append(
+                f"{label} ElementRole '{er.object_name}' "
+                f"({er.funcspec_type}) is missing interaction_params."
+            )
+            continue
+        if plan_ip.axis != scene_ip.axis:
+            errors.append(
+                f"{label} ElementRole '{er.object_name}' axis "
+                f"'{plan_ip.axis}' does not match scene axis '{scene_ip.axis}'."
+            )
+        if plan_ip.range != scene_ip.range:
+            errors.append(
+                f"{label} ElementRole '{er.object_name}' range "
+                f"{plan_ip.range!r} does not match scene range "
+                f"{scene_ip.range!r}."
+            )
+    if errors:
+        raise ValueError("\n".join(errors))
+
+
+def _ensure_plan_interaction_description(
+    plan: InteractionPlan,
+    scene: SceneUnderstanding,
+) -> None:
+    """Backstop: copy scene's interaction_description into the plan if the
+    planner omitted it. Mutates ``plan`` in place. Logs a warning when used.
+    """
+    if plan.interaction_description:
+        return
+    if scene.interaction_description:
+        LOGGER.warning(
+            "Planner omitted interaction_description; copying from scene as fallback."
+        )
+        plan.interaction_description = scene.interaction_description
+
+
 async def run_interaction_planning(
     orch: PipelineOrchestrator,
     *,
@@ -79,6 +143,12 @@ async def run_interaction_planning(
             "InteractionPlan element_roles reference unknown scene objects: "
             + ", ".join(repr(n) for n in unknown)
         )
+
+    # Validate Slider/Rotatable interaction_params were copied faithfully from
+    # the scene. The plan is the sole input to downstream FuncSpec agents, so
+    # axis and range must exactly match the scene's values.
+    _validate_plan_interaction_params(parsed, scene_confirmed, label="InteractionPlan")
+    _ensure_plan_interaction_description(parsed, scene_confirmed)
 
     # Validate screen_files assigned to planned states
     if orch.config.screen_files:
@@ -165,6 +235,9 @@ async def replan_with_feedback(
             "Replanned InteractionPlan element_roles reference unknown scene objects: "
             + ", ".join(repr(n) for n in unknown)
         )
+
+    _validate_plan_interaction_params(parsed, scene, label="Replanned InteractionPlan")
+    _ensure_plan_interaction_description(parsed, scene)
 
     write_artifact(attempt_root, "interaction_plan_replan.json", parsed)
     return parsed

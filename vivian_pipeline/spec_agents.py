@@ -45,7 +45,6 @@ from vivian_pipeline.prompt_formatting import (
     format_screen_mapping_context,
     interaction_elements_subset,
     state_names_subset,
-    trim_scene_for_agent,
     visualization_elements_subset,
 )
 from vivian_pipeline.streaming import _stream_agent_run
@@ -66,8 +65,6 @@ async def run_interaction_elements(
     fix_plan: FixPlan | None = None,
 ) -> InteractionElementsFile:
     orch._emit_phase("GENERATING_SPECS_INTERACTION_ELEMENTS")
-    _scene_trimmed = trim_scene_for_agent(scene_confirmed, "standard")
-    _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     _plan_ctx = format_plan_context(interaction_plan)
     if errors_for_step:
         _prev_output = json.dumps(
@@ -79,7 +76,6 @@ async def run_interaction_elements(
         )
         _fix_ctx = format_fix_plan_context(fix_plan, "interaction")
         interaction_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"{_plan_ctx}"
             f"{_fix_ctx}"
             f"PREVIOUS_OUTPUT_JSON:\n{_prev_output}\n\n"
@@ -89,9 +85,8 @@ async def run_interaction_elements(
         )
     else:
         interaction_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"{_plan_ctx}"
-            "Generate InteractionElements.json for the confirmed scene context."
+            "Generate InteractionElements.json from the InteractionPlan above."
         )
     result = await _stream_agent_run(
         interaction_elements_agent,
@@ -143,8 +138,6 @@ async def run_visualization_elements(
 ) -> VisualizationElementsFile:
     orch._emit_phase("GENERATING_SPECS_VISUALIZATION_ELEMENTS")
     ie_subset = interaction_elements_subset(registry_snapshot)
-    _scene_trimmed = trim_scene_for_agent(scene_confirmed, "full")
-    _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     _interaction_json = json.dumps(ie_subset, indent=2, ensure_ascii=False)
     _plan_ctx = format_plan_context(interaction_plan)
     if errors_for_step:
@@ -157,7 +150,6 @@ async def run_visualization_elements(
         )
         _fix_ctx = format_fix_plan_context(fix_plan, "visualization")
         visualization_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"{_plan_ctx}"
             f"{_fix_ctx}"
@@ -168,10 +160,9 @@ async def run_visualization_elements(
         )
     else:
         visualization_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"{_plan_ctx}"
-            "Generate VisualizationElements.json for the confirmed scene context."
+            "Generate VisualizationElements.json from the InteractionPlan above."
         )
     result = await _stream_agent_run(
         visualization_elements_agent,
@@ -225,8 +216,6 @@ async def run_states(
     orch._emit_phase("GENERATING_SPECS_STATES")
     ie_subset = interaction_elements_subset(registry_snapshot)
     ve_subset = visualization_elements_subset(registry_snapshot)
-    _scene_trimmed = trim_scene_for_agent(scene_confirmed, "minimal")
-    _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     _interaction_json = json.dumps(ie_subset, indent=2, ensure_ascii=False)
     _visualization_json = json.dumps(ve_subset, indent=2, ensure_ascii=False)
     _plan_ctx = format_plan_context(interaction_plan)
@@ -242,7 +231,6 @@ async def run_states(
         )
         _fix_ctx = format_fix_plan_context(fix_plan, "states")
         states_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
             f"{_plan_ctx}"
@@ -256,13 +244,12 @@ async def run_states(
         )
     else:
         states_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"VISUALIZATION_ELEMENTS_SUBSET_JSON:\n{_visualization_json}\n\n"
             f"{_plan_ctx}"
             f"{_screen_mapping_ctx}"
             f"{_screen_ctx}"
-            "Generate States.json for the confirmed scene context."
+            "Generate States.json from the InteractionPlan above."
         )
 
     result = await _stream_agent_run(
@@ -304,8 +291,6 @@ async def run_transitions(
     orch._emit_phase("GENERATING_SPECS_TRANSITIONS")
     ie_subset = interaction_elements_subset(registry_snapshot)
     sn_subset = state_names_subset(registry_snapshot)
-    _scene_trimmed = trim_scene_for_agent(scene_confirmed, "minimal")
-    _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     _interaction_json = json.dumps(ie_subset, indent=2, ensure_ascii=False)
     _state_names_json = json.dumps(sn_subset, indent=2, ensure_ascii=False)
     _plan_ctx = format_plan_context(interaction_plan)
@@ -319,7 +304,6 @@ async def run_transitions(
         )
         _fix_ctx = format_fix_plan_context(fix_plan, "transitions")
         transitions_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
             f"{_plan_ctx}"
@@ -331,11 +315,10 @@ async def run_transitions(
         )
     else:
         transitions_input = (
-            f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
             f"INTERACTION_ELEMENTS_SUBSET_JSON:\n{_interaction_json}\n\n"
             f"STATE_NAMES_JSON:\n{_state_names_json}\n\n"
             f"{_plan_ctx}"
-            "Generate Transitions.json for the confirmed scene context."
+            "Generate Transitions.json from the InteractionPlan above."
         )
     result = await _stream_agent_run(
         transitions_agent,

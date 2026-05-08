@@ -6,6 +6,7 @@ from typing import Literal, get_args
 
 from pydantic import model_validator
 
+from model.output_type_SceneUnderstanding import InteractionParams
 from vivian_pipeline.models_funcspec.shared import StrictModel
 
 # ---------------------------------------------------------------------------
@@ -25,13 +26,23 @@ FuncSpecType = Literal[
 ]
 
 
+PARAMETERIZED_FUNCSPEC_TYPES: frozenset[str] = frozenset({"Slider", "Rotatable"})
+
+
 class ElementRole(StrictModel):
-    """Maps a scene object to its intended FuncSpec role."""
+    """Maps a scene object to its intended FuncSpec role.
+
+    For Slider/Rotatable roles the planner must copy the corresponding scene
+    object's ``interaction_params`` here so downstream FuncSpec agents do not
+    need access to ``SceneUnderstanding``. For all other roles the field must
+    be ``None``.
+    """
 
     object_name: str
     funcspec_type: FuncSpecType
     category: Literal["interaction", "visualization"]
     rationale: str
+    interaction_params: InteractionParams | None = None
 
     @model_validator(mode="after")
     def validate_category_type_pairing(self) -> "ElementRole":
@@ -48,6 +59,27 @@ class ElementRole(StrictModel):
                 raise ValueError(
                     f"funcspec_type '{self.funcspec_type}' is not a valid visualization "
                     f"element type. Valid: {valid}"
+                )
+
+        if self.funcspec_type in PARAMETERIZED_FUNCSPEC_TYPES:
+            if self.interaction_params is None:
+                raise ValueError(
+                    f"ElementRole '{self.object_name}' with funcspec_type "
+                    f"'{self.funcspec_type}' must include interaction_params "
+                    "(axis, range)."
+                )
+            if not self.interaction_params.axis:
+                raise ValueError(
+                    f"ElementRole '{self.object_name}' with funcspec_type "
+                    f"'{self.funcspec_type}' must have a non-empty "
+                    "interaction_params.axis."
+                )
+        else:
+            if self.interaction_params is not None:
+                raise ValueError(
+                    f"ElementRole '{self.object_name}' with funcspec_type "
+                    f"'{self.funcspec_type}' must NOT include interaction_params; "
+                    "this field is reserved for Slider/Rotatable roles."
                 )
         return self
 
@@ -72,7 +104,12 @@ class PlannedTransition(StrictModel):
 
 
 class InteractionPlan(StrictModel):
-    """Output of the interaction planner agent."""
+    """Output of the interaction planner agent.
+
+    ``interaction_description`` carries the scene's free-text interaction
+    description forward verbatim so the FuncSpec agents can derive directional
+    context (e.g. slider sign) without needing access to SceneUnderstanding.
+    """
 
     element_roles: list[ElementRole]
     planned_states: list[PlannedState]
@@ -86,6 +123,7 @@ class InteractionPlan(StrictModel):
         ]
     ]
     reasoning: str
+    interaction_description: str | None = None
 
     @model_validator(mode="after")
     def validate_plan_consistency(self) -> "InteractionPlan":
