@@ -19,7 +19,6 @@ class InputBundle:
     """Input data bundle used to build model request items."""
 
     group_name: str
-    interaction_description: str
     scene_json_text: str
     views_manifest_text: str
     images: list[ImagePayload]

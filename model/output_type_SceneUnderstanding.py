@@ -105,7 +105,6 @@ class SceneUnderstanding(BaseModel):
     scene_id: Optional[str] = None
     source_file: Optional[str] = None
     description: Optional[str] = None
-    interaction_description: Optional[str] = None
     objects: List[ObjectEntry] = Field(default_factory=list)
     relations: List[Relation] = Field(default_factory=list)
     clusters: List[Cluster] = Field(default_factory=list)

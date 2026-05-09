@@ -29,7 +29,6 @@ def _make_scene() -> SceneUnderstanding:
         scene_id="test-scene-001",
         source_file="scene_export.json",
         description="A toaster with controls",
-        interaction_description="User can press a button and drag a slider.",
         objects=[
             ObjectEntry(
                 name="ToasterButton",
@@ -147,11 +146,11 @@ class TestMinimalLevel:
     def test_includes_interaction_description_when_present(self) -> None:
         scene = _make_scene()
         result = trim_scene_for_agent(scene, "minimal")
-        assert result["interaction_description"] == "User can press a button and drag a slider."
+        assert result["interaction_description"] == "A toaster with controls"
 
     def test_omits_interaction_description_when_absent(self) -> None:
         scene = _make_scene()
-        scene.interaction_description = None
+        scene.description = None
         result = trim_scene_for_agent(scene, "minimal")
         assert "interaction_description" not in result
 
