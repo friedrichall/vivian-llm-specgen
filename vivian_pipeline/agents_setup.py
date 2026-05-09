@@ -39,13 +39,13 @@ transitions_agent = Agent(
 )
 states_agent = Agent(
     name="states_agent",
-    model=MODEL_BALANCED,
+    model=MODEL_STRONG,
     instructions=STATES_INSTRUCTIONS,
     output_type=StatesFile,
 )
 visualization_elements_agent = Agent(
     name="visualization_elements_agent",
-    model=MODEL_FAST,
+    model=MODEL_BALANCED,
     instructions=VISUALIZATION_ELEMENTS_INSTRUCTIONS,
     output_type=VisualizationElementsFile,
 )
@@ -57,13 +57,13 @@ interaction_planner_agent = Agent(
 )
 consistency_reviewer_agent = Agent(
     name="consistency_reviewer_agent",
-    model=MODEL_BALANCED,
+    model=MODEL_STRONG,
     instructions=CONSISTENCY_REVIEW_INSTRUCTIONS,
     output_type=ConsistencyReviewResult,
 )
 fixer_agent = Agent(
     name="fixer_agent",
-    model=MODEL_FAST,
+    model=MODEL_BALANCED,
     instructions=FIXER_INSTRUCTIONS,
     output_type=FixPlan,
 )
