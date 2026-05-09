@@ -213,6 +213,7 @@ Always include the object_name when the diagnostic is object-specific.
 ## Step 9 - Top-level fields
   - scene_id              SCENE_JSON.groupName if present, else null
   - source_file           the SCENE_JSON file path if known, else null
+  - description           copy SCENE_JSON.description if present
   - interaction_description   leave null (orchestrator sets it later)
   - available_screens     leave [] (orchestrator sets it later)
   - user_feedback         leave [] (added later in the pipeline)
