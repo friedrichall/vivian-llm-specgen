@@ -83,16 +83,16 @@ def _ensure_plan_interaction_description(
     plan: InteractionPlan,
     scene: SceneUnderstanding,
 ) -> None:
-    """Backstop: copy scene's interaction_description into the plan if the
+    """Backstop: copy scene's description into the plan if the
     planner omitted it. Mutates ``plan`` in place. Logs a warning when used.
     """
     if plan.interaction_description:
         return
-    if scene.interaction_description:
+    if scene.description:
         LOGGER.warning(
             "Planner omitted interaction_description; copying from scene as fallback."
         )
-        plan.interaction_description = scene.interaction_description
+        plan.interaction_description = scene.description
 
 
 async def run_interaction_planning(
@@ -105,9 +105,9 @@ async def run_interaction_planning(
     _scene_trimmed = trim_scene_for_agent(scene_confirmed, "full")
     _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     parts = [f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n"]
-    if scene_confirmed.interaction_description:
+    if scene_confirmed.description:
         parts.append(
-            f"INTERACTION_DESCRIPTION:\n{scene_confirmed.interaction_description}\n"
+            f"INTERACTION_DESCRIPTION:\n{scene_confirmed.description}\n"
         )
     _screen_ctx = format_screen_files_context(orch.config.screen_files)
     if _screen_ctx:
@@ -192,9 +192,9 @@ async def replan_with_feedback(
     _scene_json = json.dumps(_scene_trimmed, indent=2, ensure_ascii=False)
     _plan_json = json.dumps(previous_plan.model_dump(), indent=2, ensure_ascii=False)
     parts = [f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n"]
-    if scene.interaction_description:
+    if scene.description:
         parts.append(
-            f"INTERACTION_DESCRIPTION:\n{scene.interaction_description}\n"
+            f"INTERACTION_DESCRIPTION:\n{scene.description}\n"
         )
     _screen_ctx = format_screen_files_context(orch.config.screen_files)
     if _screen_ctx:
@@ -352,9 +352,9 @@ async def obtain_scene_confirmed(
     scene_raw = await orch._run_scene_analysis(state)
     finished_at = datetime.now(timezone.utc)
 
-    # Propagate interaction_description into scene understanding
+    # Propagate interaction_description from request into scene.description as override
     if orch.config.interaction_description:
-        scene_raw.interaction_description = orch.config.interaction_description
+        scene_raw.description = orch.config.interaction_description
 
     # Propagate available screen filenames into scene understanding
     if orch.config.screen_files:

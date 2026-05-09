@@ -34,8 +34,8 @@ def trim_scene_for_agent(
     base: dict[str, Any] = {}
     if scene.scene_id:
         base["scene_id"] = scene.scene_id
-    if scene.interaction_description:
-        base["interaction_description"] = scene.interaction_description
+    if scene.description:
+        base["interaction_description"] = scene.description
 
     if level == "minimal":
         base["objects"] = [{"name": obj.name} for obj in scene.objects]

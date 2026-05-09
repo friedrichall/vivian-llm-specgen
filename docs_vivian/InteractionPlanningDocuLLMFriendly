@@ -99,7 +99,7 @@ Reasoning
 
 Plan-level interaction_description
 7a.1. The InteractionPlan has a top-level optional field "interaction_description".
-7a.2. If the input contains an INTERACTION_DESCRIPTION (or the scene's interaction_description), copy
+7a.2. If the input contains an INTERACTION_DESCRIPTION (or the scene's description), copy
     that text verbatim into InteractionPlan.interaction_description. Do NOT paraphrase or summarise
     it — downstream agents may rely on the original wording (e.g. for slider/rotatable sign and
     direction cues).

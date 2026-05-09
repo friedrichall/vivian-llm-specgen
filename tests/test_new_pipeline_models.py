@@ -269,22 +269,6 @@ def test_registry_conditional_cross_ref_skips_inactive():
 
 
 # ---------------------------------------------------------------------------
-# SceneUnderstanding interaction_description
-# ---------------------------------------------------------------------------
-
-def test_scene_understanding_interaction_description():
-    from model.output_type_SceneUnderstanding import SceneUnderstanding
-    su = SceneUnderstanding(interaction_description="Toggle the light on/off.")
-    assert su.interaction_description == "Toggle the light on/off."
-
-
-def test_scene_understanding_interaction_description_optional():
-    from model.output_type_SceneUnderstanding import SceneUnderstanding
-    su = SceneUnderstanding()
-    assert su.interaction_description is None
-
-
-# ---------------------------------------------------------------------------
 # StartJobRequest new fields
 # ---------------------------------------------------------------------------
 
