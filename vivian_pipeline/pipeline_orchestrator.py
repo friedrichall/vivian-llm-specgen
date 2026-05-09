@@ -173,7 +173,13 @@ class PipelineOrchestrator:
         )
         output = await scene_analysis_tool.on_invoke_tool(tool_context, "{}")
         if not isinstance(output, SceneUnderstanding):
-            raise TypeError("scene_analysis_tool did not return SceneUnderstanding.")
+            preview = repr(output)
+            if len(preview) > 1000:
+                preview = preview[:1000] + "...(truncated)"
+            raise TypeError(
+                f"scene_analysis_tool did not return SceneUnderstanding. "
+                f"Got type={type(output).__name__}, value={preview}"
+            )
         return output
 
     def _build_run_context(self, user_input: str | list[dict[str, Any]]) -> VivianRunContext:

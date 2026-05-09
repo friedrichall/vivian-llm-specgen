@@ -60,6 +60,7 @@ def _write_scene_summary(scene_understanding: SceneUnderstanding, scene_dir: Opt
     description_override=(
         "Analyzes the Unity scene JSON (+ optional views/images) and returns SceneUnderstanding."
     ),
+    failure_error_function=None,
 )
 async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
     """Run streamed scene analysis and persist results into run context.
@@ -90,7 +91,13 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
             continue
     output = getattr(result, "final_output", None)
     if not isinstance(output, SceneUnderstanding):
-        raise TypeError("Scene analysis did not return SceneUnderstanding.")
+        preview = repr(output)
+        if len(preview) > 500:
+            preview = preview[:500] + "...(truncated)"
+        raise TypeError(
+            f"Scene analysis did not return SceneUnderstanding. "
+            f"Got type={type(output).__name__}, value={preview}"
+        )
     state.scene_understanding = output
     state.scene_analysis_done = True
     return output
