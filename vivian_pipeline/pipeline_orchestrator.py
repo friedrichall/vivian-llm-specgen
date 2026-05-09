@@ -318,7 +318,6 @@ class PipelineOrchestrator:
                 LOGGER.info("Attempt %d: rerun step interaction", attempt_index)
                 interaction_elements = await self.run_interaction_elements(
                     attempt_index=attempt_index,
-                    scene_confirmed=scene_confirmed,
                     errors_for_step=errors_for_step,
                     interaction_plan=interaction_plan,
                     fix_plan=fix_plan,
@@ -353,7 +352,6 @@ class PipelineOrchestrator:
                 LOGGER.info("Attempt %d: rerun step states", attempt_index)
                 states = await self.run_states(
                     attempt_index=attempt_index,
-                    scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
                     errors_for_step=errors_for_step,
                     interaction_plan=interaction_plan,
@@ -371,7 +369,6 @@ class PipelineOrchestrator:
                 LOGGER.info("Attempt %d: rerun step transitions", attempt_index)
                 transitions = await self.run_transitions(
                     attempt_index=attempt_index,
-                    scene_confirmed=scene_confirmed,
                     registry_snapshot=self.registry,
                     errors_for_step=errors_for_step,
                     interaction_plan=interaction_plan,

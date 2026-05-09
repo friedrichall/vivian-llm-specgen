@@ -5,7 +5,7 @@ All functions are stateless — they take model objects and return/raise results
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from model.output_type_SceneUnderstanding import SceneUnderstanding
 from vivian_pipeline.models_funcspec import (
@@ -13,6 +13,7 @@ from vivian_pipeline.models_funcspec import (
     InteractionElementAttributeGuard,
     InteractionElementCondition,
     InteractionElementsFile,
+    InteractionPlan,
     Registry as RegistryFull,
     Screen,
     ScreenContentVisualization,
@@ -105,17 +106,22 @@ def validate_states_cross_refs(
         raise ValueError("\n".join(errors))
 
 
-def validate_element_names_against_scene(
+def validate_element_names_against_plan(
     element_names: list[str],
-    scene_confirmed: SceneUnderstanding,
-    element_kind: str,
+    interaction_plan: InteractionPlan,
+    category: Literal["interaction", "visualization"],
 ) -> None:
-    valid_names = {obj.name for obj in scene_confirmed.objects}
+    valid_names = {
+        er.object_name
+        for er in interaction_plan.element_roles
+        if er.category == category
+    }
     unknown = [n for n in element_names if n not in valid_names]
     if unknown:
+        kind = "InteractionElement" if category == "interaction" else "VisualizationElement"
         raise ValueError(
-            f"{element_kind} Name(s) not found in SceneUnderstanding.objects: "
-            + ", ".join(repr(n) for n in unknown)
+            f"{kind} Name(s) not found in InteractionPlan element_roles "
+            f"(category={category}): " + ", ".join(repr(n) for n in unknown)
         )
 
 

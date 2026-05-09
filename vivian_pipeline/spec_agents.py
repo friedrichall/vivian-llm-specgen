@@ -22,7 +22,7 @@ from vivian_pipeline.config import ElementNameMismatchError
 from vivian_pipeline.cross_ref_validation import (
     ensure_unique_interaction_element_names,
     ensure_unique_visualization_element_names,
-    validate_element_names_against_scene,
+    validate_element_names_against_plan,
     validate_screen_elements_have_mesh,
     validate_states_cross_refs,
     validate_transition_element_refs,
@@ -59,9 +59,8 @@ async def run_interaction_elements(
     orch: PipelineOrchestrator,
     *,
     attempt_index: int,
-    scene_confirmed: SceneUnderstanding,
+    interaction_plan: InteractionPlan,
     errors_for_step: list[tuple[str, str, str]] | None = None,
-    interaction_plan: InteractionPlan | None = None,
     fix_plan: FixPlan | None = None,
 ) -> InteractionElementsFile:
     orch._emit_phase("GENERATING_SPECS_INTERACTION_ELEMENTS")
@@ -116,10 +115,10 @@ async def run_interaction_elements(
     else:  # pragma: no cover - pydantic v1 compatibility
         parsed = InteractionElementsFile.parse_obj(raw_payload)
     try:
-        validate_element_names_against_scene(
+        validate_element_names_against_plan(
             [el.Name for el in parsed.Elements],
-            scene_confirmed,
-            "InteractionElement",
+            interaction_plan,
+            "interaction",
         )
     except ValueError as exc:
         raise ElementNameMismatchError(str(exc), step="interaction") from exc
@@ -132,8 +131,8 @@ async def run_visualization_elements(
     attempt_index: int,
     scene_confirmed: SceneUnderstanding,
     registry_snapshot: RegistryFull,
+    interaction_plan: InteractionPlan,
     errors_for_step: list[tuple[str, str, str]] | None = None,
-    interaction_plan: InteractionPlan | None = None,
     fix_plan: FixPlan | None = None,
 ) -> VisualizationElementsFile:
     orch._emit_phase("GENERATING_SPECS_VISUALIZATION_ELEMENTS")
@@ -192,10 +191,10 @@ async def run_visualization_elements(
     else:  # pragma: no cover - pydantic v1 compatibility
         parsed = VisualizationElementsFile.parse_obj(raw_payload)
     try:
-        validate_element_names_against_scene(
+        validate_element_names_against_plan(
             [el.Name for el in parsed.Elements],
-            scene_confirmed,
-            "VisualizationElement",
+            interaction_plan,
+            "visualization",
         )
         validate_screen_elements_have_mesh(parsed, scene_confirmed)
     except ValueError as exc:
@@ -207,7 +206,6 @@ async def run_states(
     orch: PipelineOrchestrator,
     *,
     attempt_index: int,
-    scene_confirmed: SceneUnderstanding,
     registry_snapshot: RegistryFull,
     errors_for_step: list[tuple[str, str, str]] | None = None,
     interaction_plan: InteractionPlan | None = None,
@@ -282,7 +280,6 @@ async def run_transitions(
     orch: PipelineOrchestrator,
     *,
     attempt_index: int,
-    scene_confirmed: SceneUnderstanding,
     registry_snapshot: RegistryFull,
     errors_for_step: list[tuple[str, str, str]] | None = None,
     interaction_plan: InteractionPlan | None = None,
