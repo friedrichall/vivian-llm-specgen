@@ -175,7 +175,6 @@ async def _execute_pipeline(
     task_text = _build_vivian_prompt(description, all_objects)
     input_bundle = InputBundle(
         group_name=group,
-        interaction_description=description,
         scene_json_text=scene_json_text,
         views_manifest_text=views_manifest_text,
         images=all_images,

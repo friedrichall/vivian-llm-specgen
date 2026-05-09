@@ -146,8 +146,8 @@ def summarize_interaction_plan(
     lines: List[str] = []
     scene_id = scene_understanding.scene_id or "(unknown scene)"
     lines.append(f"Scene: {scene_id}")
-    if scene_understanding.description:
-        lines.append(scene_understanding.description)
+    if scene_understanding.interaction_description:
+        lines.append(scene_understanding.interaction_description)
     lines.append("")
 
     # --- Interaction Elements ---

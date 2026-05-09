@@ -28,7 +28,6 @@ def _make_scene() -> SceneUnderstanding:
     return SceneUnderstanding(
         scene_id="test-scene-001",
         source_file="scene_export.json",
-        description="A toaster with controls",
         interaction_description="User can press a button and drag a slider.",
         objects=[
             ObjectEntry(
