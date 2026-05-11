@@ -16,7 +16,6 @@ from vivian_pipeline.models_funcspec import (
 from vivian_pipeline.streaming import _stream_agent_run
 
 if TYPE_CHECKING:
-    from model.output_type_SceneUnderstanding import SceneUnderstanding
     from vivian_pipeline.pipeline_orchestrator import PipelineOrchestrator
 
 LOGGER = logging.getLogger(__name__)
@@ -26,17 +25,14 @@ async def run_consistency_review(
     orch: PipelineOrchestrator,
     *,
     attempt_index: int,
-    scene_confirmed: SceneUnderstanding,
     interaction_plan: InteractionPlan,
 ) -> ConsistencyReviewResult:
     orch._emit_phase("REVIEWING_CONSISTENCY")
     _registry_json = json.dumps(orch.registry.model_dump(), indent=2, ensure_ascii=False)
     _plan_json = json.dumps(interaction_plan.model_dump(), indent=2, ensure_ascii=False)
-    _scene_json = json.dumps(scene_confirmed.model_dump(), indent=2, ensure_ascii=False)
     review_input = (
         f"REGISTRY_JSON:\n{_registry_json}\n\n"
         f"INTERACTION_PLAN_JSON:\n{_plan_json}\n\n"
-        f"CONFIRMED_SCENE_UNDERSTANDING_JSON:\n{_scene_json}\n\n"
         "Review the generated FunctionalSpecification for semantic consistency."
     )
     result = await _stream_agent_run(
@@ -102,16 +98,16 @@ async def run_fixer_agent(
             return None
 
         raw_payload = to_json_payload(raw_output)
-        write_artifact(attempt_root, "fixer_plan_raw.json", raw_payload)
+        write_artifact(attempt_root, "fix_plan_raw.json", raw_payload)
 
         if hasattr(FixPlan, "model_validate"):
             parsed = FixPlan.model_validate(raw_payload)
         else:
             parsed = FixPlan.parse_obj(raw_payload)
 
-        write_artifact(attempt_root, "fixer_plan.json", parsed)
+        write_artifact(attempt_root, "fix_plan.json", parsed)
         return parsed
     except Exception as exc:
         LOGGER.warning("fixer_agent failed (%s); falling back to error-only retry.", exc)
-        write_artifact(attempt_root, "fixer_plan_error.json", {"error": str(exc)})
+        write_artifact(attempt_root, "fix_plan_error.json", {"error": str(exc)})
         return None

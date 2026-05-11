@@ -39,7 +39,7 @@ transitions_agent = Agent(
 )
 states_agent = Agent(
     name="states_agent",
-    model=MODEL_STRONG,
+    model=MODEL_FLAGSHIP,
     instructions=STATES_INSTRUCTIONS,
     output_type=StatesFile,
 )
@@ -63,7 +63,7 @@ consistency_reviewer_agent = Agent(
 )
 fixer_agent = Agent(
     name="fixer_agent",
-    model=MODEL_BALANCED,
+    model=MODEL_STRONG,
     instructions=FIXER_INSTRUCTIONS,
     output_type=FixPlan,
 )

@@ -355,7 +355,7 @@ logs/orchestrator/runs/<YYYYMMDD-HHMMSS-NNN>/
   attempts/<n>/
     artifacts/                          # raw agent outputs, scene JSON
     draft_snapshot/FunctionalSpecification/  # files fed to Unity validator
-    fix-plan.json                       # dirty steps for this attempt
+    attempt-plan.json                   # dirty steps for this attempt
     patch-log.json                      # result + executed/skipped steps
 ```
 

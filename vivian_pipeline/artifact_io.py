@@ -145,7 +145,7 @@ def write_full_draft_snapshot(attempt_root: Path, registry: RegistryFull) -> Non
     write_visualization_arrays_placeholder_draft(attempt_root)
 
 
-# --- Fix plan and patch log ---
+# --- Attempt plan and patch log ---
 
 def write_attempt_file(attempt_root: Path, filename: str, payload: Any) -> None:
     path = attempt_root / filename
@@ -156,7 +156,7 @@ def write_attempt_file(attempt_root: Path, filename: str, payload: Any) -> None:
     LOGGER.info("Wrote attempt file: %s", path)
 
 
-def write_fix_plan(
+def write_attempt_plan(
     attempt_root: Path,
     *,
     attempt_index: int,
@@ -165,7 +165,7 @@ def write_fix_plan(
 ) -> None:
     write_attempt_file(
         attempt_root,
-        "fix-plan.json",
+        "attempt-plan.json",
         {
             "attempt_index": attempt_index,
             "dirty_steps": [step for step in STEP_ORDER if step in dirty_steps],

@@ -16,7 +16,7 @@ from model.output_type_SceneUnderstanding import SceneUnderstanding
 from vivian_pipeline.artifact_io import (
     write_artifact,
     write_attempt_file,
-    write_fix_plan,
+    write_attempt_plan,
     write_full_draft_snapshot,
     write_patch_log,
     write_run_meta,
@@ -456,7 +456,7 @@ class PipelineOrchestrator:
             attempts_completed = attempt_index
             self._prepare_attempt_dir(attempt_index)
             attempt_root = self._attempt_root(attempt_index)
-            write_fix_plan(
+            write_attempt_plan(
                 attempt_root,
                 attempt_index=attempt_index,
                 dirty_steps=dirty_steps,
@@ -529,7 +529,6 @@ class PipelineOrchestrator:
                 try:
                     review = await self.run_consistency_review(
                         attempt_index=attempt_index,
-                        scene_confirmed=scene_confirmed,
                         interaction_plan=self.interaction_plan,
                     )
                     error_issues = [i for i in review.issues if i.severity == "error"]
