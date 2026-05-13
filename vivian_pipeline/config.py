@@ -47,6 +47,9 @@ class PipelineConfig:
     on_phase_change: PhaseUpdateFn | None = None
     interaction_description: str | None = None
     screen_files: list[ScreenFileInfo] = field(default_factory=list)
+    batch_id: str | None = None
+    batch_run_index: int | None = None
+    batch_total: int | None = None
 
     @classmethod
     def default(
@@ -61,15 +64,22 @@ class PipelineConfig:
         on_phase_change: PhaseUpdateFn | None = None,
         interaction_description: str | None = None,
         screen_files: list[ScreenFileInfo] | None = None,
+        batch_id: str | None = None,
+        batch_run_index: int | None = None,
+        batch_total: int | None = None,
     ) -> "PipelineConfig":
         resolved_run_id = (run_id or "orchestrator-run").strip()
         if not resolved_run_id:
             raise ValueError("run_id must not be empty.")
         workspace_root = Path.cwd().resolve()
+        if batch_id:
+            runs_root = workspace_root / "logs" / "orchestrator" / "batch-runs" / batch_id
+        else:
+            runs_root = workspace_root / "logs" / "orchestrator" / "runs"
         return cls(
             paths=PipelinePaths(
                 workspace_root=workspace_root,
-                runs_root=workspace_root / "logs" / "orchestrator" / "runs",
+                runs_root=runs_root,
             ),
             max_attempts=max_attempts,
             run_id=resolved_run_id,
@@ -80,6 +90,9 @@ class PipelineConfig:
             on_phase_change=on_phase_change,
             interaction_description=interaction_description,
             screen_files=screen_files or [],
+            batch_id=batch_id,
+            batch_run_index=batch_run_index,
+            batch_total=batch_total,
         )
 
 

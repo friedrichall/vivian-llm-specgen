@@ -351,6 +351,9 @@ async def obtain_scene_confirmed(
     started_at = datetime.now(timezone.utc)
     scene_raw = await orch._run_scene_analysis(state)
     finished_at = datetime.now(timezone.utc)
+    # Per-agent metrics for scene_analysis_agent are recorded inside scene_analysis_tool
+    # (covers duration + token usage + cost). scene_meta.json below keeps the
+    # legacy per-attempt timestamps for backward compatibility.
 
     # Propagate interaction_description from request into scene.description as override
     if orch.config.interaction_description:

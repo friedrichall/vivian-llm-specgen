@@ -126,6 +126,16 @@ async def _execute_pipeline(
     max_attempts = max(1, _coerce_int(request_data.get("max_attempts"), 5))
     interaction_description = request_data.get("interaction_description") or None
 
+    auto_confirm_scene = _coerce_bool(request_data.get("auto_confirm_scene"), False)
+    raw_batch_id = request_data.get("batch_id")
+    batch_id = raw_batch_id.strip() if isinstance(raw_batch_id, str) and raw_batch_id.strip() else None
+    batch_run_index = request_data.get("batch_run_index")
+    if not isinstance(batch_run_index, int) or batch_run_index < 1:
+        batch_run_index = None
+    batch_total = request_data.get("batch_total")
+    if not isinstance(batch_total, int) or batch_total < 1:
+        batch_total = None
+
     raw_screens_dir = request_data.get("screens_dir")
     screen_files = []
     if isinstance(raw_screens_dir, str) and raw_screens_dir.strip():
@@ -211,6 +221,9 @@ async def _execute_pipeline(
         manager.write_meta(job=job)
 
     async def _await_scene_decision(revision: int) -> SceneReviewDecision:
+        if auto_confirm_scene:
+            print(f"[scene-review] auto-confirming revision {revision} (batch mode).")
+            return SceneReviewDecision(revision=revision, confirmed=True, feedback=None)
         while True:
             if manager.is_cancel_requested(job.job_id):
                 raise asyncio.CancelledError("Cancelled by user.")
@@ -240,6 +253,9 @@ async def _execute_pipeline(
         on_phase_change=_on_phase_change,
         interaction_description=interaction_description,
         screen_files=screen_files,
+        batch_id=batch_id,
+        batch_run_index=batch_run_index,
+        batch_total=batch_total,
     )
     result = await run_pipeline_async(config=config, user_input=content)
     if not result.success:

@@ -75,6 +75,10 @@ class StartJobRequest(BaseModel):
     use_mock_scene_analysis: bool = False
     interaction_description: str | None = None
     screens_dir: str | None = None
+    auto_confirm_scene: bool = False
+    batch_id: str | None = None
+    batch_run_index: int | None = Field(default=None, ge=1)
+    batch_total: int | None = Field(default=None, ge=1)
 
     @field_validator("group_path")
     @classmethod

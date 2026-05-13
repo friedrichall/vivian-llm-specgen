@@ -16,6 +16,8 @@ from vivian_pipeline.context import (
     VivianRunContext,
     _scene_summary_path,
 )
+from vivian_pipeline.metrics import record_agent_run
+from vivian_pipeline.streaming import _compute_prompt_chars, _extract_usage_payload
 
 
 def _load_mock_scene_understanding(project_root: Path) -> SceneUnderstanding:
@@ -73,6 +75,7 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
     if state.on_phase_change is not None:
         state.on_phase_change("ANALYZING_SCENE")
     print("[scene_analysis_agent] Starting streamed analysis...")
+    _t_start = time.perf_counter()
     result = Runner.run_streamed(scene_analysis_agent, input=state.user_input, context=state)
     last_heartbeat = time.time()
     async for event in result.stream_events():
@@ -89,6 +92,19 @@ async def scene_analysis_tool(ctx: ToolContext) -> SceneUnderstanding:
             if event.item.type == "message_output_item":
                 print("[scene_analysis_agent] Message output received.")
             continue
+    _duration_ms = (time.perf_counter() - _t_start) * 1000.0
+    _usage = _extract_usage_payload(result)
+    record_agent_run(
+        "scene_analysis_agent",
+        duration_ms=_duration_ms,
+        model=getattr(scene_analysis_agent, "model", None),
+        requests=_usage["requests"],
+        input_tokens=_usage["input_tokens"],
+        output_tokens=_usage["output_tokens"],
+        cached_input_tokens=_usage["cached_input_tokens"],
+        reasoning_tokens=_usage["reasoning_tokens"],
+        prompt_chars=_compute_prompt_chars(state.user_input),
+    )
     output = getattr(result, "final_output", None)
     if not isinstance(output, SceneUnderstanding):
         preview = repr(output)

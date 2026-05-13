@@ -6,9 +6,17 @@ import asyncio
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from vivian_pipeline.metrics import (
+    AgentTimingsCollector,
+    record_validator_duration,
+    reset_active_collector,
+    set_active_collector,
+)
 
 from agents.tool_context import ToolContext
 
@@ -225,6 +233,7 @@ class PipelineOrchestrator:
         validator_log_path = attempt_root / "validator.log"
 
         self._emit_phase("VALIDATING_OUTPUT")
+        _validator_t0 = time.perf_counter()
         errors = await asyncio.to_thread(
             _run_vivian_validator,
             funcspec_dir,
@@ -232,6 +241,10 @@ class PipelineOrchestrator:
             unity_log_path=validator_log_path,
         )
         normalized_errors = normalize_error_package(errors)
+        record_validator_duration(
+            (time.perf_counter() - _validator_t0) * 1000.0,
+            passed=not normalized_errors,
+        )
 
         if errors:
             error_package_path.write_text(
@@ -248,6 +261,41 @@ class PipelineOrchestrator:
             )
 
         return normalized_errors
+
+    def _write_metrics_file(self) -> None:
+        """Persist per-agent timing aggregates and run-level totals to ``metrics.json``.
+
+        Called from the run_vivian finally-block; no-op safe if the collector
+        was never installed (e.g. during unit tests bypassing run_vivian).
+        """
+        collector = getattr(self, "_metrics_collector", None)
+        if collector is None:
+            return
+        started_at = getattr(self, "_metrics_started_at", None)
+        perf_t0 = getattr(self, "_metrics_perf_t0", None)
+        finished_at = datetime.now(timezone.utc)
+        total_ms = (
+            (time.perf_counter() - perf_t0) * 1000.0 if perf_t0 is not None else 0.0
+        )
+        snapshot = collector.snapshot()
+        payload: dict[str, Any] = {
+            "run_id": self.config.run_id,
+            "batch_id": self.config.batch_id,
+            "batch_run_index": self.config.batch_run_index,
+            "batch_total": self.config.batch_total,
+            "started_at": started_at.isoformat() if started_at else None,
+            "finished_at": finished_at.isoformat(),
+            "total_duration_ms": round(total_ms, 3),
+            "totals": snapshot["totals"],
+            "agents": snapshot["agents"],
+            "validator": snapshot["validator"],
+        }
+        metrics_path = self.run_root / "metrics.json"
+        metrics_path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        LOGGER.info("Wrote metrics file: %s", metrics_path)
 
     # ------------------------------------------------------------------
     # Delegation to extracted modules
@@ -446,6 +494,23 @@ class PipelineOrchestrator:
             max_attempts=self.config.max_attempts,
         )
 
+        self._metrics_collector = AgentTimingsCollector()
+        self._metrics_token = set_active_collector(self._metrics_collector)
+        self._metrics_started_at = datetime.now(timezone.utc)
+        self._metrics_perf_t0 = time.perf_counter()
+        try:
+            return await self._run_vivian_inner(user_input=user_input)
+        finally:
+            try:
+                self._write_metrics_file()
+            except Exception as metrics_exc:  # pragma: no cover - defensive
+                LOGGER.warning("Failed to write metrics.json: %s", metrics_exc)
+            reset_active_collector(self._metrics_token)
+
+    async def _run_vivian_inner(
+        self,
+        user_input: str | list[dict[str, Any]] = DEFAULT_USER_INPUT,
+    ) -> PipelineRunResult:
         attempts_completed = 0
         dirty_steps: set[str] = set(STEP_ORDER)
         pending_validator_errors: list[tuple[str, str, str]] | None = None
