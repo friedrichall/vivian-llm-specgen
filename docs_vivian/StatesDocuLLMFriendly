@@ -128,6 +128,7 @@
    10.3. You must not nest conditions within each other; only the `"Conditions"` array may contain condition objects.
    10.4. When several conditions affect the same element, you must ensure that they do not contradict each other.
    10.5. If a conflict arises between conditions, you must resolve it according to the user’s intent and the specification, for example by adjusting values so that they are consistent.
+   10.6. If a state semantically means a visualization element is off, blank, or silent (e.g. a display turned off, a light unlit), add an explicit condition that represents that — typically `FloatValueVisualization` with `"Value": "0.0"`. Do not rely on the absence of a condition to imply "off", since Vivian carries over the previous state's visualization.
 
 11. **Validation and error handling**
     11.1. When generating or editing `States.json`, you must ensure that:
