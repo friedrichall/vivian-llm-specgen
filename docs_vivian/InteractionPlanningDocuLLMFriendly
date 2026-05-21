@@ -71,7 +71,8 @@ Planning states
 4.3. State names must be camelCase ending with '.state' (e.g., 'powerOff.state', 'idle.state', 'activeMode.state'). This matches the naming convention enforced by the states agent.
 4.4. Every prototype should have at least one initial/default state.
 4.5. Keep the number of states reasonable for the scene complexity. Simple scenes may need only 2-3 states; complex scenes may need more.
-4.6. If AVAILABLE_SCREEN_FILES are provided and a Screen visualization element is planned, assign relevant screen files to each state using the screen_files field. Use the filenames' descriptive names to infer which screen image belongs to which state (e.g., "settings.png" for a settings state, "home.png" for an idle/home state). This mapping will be passed directly to the states agent, so be specific and thorough.
+4.6. If an interaction element cycles through discrete content, each item must be a separate PlannedState. Vivian has no in-state counter — a single state with self-looping transitions cannot change displayed content.
+4.7. If AVAILABLE_SCREEN_FILES are provided and a Screen visualization element is planned, assign relevant screen files to each state using the screen_files field. Use the filenames' descriptive names to infer which screen image belongs to which state (e.g., "settings.png" for a settings state, "home.png" for an idle/home state). This mapping will be passed directly to the states agent, so be specific and thorough.
 
 Planning transitions
 5.1. For each transition between states, create a PlannedTransition entry.
