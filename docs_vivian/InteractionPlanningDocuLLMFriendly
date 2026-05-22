@@ -23,7 +23,15 @@ Planning element_roles
 3.4. category must be "interaction" for interactive elements or "visualization" for visual feedback elements.
 3.5. rationale must briefly explain why this object should have this role (e.g., "Has button role in scene data", "User requested this as a toggle switch", "Screen object for displaying status").
 3.6. You must not assign roles to objects that do not exist in SceneUnderstanding.objects.
-3.7. Consider the object's name (Unity scenes typically encode roles in names like "StartButton", "DonenessKnob", "PowerSlider", "LcdScreen", "LedIndicator"), interaction_params.axis/range (slider/rotatable evidence — translating geometry implies Slider, rotating geometry implies Rotatable), materials (color/texture), bounding_box/mesh_stats (geometry), unity_tag, relations, and clusters when deciding its funcspec_type. SceneUnderstanding does NOT pre-classify objects — you are the sole authority on funcspec_type.
+3.7. Consider the object's name (Unity scenes typically encode roles in names — common suffixes
+or keywords include "Button", "Switch", "Knob", "Slider", "Lever", "Handle", "Screen", "Display",
+"Light", "LED", "Indicator", "Lamp"), interaction_params.axis/range (slider/rotatable evidence —
+translating geometry implies Slider, rotating geometry implies Rotatable), materials
+(color/texture), bounding_box/mesh_stats (geometry), unity_tag, relations, and clusters when
+deciding its funcspec_type. Treat the listed keywords only as weak cues — the authoritative
+classification still depends on interaction_params, geometry, and the user's
+interaction_description. SceneUnderstanding does NOT pre-classify objects — you are the sole
+authority on funcspec_type.
 3.8. PREREQUISITE — "Animation" funcspec_type: Only assign funcspec_type "Animation" if the scene
 understanding EXPLICITLY confirms that the corresponding Unity GameObject has an Animation or
 Animator component. If this is uncertain or not confirmed, use "AppearingObject" instead for
@@ -81,7 +89,15 @@ Planning transitions
 5.4. trigger_description should explain what triggers the transition in natural language (e.g., "User clicks the power button", "After 5 seconds timeout").
 5.5. Ensure every state is reachable from at least one other state (no orphan states), except for the initial state which may have no incoming transitions.
 5.6. Avoid creating dead-end states with no outgoing transitions unless they represent a terminal state.
-5.7. If a transition depends on an element attribute value (e.g., a rotary knob position or slider value), fill guard_hints with human-readable constraints that the downstream transitions agent should encode as guards. Each hint must specify the element name, the attribute name as it appears in the FuncSpec (always "VALUE" for Slider and Rotatable, never "ANGLE", "ROTATION", or any physical-unit name), the operator, and the threshold value in normalized form. Example: ["RotaryButton VALUE <= 0.33 → short timeout", "RotaryButton VALUE > 0.66 → long timeout"]. Do not emit guard_hints on a ToggleButton press transition for the same ToggleButton's VALUE — the source state already encodes the on/off context.
+5.7. If a transition depends on an element attribute value (e.g., a Rotatable position or Slider
+value), fill guard_hints with human-readable constraints that the downstream transitions agent
+should encode as guards. Each hint must specify the element name, the attribute name as it appears
+in the FuncSpec (always "VALUE" for Slider and Rotatable, never "ANGLE", "ROTATION", or any
+physical-unit name), the operator, and the threshold value in normalized form. Format:
+"<ElementName> VALUE <op> <0.0–1.0>", optionally followed by a short " → <branch label>". Use
+this only when a single transition out of a state needs to be split into multiple branches by
+threshold. Do not emit guard_hints on a ToggleButton press transition for the same ToggleButton's
+VALUE — the source state already encodes the on/off context.
 5.8. Slider and Rotatable elements always expose their position/angle as a normalized "VALUE" between 0.0 and 1.0 — never as raw degrees or meters. You must convert any physical intuition (e.g., "90 degrees out of 270") into a normalized fraction (90/270 ≈ 0.33) when writing guard_hints. Always use the attribute name "VALUE" in guard_hints for these element types. Using "ANGLE", "ROTATION", "DEGREES", or similar names will cause a runtime error in the framework.
 5.9. If no guards are needed for a transition, omit guard_hints or set it to null.
 

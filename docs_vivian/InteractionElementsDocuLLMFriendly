@@ -98,17 +98,20 @@ Slider configuration ("Type": "Slider")
             "push back", "slide back", "pushed back"                             → NEGATIVE (z)
 
          2. Gravity/physics convention for y-axis:
-            If axis="y" and the object is a handle, lever, plunger, or button
-            that the user physically presses or pushes → NEGATIVE y.
+            If axis="y" and the plan's interaction_description or role rationale
+            indicates the user physically presses, pushes, or lowers the object
+            (without a more specific directional cue from rule 1) → NEGATIVE y.
             (In Unity's Y-up world, "pressing down" decreases y.)
 
          3. If no directional cue is available: use POSITIVE as fallback and
             add a diagnostics entry (level: "warning") flagging the ambiguity.
 
-       Example (downward handle): axis="y", range=0.0575 →
-           MaxPosition: {"x": 0.0, "y": -0.0575, "z": 0.0}
-       Example (rightward slider): axis="x", range=0.0575 →
-           MaxPosition: {"x": 0.0575, "y": 0.0, "z": 0.0}
+       Example (downward movement): axis="y", range=R (negative sign) →
+           MaxPosition: {"x": 0.0, "y": -R, "z": 0.0}
+       Example (positive x movement): axis="x", range=R (positive sign) →
+           MaxPosition: {"x": R, "y": 0.0, "z": 0.0}
+       R is whatever numeric value the plan provides in interaction_params.range;
+       copy it verbatim and only choose the sign per the rules above.
 
        NEVER infer or override the movement axis. The plan's interaction_params.axis is the
        authoritative source for the movement axis.
@@ -121,14 +124,16 @@ Slider configuration ("Type": "Slider")
 7.6. You may optionally include "PositionResolution":
 7.6.1. If present, "PositionResolution" must be an integer of at least 2 representing the number of discrete positions the slider can take.
 7.6.2. If absent, the slider must be treated as having an effectively infinite (continuous) number of positions.
-7.6.3. For sliders that physically latch or snap to a fixed number of positions (e.g. a toaster
-       handle that is either fully up or fully down), set "PositionResolution" to the number of
-       discrete positions (e.g. 2). Use the plan's interaction_description and the role's
-       rationale as evidence; if in doubt, omit it (continuous slider).
+7.6.3. For sliders that physically latch or snap to a fixed number of positions, set
+       "PositionResolution" to the number of discrete positions (e.g. 2 for a two-position
+       lever, 3 for a three-step switch). Use the plan's interaction_description and the
+       role's rationale as evidence; if in doubt, omit it (continuous slider).
 7.7. You may optionally include "TransitionTimeInMs":
 7.7.1. If present, "TransitionTimeInMs" must be a non-negative integer representing the time in milliseconds for the slider to transition to a position defined by a state change.
 7.8. Example minimal structure (conceptual):
-7.8.1. {"Type": "Slider", "Name": "Handle", "MinPosition": {"x": 0.0, "y": 0.0, "z": 0.0}, "MaxPosition": {"x": 0.0, "y": -0.05, "z": 0.0}}
+7.8.1. {"Type": "Slider", "Name": "ExampleSlider", "MinPosition": {"x": 0.0, "y": 0.0, "z": 0.0}, "MaxPosition": {"x": 0.0, "y": -R, "z": 0.0}}
+       The Name is a placeholder — use the verbatim object_name from the plan. R is the
+       numeric range from interaction_params; choose the axis component and sign per §7.4.2.
 
 Rotatable configuration ("Type": "Rotatable")
 8.1. A Rotatable simulates a knob or hinge rotating around a defined axis, mapping a rotation angle to a value between 0.0 and 1.0.
@@ -167,7 +172,10 @@ Rotatable configuration ("Type": "Rotatable")
 8.9. You may optionally include "TransitionTimeInMs":
 8.9.1. If present, it must be a non-negative integer representing the time in milliseconds for the Rotatable to transition to a new position defined by a state change.
 8.10. Example minimal structure (conceptual):
-8.10.1. {"Type": "Rotatable", "Name": "RotaryButton", "MinRotation": -90.0, "MaxRotation": 90.0, "RotationAxis": {"Origin": {"x": 0.0, "y": 0.0, "z": 0.0}, "Direction": {"x": 0.0, "y": 0.0, "z": 1.0}}}
+8.10.1. {"Type": "Rotatable", "Name": "ExampleKnob", "MinRotation": -A, "MaxRotation": +B, "RotationAxis": {"Origin": {"x": 0.0, "y": 0.0, "z": 0.0}, "Direction": {"x": 0.0, "y": 0.0, "z": 1.0}}}
+        Here A and B are the rotation limits in degrees that the plan or context implies;
+        substitute concrete numbers. The Name is a placeholder — use the verbatim object_name
+        from the plan, not "ExampleKnob".
 
 TouchArea configuration ("Type": "TouchArea")
 9.1. A TouchArea simulates a touch-sensitive surface.
