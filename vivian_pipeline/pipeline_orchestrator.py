@@ -640,7 +640,10 @@ class PipelineOrchestrator:
                     next_dirty_steps=consistency_dirty,
                 )
                 dirty_steps = consistency_dirty
-                pending_validator_errors = None
+                pending_validator_errors = [
+                    (i.get("file", ""), "consistency_review", i.get("description", ""))
+                    for i in (pending_consistency_issues or [])
+                ]
                 pending_fix_plan = None
                 continue
 
