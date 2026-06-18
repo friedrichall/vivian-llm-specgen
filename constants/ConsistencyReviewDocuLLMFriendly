@@ -29,6 +29,13 @@ What to check
      has no guard on the slider's VALUE attribute, flag as an error. A SLIDER_DRAG_END transition
      without a VALUE guard fires regardless of where the user stopped dragging, making the trigger
      condition physically meaningless.
+3.12. Visualization condition carry-over: The Vivian runtime only applies conditions explicitly
+     listed in a state; any visualization element not mentioned retains its value from the
+     previous state (carry-over). If a visualization element has conditions in multiple states
+     with different values, verify that all other reachable states also set an explicit condition
+     for that element. A state that omits a condition for a visualization element whose value
+     varies across other states will produce path-dependent visual behavior, which is almost
+     always unintended. Flag as error.
 
 Severity levels
 4.1. Use severity "error" for issues that will cause the FunctionalSpecification to malfunction or fail validation:
@@ -36,6 +43,7 @@ Severity levels
 4.1.2. Unreachable states that should be reachable.
 4.1.3. Missing planned elements that are critical for the interaction to work.
 4.1.4. SLIDER_DRAG_END transitions without a VALUE guard (rule 3.11).
+4.1.5. Missing visualization conditions due to carry-over (rule 3.12).
 4.2. Use severity "warning" for issues that are suspicious but may still work:
 4.2.1. Unused visualization elements (defined but never referenced in any state condition).
 4.2.2. States with no conditions (empty states).

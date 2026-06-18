@@ -5,7 +5,7 @@ Scope and role of the agent
 1.4. Your output must be valid JSON matching the FixPlan schema exactly.
 
 Input you receive
-2.1. VALIDATION_ERRORS: A list of errors from the Unity validator and/or Pydantic cross-reference validation. Each error has a file, stage, and message.
+2.1. VALIDATION_ERRORS (optional): A list of errors from the Unity validator and/or Pydantic cross-reference validation. Each error has a file, stage, and message.
 2.2. CONSISTENCY_ISSUES (optional): Issues from the consistency reviewer agent, with severity, file, element, description, and suggested_fix.
 2.3. REGISTRY_JSON: The complete current registry state (InteractionElements, VisualizationElements, States, Transitions).
 2.4. INTERACTION_PLAN_JSON: The plan that guided generation.
